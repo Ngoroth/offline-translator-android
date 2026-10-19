@@ -1,0 +1,271 @@
+[
+  {
+    "id": "ru-1",
+    "fileName": "ru-1.wav",
+    "cohort": "smoke",
+    "language": "ru",
+    "direction": "RU_TO_EN",
+    "path": "smoke/ru-1.wav",
+    "bytes": 90446,
+    "sha256": "c89e9b5f055af8c4924b303c6b994b03b328ae91ce3a407506c5d5b7175c3075",
+    "sampleRateHz": 16000,
+    "channels": 1,
+    "bits": 16,
+    "sampleCount": 45200,
+    "durationMs": 2825.0,
+    "reference": "Сегодня в семь встреча у входа.",
+    "tags": [
+      "smoke"
+    ],
+    "requiredSemanticPhrases": [
+      "сегодня",
+      "семь",
+      "встреча",
+      "входа"
+    ],
+    "source": {
+      "voice": "Microsoft Pavel",
+      "rate": "default"
+    }
+  },
+  {
+    "id": "ru-2",
+    "fileName": "ru-2.wav",
+    "cohort": "smoke",
+    "language": "ru",
+    "direction": "RU_TO_EN",
+    "path": "smoke/ru-2.wav",
+    "bytes": 84750,
+    "sha256": "b87fd606f933a92630f7661d57f244579fc627e213dc20f09e8c72d86b5f686d",
+    "sampleRateHz": 16000,
+    "channels": 1,
+    "bits": 16,
+    "sampleCount": 42352,
+    "durationMs": 2647.0,
+    "reference": "Я не буду ехать на автобусе.",
+    "tags": [
+      "smoke"
+    ],
+    "requiredSemanticPhrases": [
+      "не",
+      "автобусе"
+    ],
+    "source": {
+      "voice": "Microsoft Pavel",
+      "rate": "default"
+    }
+  },
+  {
+    "id": "ru-3",
+    "fileName": "ru-3.wav",
+    "cohort": "smoke",
+    "language": "ru",
+    "direction": "RU_TO_EN",
+    "path": "smoke/ru-3.wav",
+    "bytes": 92622,
+    "sha256": "f211809867667984ac18851036f697697e9b10387be2843f1657ff06653e5b9a",
+    "sampleRateHz": 16000,
+    "channels": 1,
+    "bits": 16,
+    "sampleCount": 46288,
+    "durationMs": 2893.0,
+    "reference": "Закажите два билета до Ванкувера.",
+    "tags": [
+      "smoke"
+    ],
+    "requiredSemanticPhrases": [
+      "два",
+      "билета",
+      "ванкувера"
+    ],
+    "source": {
+      "voice": "Microsoft Pavel",
+      "rate": "default"
+    }
+  },
+  {
+    "id": "ru-4",
+    "fileName": "ru-4.wav",
+    "cohort": "smoke",
+    "language": "ru",
+    "direction": "RU_TO_EN",
+    "path": "smoke/ru-4.wav",
+    "bytes": 99150,
+    "sha256": "d184cc6f531a22ca8c8851dbb3c40c7a054a008c7dd674901981e10d1d5a9c2e",
+    "sampleRateHz": 16000,
+    "channels": 1,
+    "bits": 16,
+    "sampleCount": 49552,
+    "durationMs": 3097.0,
+    "reference": "Перезвони мне через пятнадцать минут.",
+    "tags": [
+      "smoke"
+    ],
+    "requiredSemanticPhrases": [
+      "пятнадцать",
+      "минут"
+    ],
+    "source": {
+      "voice": "Microsoft Pavel",
+      "rate": "default"
+    }
+  },
+  {
+    "id": "en-1",
+    "fileName": "en-1.wav",
+    "cohort": "smoke",
+    "language": "en",
+    "direction": "EN_TO_RU",
+    "path": "smoke/en-1.wav",
+    "bytes": 103086,
+    "sha256": "a93ea26d02b5a24c167348f5ebbf7f8bbd050b205df78fd26347804cd5ae0e31",
+    "sampleRateHz": 16000,
+    "channels": 1,
+    "bits": 16,
+    "sampleCount": 51520,
+    "durationMs": 3220.0,
+    "reference": "The meeting is at seven today by the entrance.",
+    "tags": [
+      "smoke"
+    ],
+    "requiredSemanticPhrases": [
+      "meeting",
+      "seven",
+      "entrance"
+    ],
+    "source": {
+      "voice": "Microsoft David",
+      "rate": "default"
+    }
+  },
+  {
+    "id": "en-2",
+    "fileName": "en-2.wav",
+    "cohort": "smoke",
+    "language": "en",
+    "direction": "EN_TO_RU",
+    "path": "smoke/en-2.wav",
+    "bytes": 69006,
+    "sha256": "2a1ea06dac28e6b1f695ddec090fcf111c4ed48628f8657b3c66b7dc43eaa9b7",
+    "sampleRateHz": 16000,
+    "channels": 1,
+    "bits": 16,
+    "sampleCount": 34480,
+    "durationMs": 2155.0,
+    "reference": "I will not take the bus.",
+    "tags": [
+      "smoke"
+    ],
+    "requiredSemanticPhrases": [
+      "not",
+      "bus"
+    ],
+    "source": {
+      "voice": "Microsoft David",
+      "rate": "default"
+    }
+  },
+  {
+    "id": "en-3",
+    "fileName": "en-3.wav",
+    "cohort": "smoke",
+    "language": "en",
+    "direction": "EN_TO_RU",
+    "path": "smoke/en-3.wav",
+    "bytes": 90126,
+    "sha256": "3d0cbbdb5f5014cd756307b32e691b6f0f1b4572e459f69e60b7076bc7a172ad",
+    "sampleRateHz": 16000,
+    "channels": 1,
+    "bits": 16,
+    "sampleCount": 45040,
+    "durationMs": 2815.0,
+    "reference": "Please book two tickets to Vancouver.",
+    "tags": [
+      "smoke"
+    ],
+    "requiredSemanticPhrases": [
+      "two",
+      "tickets",
+      "vancouver"
+    ],
+    "source": {
+      "voice": "Microsoft David",
+      "rate": "default"
+    }
+  },
+  {
+    "id": "en-4",
+    "fileName": "en-4.wav",
+    "cohort": "smoke",
+    "language": "en",
+    "direction": "EN_TO_RU",
+    "path": "smoke/en-4.wav",
+    "bytes": 84526,
+    "sha256": "a61bd04e40d2d548e8069802ff64f0dbc2bddd710f1883e8bc7bc3ae7f472e65",
+    "sampleRateHz": 16000,
+    "channels": 1,
+    "bits": 16,
+    "sampleCount": 42240,
+    "durationMs": 2640.0,
+    "reference": "Call me back in fifteen minutes.",
+    "tags": [
+      "smoke"
+    ],
+    "requiredSemanticPhrases": [
+      "fifteen",
+      "minutes"
+    ],
+    "source": {
+      "voice": "Microsoft David",
+      "rate": "default"
+    }
+  },
+  {
+    "id": "ru-official-0",
+    "fileName": "ru-official-0.wav",
+    "cohort": "smoke",
+    "language": "ru",
+    "direction": "RU_TO_EN",
+    "path": "smoke/ru-official-0.wav",
+    "bytes": 101804,
+    "sha256": "980b4327e684725859e437f05d15dfa4ec8afb994ef2e8fb356365af76547c41",
+    "sampleRateHz": 8000,
+    "channels": 1,
+    "bits": 16,
+    "sampleCount": 50880,
+    "durationMs": 6360.0,
+    "reference": "Ну сейчас к тебе приедет бригада, давай, давай, я жду",
+    "tags": [
+      "smoke"
+    ],
+    "requiredSemanticPhrases": [],
+    "source": {
+      "voice": "official fixture",
+      "rate": "default"
+    }
+  },
+  {
+    "id": "en-official-0",
+    "fileName": "en-official-0.wav",
+    "cohort": "smoke",
+    "language": "en",
+    "direction": "EN_TO_RU",
+    "path": "smoke/en-official-0.wav",
+    "bytes": 212044,
+    "sha256": "6bc58a4efdf20daac252b6b1502632601a71efe0308f6757dc1eda34891a7e4f",
+    "sampleRateHz": 16000,
+    "channels": 1,
+    "bits": 16,
+    "sampleCount": 106000,
+    "durationMs": 6625.0,
+    "reference": "After early nightfall the yellow lamps would light up here and there the squalid quarter of the brothels",
+    "tags": [
+      "smoke"
+    ],
+    "requiredSemanticPhrases": [],
+    "source": {
+      "voice": "official fixture",
+      "rate": "default"
+    }
+  }
+]

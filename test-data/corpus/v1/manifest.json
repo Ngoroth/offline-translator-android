@@ -1,0 +1,1851 @@
+{
+  "schemaVersion": 1,
+  "filesSha256": "681adcf3352ac460b7eea7c83798d8062f94789337bdb3649b535bb742c3ecd0",
+  "cases": [
+    {
+      "id": "ru-1",
+      "fileName": "ru-1.wav",
+      "cohort": "smoke",
+      "language": "ru",
+      "direction": "RU_TO_EN",
+      "path": "smoke/ru-1.wav",
+      "bytes": 90446,
+      "sha256": "c89e9b5f055af8c4924b303c6b994b03b328ae91ce3a407506c5d5b7175c3075",
+      "sampleRateHz": 16000,
+      "channels": 1,
+      "bits": 16,
+      "sampleCount": 45200,
+      "durationMs": 2825.0,
+      "reference": "Сегодня в семь встреча у входа.",
+      "tags": [
+        "smoke"
+      ],
+      "requiredSemanticPhrases": [
+        "сегодня",
+        "семь",
+        "встреча",
+        "входа"
+      ],
+      "source": {
+        "voice": "Microsoft Pavel",
+        "rate": "default"
+      }
+    },
+    {
+      "id": "ru-2",
+      "fileName": "ru-2.wav",
+      "cohort": "smoke",
+      "language": "ru",
+      "direction": "RU_TO_EN",
+      "path": "smoke/ru-2.wav",
+      "bytes": 84750,
+      "sha256": "b87fd606f933a92630f7661d57f244579fc627e213dc20f09e8c72d86b5f686d",
+      "sampleRateHz": 16000,
+      "channels": 1,
+      "bits": 16,
+      "sampleCount": 42352,
+      "durationMs": 2647.0,
+      "reference": "Я не буду ехать на автобусе.",
+      "tags": [
+        "smoke"
+      ],
+      "requiredSemanticPhrases": [
+        "не",
+        "автобусе"
+      ],
+      "source": {
+        "voice": "Microsoft Pavel",
+        "rate": "default"
+      }
+    },
+    {
+      "id": "ru-3",
+      "fileName": "ru-3.wav",
+      "cohort": "smoke",
+      "language": "ru",
+      "direction": "RU_TO_EN",
+      "path": "smoke/ru-3.wav",
+      "bytes": 92622,
+      "sha256": "f211809867667984ac18851036f697697e9b10387be2843f1657ff06653e5b9a",
+      "sampleRateHz": 16000,
+      "channels": 1,
+      "bits": 16,
+      "sampleCount": 46288,
+      "durationMs": 2893.0,
+      "reference": "Закажите два билета до Ванкувера.",
+      "tags": [
+        "smoke"
+      ],
+      "requiredSemanticPhrases": [
+        "два",
+        "билета",
+        "ванкувера"
+      ],
+      "source": {
+        "voice": "Microsoft Pavel",
+        "rate": "default"
+      }
+    },
+    {
+      "id": "ru-4",
+      "fileName": "ru-4.wav",
+      "cohort": "smoke",
+      "language": "ru",
+      "direction": "RU_TO_EN",
+      "path": "smoke/ru-4.wav",
+      "bytes": 99150,
+      "sha256": "d184cc6f531a22ca8c8851dbb3c40c7a054a008c7dd674901981e10d1d5a9c2e",
+      "sampleRateHz": 16000,
+      "channels": 1,
+      "bits": 16,
+      "sampleCount": 49552,
+      "durationMs": 3097.0,
+      "reference": "Перезвони мне через пятнадцать минут.",
+      "tags": [
+        "smoke"
+      ],
+      "requiredSemanticPhrases": [
+        "пятнадцать",
+        "минут"
+      ],
+      "source": {
+        "voice": "Microsoft Pavel",
+        "rate": "default"
+      }
+    },
+    {
+      "id": "en-1",
+      "fileName": "en-1.wav",
+      "cohort": "smoke",
+      "language": "en",
+      "direction": "EN_TO_RU",
+      "path": "smoke/en-1.wav",
+      "bytes": 103086,
+      "sha256": "a93ea26d02b5a24c167348f5ebbf7f8bbd050b205df78fd26347804cd5ae0e31",
+      "sampleRateHz": 16000,
+      "channels": 1,
+      "bits": 16,
+      "sampleCount": 51520,
+      "durationMs": 3220.0,
+      "reference": "The meeting is at seven today by the entrance.",
+      "tags": [
+        "smoke"
+      ],
+      "requiredSemanticPhrases": [
+        "meeting",
+        "seven",
+        "entrance"
+      ],
+      "source": {
+        "voice": "Microsoft David",
+        "rate": "default"
+      }
+    },
+    {
+      "id": "en-2",
+      "fileName": "en-2.wav",
+      "cohort": "smoke",
+      "language": "en",
+      "direction": "EN_TO_RU",
+      "path": "smoke/en-2.wav",
+      "bytes": 69006,
+      "sha256": "2a1ea06dac28e6b1f695ddec090fcf111c4ed48628f8657b3c66b7dc43eaa9b7",
+      "sampleRateHz": 16000,
+      "channels": 1,
+      "bits": 16,
+      "sampleCount": 34480,
+      "durationMs": 2155.0,
+      "reference": "I will not take the bus.",
+      "tags": [
+        "smoke"
+      ],
+      "requiredSemanticPhrases": [
+        "not",
+        "bus"
+      ],
+      "source": {
+        "voice": "Microsoft David",
+        "rate": "default"
+      }
+    },
+    {
+      "id": "en-3",
+      "fileName": "en-3.wav",
+      "cohort": "smoke",
+      "language": "en",
+      "direction": "EN_TO_RU",
+      "path": "smoke/en-3.wav",
+      "bytes": 90126,
+      "sha256": "3d0cbbdb5f5014cd756307b32e691b6f0f1b4572e459f69e60b7076bc7a172ad",
+      "sampleRateHz": 16000,
+      "channels": 1,
+      "bits": 16,
+      "sampleCount": 45040,
+      "durationMs": 2815.0,
+      "reference": "Please book two tickets to Vancouver.",
+      "tags": [
+        "smoke"
+      ],
+      "requiredSemanticPhrases": [
+        "two",
+        "tickets",
+        "vancouver"
+      ],
+      "source": {
+        "voice": "Microsoft David",
+        "rate": "default"
+      }
+    },
+    {
+      "id": "en-4",
+      "fileName": "en-4.wav",
+      "cohort": "smoke",
+      "language": "en",
+      "direction": "EN_TO_RU",
+      "path": "smoke/en-4.wav",
+      "bytes": 84526,
+      "sha256": "a61bd04e40d2d548e8069802ff64f0dbc2bddd710f1883e8bc7bc3ae7f472e65",
+      "sampleRateHz": 16000,
+      "channels": 1,
+      "bits": 16,
+      "sampleCount": 42240,
+      "durationMs": 2640.0,
+      "reference": "Call me back in fifteen minutes.",
+      "tags": [
+        "smoke"
+      ],
+      "requiredSemanticPhrases": [
+        "fifteen",
+        "minutes"
+      ],
+      "source": {
+        "voice": "Microsoft David",
+        "rate": "default"
+      }
+    },
+    {
+      "id": "ru-official-0",
+      "fileName": "ru-official-0.wav",
+      "cohort": "smoke",
+      "language": "ru",
+      "direction": "RU_TO_EN",
+      "path": "smoke/ru-official-0.wav",
+      "bytes": 101804,
+      "sha256": "980b4327e684725859e437f05d15dfa4ec8afb994ef2e8fb356365af76547c41",
+      "sampleRateHz": 8000,
+      "channels": 1,
+      "bits": 16,
+      "sampleCount": 50880,
+      "durationMs": 6360.0,
+      "reference": "Ну сейчас к тебе приедет бригада, давай, давай, я жду",
+      "tags": [
+        "smoke"
+      ],
+      "requiredSemanticPhrases": [],
+      "source": {
+        "voice": "official fixture",
+        "rate": "default"
+      }
+    },
+    {
+      "id": "en-official-0",
+      "fileName": "en-official-0.wav",
+      "cohort": "smoke",
+      "language": "en",
+      "direction": "EN_TO_RU",
+      "path": "smoke/en-official-0.wav",
+      "bytes": 212044,
+      "sha256": "6bc58a4efdf20daac252b6b1502632601a71efe0308f6757dc1eda34891a7e4f",
+      "sampleRateHz": 16000,
+      "channels": 1,
+      "bits": 16,
+      "sampleCount": 106000,
+      "durationMs": 6625.0,
+      "reference": "After early nightfall the yellow lamps would light up here and there the squalid quarter of the brothels",
+      "tags": [
+        "smoke"
+      ],
+      "requiredSemanticPhrases": [],
+      "source": {
+        "voice": "official fixture",
+        "rate": "default"
+      }
+    },
+    {
+      "id": "common_voice_en_1282109",
+      "cohort": "quality",
+      "language": "en",
+      "direction": "EN_TO_RU",
+      "path": "quality/en/common_voice_en_1282109.wav",
+      "bytes": 206636,
+      "sha256": "5643c304164391cdb29c046c51433b82679d6001ef5689d22db7b6029a6acfc0",
+      "sampleRateHz": 16000,
+      "channels": 1,
+      "bits": 16,
+      "sampleCount": 103296,
+      "durationMs": 6456,
+      "reference": "Wait a minute!",
+      "tags": [
+        "command",
+        "rate_slow"
+      ],
+      "requiredSemanticPhrases": [
+        "wait",
+        "minute"
+      ],
+      "source": {
+        "url": "https://huggingface.co/datasets/fsicoli/common_voice_17_0/resolve/8262c16bf297c87a9cd88c51997c4758ed7a8ba2/audio/en/test/en_test_0.tar",
+        "revision": "8262c16bf297c87a9cd88c51997c4758ed7a8ba2",
+        "archivePath": "en_test_0/common_voice_en_1282109.mp3",
+        "mp3Bytes": 51681,
+        "mp3Sha256": "789fbb994ce56f80cecee35d04c6ac3ab60ff24e6a10a58d84c9cbf9d4ebf5f0",
+        "originalHz": 48000,
+        "client_id": "cdc46eeda1ee827a059aa073c673eae18992aeaeafd2ce6aee57bf16f7c21d0872ba7b4e5348b0fb44898944baf729128f68ffc80f5179e611743439aebc99ef",
+        "wpm": 27.9
+      }
+    },
+    {
+      "id": "common_voice_en_15903562",
+      "cohort": "quality",
+      "language": "en",
+      "direction": "EN_TO_RU",
+      "path": "quality/en/common_voice_en_15903562.wav",
+      "bytes": 87596,
+      "sha256": "1f1d013f7217228a03c293749a98de6197efdf16d81ee66ec82f2cf691bc1309",
+      "sampleRateHz": 16000,
+      "channels": 1,
+      "bits": 16,
+      "sampleCount": 43776,
+      "durationMs": 2736,
+      "reference": "Turn to the right.",
+      "tags": [
+        "command",
+        "rate_medium"
+      ],
+      "requiredSemanticPhrases": [
+        "turn",
+        "right"
+      ],
+      "source": {
+        "url": "https://huggingface.co/datasets/fsicoli/common_voice_17_0/resolve/8262c16bf297c87a9cd88c51997c4758ed7a8ba2/audio/en/test/en_test_0.tar",
+        "revision": "8262c16bf297c87a9cd88c51997c4758ed7a8ba2",
+        "archivePath": "en_test_0/common_voice_en_15903562.mp3",
+        "mp3Bytes": 21921,
+        "mp3Sha256": "cf7b7d22ce90d38c9b4ccf5e9c895251c34207a2d9cd8f34124aded53f517af1",
+        "originalHz": 48000,
+        "client_id": "50a724c4702434e71f7db819dab40081bcc61cf19ed22105d393b6ee684df800ba11ef8562f975895ad27c9491a94f8a20ba8fdb84836a4d328920269197fc93",
+        "wpm": 87.7
+      }
+    },
+    {
+      "id": "common_voice_en_17384858",
+      "cohort": "quality",
+      "language": "en",
+      "direction": "EN_TO_RU",
+      "path": "quality/en/common_voice_en_17384858.wav",
+      "bytes": 131372,
+      "sha256": "d188b4185bf7f620e4c140f1652434916a318c1a4cafe64f8dd17ce0875d7a30",
+      "sampleRateHz": 16000,
+      "channels": 1,
+      "bits": 16,
+      "sampleCount": 65664,
+      "durationMs": 4104,
+      "reference": "In surprise finish, the final score was seven to five.",
+      "tags": [
+        "number",
+        "rate_fast"
+      ],
+      "requiredSemanticPhrases": [
+        "seven",
+        "five"
+      ],
+      "source": {
+        "url": "https://huggingface.co/datasets/fsicoli/common_voice_17_0/resolve/8262c16bf297c87a9cd88c51997c4758ed7a8ba2/audio/en/test/en_test_0.tar",
+        "revision": "8262c16bf297c87a9cd88c51997c4758ed7a8ba2",
+        "archivePath": "en_test_0/common_voice_en_17384858.mp3",
+        "mp3Bytes": 32877,
+        "mp3Sha256": "c2d6802d5c4b52fb03dd35dda33eb757eabaa81dbdbbc5fd103bbf044fff71f5",
+        "originalHz": 48000,
+        "client_id": "0728979728285daf38492c1970f67eb0f1d6d4797da79c284a8695f9a21d4e6bca2ad4d31a70351ca46c2e56e6cbd79d0c5496abc9d846705f39c9882379c3a3",
+        "wpm": 146.2
+      }
+    },
+    {
+      "id": "common_voice_en_17508150",
+      "cohort": "quality",
+      "language": "en",
+      "direction": "EN_TO_RU",
+      "path": "quality/en/common_voice_en_17508150.wav",
+      "bytes": 139052,
+      "sha256": "7b573892aed6e2e7693ab82507fa7250a60ee0ffca1cad3ecd2fba3d795635d4",
+      "sampleRateHz": 16000,
+      "channels": 1,
+      "bits": 16,
+      "sampleCount": 69504,
+      "durationMs": 4344,
+      "reference": "I think it was last Thursday, but I am not sure.",
+      "tags": [
+        "time",
+        "rate_fast"
+      ],
+      "requiredSemanticPhrases": [
+        "last thursday",
+        "not"
+      ],
+      "source": {
+        "url": "https://huggingface.co/datasets/fsicoli/common_voice_17_0/resolve/8262c16bf297c87a9cd88c51997c4758ed7a8ba2/audio/en/test/en_test_0.tar",
+        "revision": "8262c16bf297c87a9cd88c51997c4758ed7a8ba2",
+        "archivePath": "en_test_0/common_voice_en_17508150.mp3",
+        "mp3Bytes": 34797,
+        "mp3Sha256": "7493b9d9c3b798e95d6edc7b5322f27bfd9552d0c2c638d24c5eae89edd762bd",
+        "originalHz": 48000,
+        "client_id": "0651a7bea8868a2f0d64d8723396eaef35f915c6e021a9d7d596003a29dde1830edaaadc2fa43a057a307ca6789f3b9231ab3ca35e5ade67ba252a1dea7b6689",
+        "wpm": 151.9
+      }
+    },
+    {
+      "id": "common_voice_en_18025030",
+      "cohort": "quality",
+      "language": "en",
+      "direction": "EN_TO_RU",
+      "path": "quality/en/common_voice_en_18025030.wav",
+      "bytes": 181292,
+      "sha256": "02f06e58428af04e8d16b024317c5f657050e936fc658f8a391c9a2982a1617f",
+      "sampleRateHz": 16000,
+      "channels": 1,
+      "bits": 16,
+      "sampleCount": 90624,
+      "durationMs": 5664,
+      "reference": "Take this pill twice daily, once in the morning and once at bedtime.",
+      "tags": [
+        "command",
+        "rate_fast"
+      ],
+      "requiredSemanticPhrases": [
+        "take",
+        "pill",
+        "twice",
+        "daily",
+        "once",
+        "morning",
+        "bedtime"
+      ],
+      "source": {
+        "url": "https://huggingface.co/datasets/fsicoli/common_voice_17_0/resolve/8262c16bf297c87a9cd88c51997c4758ed7a8ba2/audio/en/test/en_test_0.tar",
+        "revision": "8262c16bf297c87a9cd88c51997c4758ed7a8ba2",
+        "archivePath": "en_test_0/common_voice_en_18025030.mp3",
+        "mp3Bytes": 45454,
+        "mp3Sha256": "e4cc6a781c3c38205f79128ecd7bb11638a1e0d0266907948c9f396cf92371e4",
+        "originalHz": 48000,
+        "client_id": "61f73318a2fc1fcef3bf0c712707544ee74127f31cb5f78b9644c7abc8b2edc9c2d21b38082724eedab930e6f5dfceefdcd22863f91f7863e55401bf06c511de",
+        "wpm": 137.7
+      }
+    },
+    {
+      "id": "common_voice_en_18277778",
+      "cohort": "quality",
+      "language": "en",
+      "direction": "EN_TO_RU",
+      "path": "quality/en/common_voice_en_18277778.wav",
+      "bytes": 172076,
+      "sha256": "27591eb9fa360dd2ca1ccfa120056cb8d90104243416141d271f909989be2b7c",
+      "sampleRateHz": 16000,
+      "channels": 1,
+      "bits": 16,
+      "sampleCount": 86016,
+      "durationMs": 5376,
+      "reference": "We should not take for granted how fortunate we have been.",
+      "tags": [
+        "negation",
+        "rate_fast"
+      ],
+      "requiredSemanticPhrases": [
+        "not"
+      ],
+      "source": {
+        "url": "https://huggingface.co/datasets/fsicoli/common_voice_17_0/resolve/8262c16bf297c87a9cd88c51997c4758ed7a8ba2/audio/en/test/en_test_0.tar",
+        "revision": "8262c16bf297c87a9cd88c51997c4758ed7a8ba2",
+        "archivePath": "en_test_0/common_voice_en_18277778.mp3",
+        "mp3Bytes": 43053,
+        "mp3Sha256": "6a39df6e3ab47e400ad6e757ea106304dd70cea0852776a2898da79615bfc60b",
+        "originalHz": 48000,
+        "client_id": "040595ac714a98d21fe0c2f36d9699790008511517506502ba74d3619756addd19778ea957e9e172f7b2b03a41ca258ef46d87947e19896c88daf36c71a561f6",
+        "wpm": 122.8
+      }
+    },
+    {
+      "id": "common_voice_en_18301586",
+      "cohort": "quality",
+      "language": "en",
+      "direction": "EN_TO_RU",
+      "path": "quality/en/common_voice_en_18301586.wav",
+      "bytes": 158252,
+      "sha256": "88e3b9f1a7bef53951ac72679e220369e62c7d4250012d4e7b6a1c5042e06a7f",
+      "sampleRateHz": 16000,
+      "channels": 1,
+      "bits": 16,
+      "sampleCount": 79104,
+      "durationMs": 4944,
+      "reference": "Open the window.",
+      "tags": [
+        "command",
+        "rate_slow"
+      ],
+      "requiredSemanticPhrases": [
+        "open",
+        "window"
+      ],
+      "source": {
+        "url": "https://huggingface.co/datasets/fsicoli/common_voice_17_0/resolve/8262c16bf297c87a9cd88c51997c4758ed7a8ba2/audio/en/test/en_test_0.tar",
+        "revision": "8262c16bf297c87a9cd88c51997c4758ed7a8ba2",
+        "archivePath": "en_test_0/common_voice_en_18301586.mp3",
+        "mp3Bytes": 39597,
+        "mp3Sha256": "a4820428d4d6fff1821510fdd884204491e1a206391c080c0cc6ed2c08d012c1",
+        "originalHz": 48000,
+        "client_id": "5e031d8d83e6e4b53d4606aa16d8598b67ad8c690fc1de33aedfb859cfaa9d61b723177ef10c7657a8852111b9c365f6c60144f1d268feea742b4be142884300",
+        "wpm": 36.4
+      }
+    },
+    {
+      "id": "common_voice_en_18361303",
+      "cohort": "quality",
+      "language": "en",
+      "direction": "EN_TO_RU",
+      "path": "quality/en/common_voice_en_18361303.wav",
+      "bytes": 100652,
+      "sha256": "418cf7345bddc6aea09007564ac19d703c31c55c4a45a76ffe6ff0972a64c518",
+      "sampleRateHz": 16000,
+      "channels": 1,
+      "bits": 16,
+      "sampleCount": 50304,
+      "durationMs": 3144,
+      "reference": "Please go to aisle seven.",
+      "tags": [
+        "command",
+        "rate_medium"
+      ],
+      "requiredSemanticPhrases": [
+        "go",
+        "aisle",
+        "seven"
+      ],
+      "source": {
+        "url": "https://huggingface.co/datasets/fsicoli/common_voice_17_0/resolve/8262c16bf297c87a9cd88c51997c4758ed7a8ba2/audio/en/test/en_test_0.tar",
+        "revision": "8262c16bf297c87a9cd88c51997c4758ed7a8ba2",
+        "archivePath": "en_test_0/common_voice_en_18361303.mp3",
+        "mp3Bytes": 25197,
+        "mp3Sha256": "20539a9ce72780a3fb4da84abca5307dcf9e2320b5aaf956db63b87a0a9f23d2",
+        "originalHz": 48000,
+        "client_id": "d3dd3e9a44c5c51d1e7ea6b4066921c3f633a4eee52ab5ccac8012770e56b433542cf634d17622838f0742fd7ced345615dac4d13b26f18ff5e7883ac15eaab1",
+        "wpm": 95.4
+      }
+    },
+    {
+      "id": "common_voice_en_18397972",
+      "cohort": "quality",
+      "language": "en",
+      "direction": "EN_TO_RU",
+      "path": "quality/en/common_voice_en_18397972.wav",
+      "bytes": 113708,
+      "sha256": "fcdfb3c0f7221e352f56fc3af5bc71f14a833828e649acd24c77c0f01200e991",
+      "sampleRateHz": 16000,
+      "channels": 1,
+      "bits": 16,
+      "sampleCount": 56832,
+      "durationMs": 3552,
+      "reference": "I am going to Germany tomorrow.",
+      "tags": [
+        "time",
+        "rate_medium"
+      ],
+      "requiredSemanticPhrases": [
+        "germany",
+        "tomorrow"
+      ],
+      "source": {
+        "url": "https://huggingface.co/datasets/fsicoli/common_voice_17_0/resolve/8262c16bf297c87a9cd88c51997c4758ed7a8ba2/audio/en/test/en_test_0.tar",
+        "revision": "8262c16bf297c87a9cd88c51997c4758ed7a8ba2",
+        "archivePath": "en_test_0/common_voice_en_18397972.mp3",
+        "mp3Bytes": 28461,
+        "mp3Sha256": "3d93f8dded46a84252a02dd71bec82071b35638c28b174fd4cf5cc6d296e34eb",
+        "originalHz": 48000,
+        "client_id": "07c6e9ca0b2b523f73c414ae76226a976fe37e70985a3647d495d48275595ce17d19c1bbddda21f129b5bbaa18e09063f55cf5f8be76a3ad394c75ac15585879",
+        "wpm": 101.4
+      }
+    },
+    {
+      "id": "common_voice_en_18902772",
+      "cohort": "quality",
+      "language": "en",
+      "direction": "EN_TO_RU",
+      "path": "quality/en/common_voice_en_18902772.wav",
+      "bytes": 225068,
+      "sha256": "163ee757607a9f0cca0efe47b65ba8d42bc408045ca3372d79adc6a287d86cd8",
+      "sampleRateHz": 16000,
+      "channels": 1,
+      "bits": 16,
+      "sampleCount": 112512,
+      "durationMs": 7032,
+      "reference": "Groves started writing songs when she was four years old.",
+      "tags": [
+        "number",
+        "rate_medium"
+      ],
+      "requiredSemanticPhrases": [
+        "four"
+      ],
+      "source": {
+        "url": "https://huggingface.co/datasets/fsicoli/common_voice_17_0/resolve/8262c16bf297c87a9cd88c51997c4758ed7a8ba2/audio/en/test/en_test_0.tar",
+        "revision": "8262c16bf297c87a9cd88c51997c4758ed7a8ba2",
+        "archivePath": "en_test_0/common_voice_en_18902772.mp3",
+        "mp3Bytes": 56301,
+        "mp3Sha256": "e32ecac72c16a4958e784c4e185cc9e75a256713ac2de1f4ce70e7a824d915a5",
+        "originalHz": 48000,
+        "client_id": "007762ba618b38ed77739616c7a6ace0341e1e134ac4051d6662cb6925f9631026a3655bb7f3251815af24da52a97a4541c64d22139746b17084eb211154afc3",
+        "wpm": 85.3
+      }
+    },
+    {
+      "id": "common_voice_en_19909115",
+      "cohort": "quality",
+      "language": "en",
+      "direction": "EN_TO_RU",
+      "path": "quality/en/common_voice_en_19909115.wav",
+      "bytes": 152876,
+      "sha256": "e4d219199bdbb487852edbd5a6cca8e943a4801971a1b364a018e834eee26a81",
+      "sampleRateHz": 16000,
+      "channels": 1,
+      "bits": 16,
+      "sampleCount": 76416,
+      "durationMs": 4776,
+      "reference": "The two films were then released within one day of each other.",
+      "tags": [
+        "number",
+        "rate_fast"
+      ],
+      "requiredSemanticPhrases": [
+        "two",
+        "one day"
+      ],
+      "source": {
+        "url": "https://huggingface.co/datasets/fsicoli/common_voice_17_0/resolve/8262c16bf297c87a9cd88c51997c4758ed7a8ba2/audio/en/test/en_test_0.tar",
+        "revision": "8262c16bf297c87a9cd88c51997c4758ed7a8ba2",
+        "archivePath": "en_test_0/common_voice_en_19909115.mp3",
+        "mp3Bytes": 38253,
+        "mp3Sha256": "8f9dd6324af7fa125e08da12786d71663add7fcb367d4ac7f88e6196341e2c12",
+        "originalHz": 48000,
+        "client_id": "025ce0842ffc6414863652b7d4b1025870b9fbbad159a1d47b35fe22a4bfcefa8c13d6108f5d307186abc22151d5232a9dae809d365f9a1c772c0529ec766c07",
+        "wpm": 150.8
+      }
+    },
+    {
+      "id": "common_voice_en_208041",
+      "cohort": "quality",
+      "language": "en",
+      "direction": "EN_TO_RU",
+      "path": "quality/en/common_voice_en_208041.wav",
+      "bytes": 133676,
+      "sha256": "baa45e845f5af0f6d16b7b15140bc60d4d95a8c231c5509103027745f3d9ac29",
+      "sampleRateHz": 16000,
+      "channels": 1,
+      "bits": 16,
+      "sampleCount": 66816,
+      "durationMs": 4176,
+      "reference": "It was seen early in the morning, rushing over eastward.",
+      "tags": [
+        "time",
+        "rate_fast"
+      ],
+      "requiredSemanticPhrases": [
+        "early",
+        "morning"
+      ],
+      "source": {
+        "url": "https://huggingface.co/datasets/fsicoli/common_voice_17_0/resolve/8262c16bf297c87a9cd88c51997c4758ed7a8ba2/audio/en/test/en_test_0.tar",
+        "revision": "8262c16bf297c87a9cd88c51997c4758ed7a8ba2",
+        "archivePath": "en_test_0/common_voice_en_208041.mp3",
+        "mp3Bytes": 33441,
+        "mp3Sha256": "5e096ed0949c2f6eaeb67d7e9d79584e79d0485e1f66be0f92ddcad39e664b64",
+        "originalHz": 48000,
+        "client_id": "0e097f640d2ff6e96a1532ab8758be84f23e5e809f09199b9455b4b4b56a377038a5744ba29ecb0df9a29bb1f8e0c87ad497400b2d71279faa4da1a5d459f564",
+        "wpm": 143.7
+      }
+    },
+    {
+      "id": "common_voice_en_23817648",
+      "cohort": "quality",
+      "language": "en",
+      "direction": "EN_TO_RU",
+      "path": "quality/en/common_voice_en_23817648.wav",
+      "bytes": 256556,
+      "sha256": "e2ede146dd05873c432665c53494bc0e2e5891d2e6f18c4fd0e1dd96484fd5c6",
+      "sampleRateHz": 16000,
+      "channels": 1,
+      "bits": 16,
+      "sampleCount": 128256,
+      "durationMs": 8016,
+      "reference": "The staircase survives in The Swan Hotel in Bedford.",
+      "tags": [
+        "place",
+        "rate_slow"
+      ],
+      "requiredSemanticPhrases": [
+        "swan hotel",
+        "bedford"
+      ],
+      "source": {
+        "url": "https://huggingface.co/datasets/fsicoli/common_voice_17_0/resolve/8262c16bf297c87a9cd88c51997c4758ed7a8ba2/audio/en/test/en_test_0.tar",
+        "revision": "8262c16bf297c87a9cd88c51997c4758ed7a8ba2",
+        "archivePath": "en_test_0/common_voice_en_23817648.mp3",
+        "mp3Bytes": 64173,
+        "mp3Sha256": "bd03e7cfdf72d9fbd1a7d89739fda92a016fa4bedb6c309677e1e02f59330544",
+        "originalHz": 48000,
+        "client_id": "07817cb4249ba6397cdc3a252c1be705c786532d7d4b10881a26d674c33bcd16afc42b75b893826ecb5be2ac6b72cde0de1b3f62fe1975dab9ffa289964fbfd6",
+        "wpm": 67.4
+      }
+    },
+    {
+      "id": "common_voice_en_27366699",
+      "cohort": "quality",
+      "language": "en",
+      "direction": "EN_TO_RU",
+      "path": "quality/en/common_voice_en_27366699.wav",
+      "bytes": 165932,
+      "sha256": "db358fcde8cd5f06651bc59b1d81ddbc53cb231e4c1e06634d8c78ed136cce24",
+      "sampleRateHz": 16000,
+      "channels": 1,
+      "bits": 16,
+      "sampleCount": 82944,
+      "durationMs": 5184,
+      "reference": "I have never in life hit a tennis ball.",
+      "tags": [
+        "negation",
+        "rate_fast"
+      ],
+      "requiredSemanticPhrases": [
+        "never"
+      ],
+      "source": {
+        "url": "https://huggingface.co/datasets/fsicoli/common_voice_17_0/resolve/8262c16bf297c87a9cd88c51997c4758ed7a8ba2/audio/en/test/en_test_0.tar",
+        "revision": "8262c16bf297c87a9cd88c51997c4758ed7a8ba2",
+        "archivePath": "en_test_0/common_voice_en_27366699.mp3",
+        "mp3Bytes": 31149,
+        "mp3Sha256": "b5d13b3cc3999fe736388f4bc42dc5e31275bcc15a89e11c6856aec69051ef53",
+        "originalHz": 32000,
+        "client_id": "03a0841146708eecc5a345d30934931a9d5b58d82cdfc32ea93f0b8b59aab1582765d31c3c0cf7eb2a28b4e3b28efd871df538b4b193808754701ee238d7584f",
+        "wpm": 104.2
+      }
+    },
+    {
+      "id": "common_voice_en_31273381",
+      "cohort": "quality",
+      "language": "en",
+      "direction": "EN_TO_RU",
+      "path": "quality/en/common_voice_en_31273381.wav",
+      "bytes": 149804,
+      "sha256": "57a12888e8cad4d7fe305526dabdc3151bd76515e04117f9a60766701759d5dc",
+      "sampleRateHz": 16000,
+      "channels": 1,
+      "bits": 16,
+      "sampleCount": 74880,
+      "durationMs": 4680,
+      "reference": "He also spent time in Paris and London.",
+      "tags": [
+        "place",
+        "rate_medium"
+      ],
+      "requiredSemanticPhrases": [
+        "paris",
+        "london"
+      ],
+      "source": {
+        "url": "https://huggingface.co/datasets/fsicoli/common_voice_17_0/resolve/8262c16bf297c87a9cd88c51997c4758ed7a8ba2/audio/en/test/en_test_0.tar",
+        "revision": "8262c16bf297c87a9cd88c51997c4758ed7a8ba2",
+        "archivePath": "en_test_0/common_voice_en_31273381.mp3",
+        "mp3Bytes": 28125,
+        "mp3Sha256": "f66a9cf48f6975928b25f317477d0abbf45cafd3b04531452f4c99e3af3ea6dc",
+        "originalHz": 32000,
+        "client_id": "0761f646fc2022045b5367a20c4c4333e5937ec98c87c843b01b898577121207feb5df3c2d72fe7634571bfa6f78616fec785a3bd507b2cb74f120ab7314b58a",
+        "wpm": 102.6
+      }
+    },
+    {
+      "id": "common_voice_en_33926095",
+      "cohort": "quality",
+      "language": "en",
+      "direction": "EN_TO_RU",
+      "path": "quality/en/common_voice_en_33926095.wav",
+      "bytes": 141740,
+      "sha256": "f59e0c81dcf2fe3bc1d304bf79bb83510e0948a226f1905ffecc487e5d8cb270",
+      "sampleRateHz": 16000,
+      "channels": 1,
+      "bits": 16,
+      "sampleCount": 70848,
+      "durationMs": 4428,
+      "reference": "Turn off your notifications!",
+      "tags": [
+        "command",
+        "rate_slow"
+      ],
+      "requiredSemanticPhrases": [
+        "turn off",
+        "notifications"
+      ],
+      "source": {
+        "url": "https://huggingface.co/datasets/fsicoli/common_voice_17_0/resolve/8262c16bf297c87a9cd88c51997c4758ed7a8ba2/audio/en/test/en_test_0.tar",
+        "revision": "8262c16bf297c87a9cd88c51997c4758ed7a8ba2",
+        "archivePath": "en_test_0/common_voice_en_33926095.mp3",
+        "mp3Bytes": 26613,
+        "mp3Sha256": "6f5e561c350f54cbb5f2af12850455cd46af78636d2fdcdbfb5edd16f941c8a8",
+        "originalHz": 32000,
+        "client_id": "b1954673fa2c098742bb11366972a3600f1cd92c8d1bdaf414983bae9844d69928915e7061d362fb1f2fbfa61c9aaddd665e97325660b723fc46435a5e2b72c4",
+        "wpm": 54.2
+      }
+    },
+    {
+      "id": "common_voice_en_37186674",
+      "cohort": "quality",
+      "language": "en",
+      "direction": "EN_TO_RU",
+      "path": "quality/en/common_voice_en_37186674.wav",
+      "bytes": 182060,
+      "sha256": "6f2557bc15de488386b9205c066d5fc3bb7f9d917b2ffa21dda00ead1dbbe3f5",
+      "sampleRateHz": 16000,
+      "channels": 1,
+      "bits": 16,
+      "sampleCount": 91008,
+      "durationMs": 5688,
+      "reference": "Blue Pool Road has several steep slopes.",
+      "tags": [
+        "place",
+        "rate_slow"
+      ],
+      "requiredSemanticPhrases": [
+        "blue pool road"
+      ],
+      "source": {
+        "url": "https://huggingface.co/datasets/fsicoli/common_voice_17_0/resolve/8262c16bf297c87a9cd88c51997c4758ed7a8ba2/audio/en/test/en_test_0.tar",
+        "revision": "8262c16bf297c87a9cd88c51997c4758ed7a8ba2",
+        "archivePath": "en_test_0/common_voice_en_37186674.mp3",
+        "mp3Bytes": 34173,
+        "mp3Sha256": "25f9380ae84be4ef6d83221a32ea51d1344eef73bb6990d27af74e301464f6ca",
+        "originalHz": 32000,
+        "client_id": "06bb3ec99234a4c8bae7f9955be73f074e63ea830ed78a7e5813af043781559756d530d7af23570e03075abf3785d97016e2e528e1626ec77ea40d9f23e3ad69",
+        "wpm": 73.8
+      }
+    },
+    {
+      "id": "common_voice_en_38028701",
+      "cohort": "quality",
+      "language": "en",
+      "direction": "EN_TO_RU",
+      "path": "quality/en/common_voice_en_38028701.wav",
+      "bytes": 236204,
+      "sha256": "d959bd47731fb2cc172e19cd9a2b44c8df535eaeb2a104307242b229286e6a7e",
+      "sampleRateHz": 16000,
+      "channels": 1,
+      "bits": 16,
+      "sampleCount": 118080,
+      "durationMs": 7380,
+      "reference": "The Sacramento Valley Rail Station is just a short walk away.",
+      "tags": [
+        "place",
+        "rate_medium"
+      ],
+      "requiredSemanticPhrases": [
+        "sacramento valley rail station"
+      ],
+      "source": {
+        "url": "https://huggingface.co/datasets/fsicoli/common_voice_17_0/resolve/8262c16bf297c87a9cd88c51997c4758ed7a8ba2/audio/en/test/en_test_0.tar",
+        "revision": "8262c16bf297c87a9cd88c51997c4758ed7a8ba2",
+        "archivePath": "en_test_0/common_voice_en_38028701.mp3",
+        "mp3Bytes": 44325,
+        "mp3Sha256": "4b018f3cdb24a20963e9d8b02b7f185fbb92c7dca38713b507b4a55c759c0ba9",
+        "originalHz": 32000,
+        "client_id": "00b49c1ce7114874454cb177ddfa68a52233ec13ac7b8427a15cc96f62027278eb955d70e75258585f0c517cac889ee5323531b133a88950e791a549f9e68a08",
+        "wpm": 89.4
+      }
+    },
+    {
+      "id": "common_voice_en_40087973",
+      "cohort": "quality",
+      "language": "en",
+      "direction": "EN_TO_RU",
+      "path": "quality/en/common_voice_en_40087973.wav",
+      "bytes": 88748,
+      "sha256": "edd092d60b361d8b1512159ba9f3ab85f8a0207bfc23334ed44eeacf74dc0578",
+      "sampleRateHz": 16000,
+      "channels": 1,
+      "bits": 16,
+      "sampleCount": 44352,
+      "durationMs": 2772,
+      "reference": "No runoff was necessary.",
+      "tags": [
+        "negation",
+        "rate_medium"
+      ],
+      "requiredSemanticPhrases": [
+        "no"
+      ],
+      "source": {
+        "url": "https://huggingface.co/datasets/fsicoli/common_voice_17_0/resolve/8262c16bf297c87a9cd88c51997c4758ed7a8ba2/audio/en/test/en_test_0.tar",
+        "revision": "8262c16bf297c87a9cd88c51997c4758ed7a8ba2",
+        "archivePath": "en_test_0/common_voice_en_40087973.mp3",
+        "mp3Bytes": 16774,
+        "mp3Sha256": "f05877829ad7facc9158d79f4ac05facb0ac3c0363604c2fd1252218db04d13d",
+        "originalHz": 32000,
+        "client_id": "03b62f72067ec967c423852bef03d1b61e63c156d86f6eaf5934f08afb01a0c1f127358ed9471c8f75d33f56795c4e29bfab6b3f9e502fcd06bc02d479c5e2d6",
+        "wpm": 86.6
+      }
+    },
+    {
+      "id": "common_voice_en_499611",
+      "cohort": "quality",
+      "language": "en",
+      "direction": "EN_TO_RU",
+      "path": "quality/en/common_voice_en_499611.wav",
+      "bytes": 400172,
+      "sha256": "a430cc909dbd97896a34111afcf4fff527b989265e41bf54f871fd91ba856a08",
+      "sampleRateHz": 16000,
+      "channels": 1,
+      "bits": 16,
+      "sampleCount": 200064,
+      "durationMs": 12504,
+      "reference": "Please don't make me.",
+      "tags": [
+        "negation",
+        "rate_slow"
+      ],
+      "requiredSemanticPhrases": [
+        "do not"
+      ],
+      "source": {
+        "url": "https://huggingface.co/datasets/fsicoli/common_voice_17_0/resolve/8262c16bf297c87a9cd88c51997c4758ed7a8ba2/audio/en/test/en_test_0.tar",
+        "revision": "8262c16bf297c87a9cd88c51997c4758ed7a8ba2",
+        "archivePath": "en_test_0/common_voice_en_499611.mp3",
+        "mp3Bytes": 100065,
+        "mp3Sha256": "f06e2f95f15f0ead1ad43e11f21892061f95879ad22e5f5e24ab31686469de4d",
+        "originalHz": 48000,
+        "client_id": "85f74a4f9038b4782c4978074eb6f719dd3b609d60b435d1c1e9764307774aa39ce095fe5ab2d73512777dda57e04cf940c61f96b23983d545d2ce236caa6bb2",
+        "wpm": 19.2
+      }
+    },
+    {
+      "id": "common_voice_en_580095",
+      "cohort": "quality",
+      "language": "en",
+      "direction": "EN_TO_RU",
+      "path": "quality/en/common_voice_en_580095.wav",
+      "bytes": 101420,
+      "sha256": "5fef045580673a72adae1be47cf9051ee23866c34ce1d690a4828701b4d2c903",
+      "sampleRateHz": 16000,
+      "channels": 1,
+      "bits": 16,
+      "sampleCount": 50688,
+      "durationMs": 3168,
+      "reference": "Her mom took her to the judo class at four o'clock.",
+      "tags": [
+        "time",
+        "rate_fast"
+      ],
+      "requiredSemanticPhrases": [
+        "four",
+        "clock"
+      ],
+      "source": {
+        "url": "https://huggingface.co/datasets/fsicoli/common_voice_17_0/resolve/8262c16bf297c87a9cd88c51997c4758ed7a8ba2/audio/en/test/en_test_0.tar",
+        "revision": "8262c16bf297c87a9cd88c51997c4758ed7a8ba2",
+        "archivePath": "en_test_0/common_voice_en_580095.mp3",
+        "mp3Bytes": 25377,
+        "mp3Sha256": "e4e1698f47aa24e18899dd81cf18d92babb21fe55d098bdd436f3d12b06b1c8a",
+        "originalHz": 48000,
+        "client_id": "09f0bffa8db2b7254ee914b6645b622817ca9dc33f91493b85d12c74d58f9114dddc880d2d28d659635b5e8bc15a3b9027dc8a009c88b1ab1ce629a3fbf720eb",
+        "wpm": 208.3
+      }
+    },
+    {
+      "id": "common_voice_en_593839",
+      "cohort": "quality",
+      "language": "en",
+      "direction": "EN_TO_RU",
+      "path": "quality/en/common_voice_en_593839.wav",
+      "bytes": 90668,
+      "sha256": "e7003dc503b0811e09e10d1f20e68e0f6292b16c079b6fa7f5f115290f6417b3",
+      "sampleRateHz": 16000,
+      "channels": 1,
+      "bits": 16,
+      "sampleCount": 45312,
+      "durationMs": 2832,
+      "reference": "Put down that chair!",
+      "tags": [
+        "command",
+        "rate_medium"
+      ],
+      "requiredSemanticPhrases": [
+        "put down",
+        "chair"
+      ],
+      "source": {
+        "url": "https://huggingface.co/datasets/fsicoli/common_voice_17_0/resolve/8262c16bf297c87a9cd88c51997c4758ed7a8ba2/audio/en/test/en_test_0.tar",
+        "revision": "8262c16bf297c87a9cd88c51997c4758ed7a8ba2",
+        "archivePath": "en_test_0/common_voice_en_593839.mp3",
+        "mp3Bytes": 22689,
+        "mp3Sha256": "902982b398a92e9528a3ca896355da523bc471dd5fb557132b6128708a108bbb",
+        "originalHz": 48000,
+        "client_id": "ff53bf00320730404ea27863d3857b3c1bc092a0500947ff184afe553d47879055cc805a31fdbbefefa3bf119e7d38970397dbca1ec4a1b70f4201661ee3fc2c",
+        "wpm": 84.7
+      }
+    },
+    {
+      "id": "common_voice_en_660793",
+      "cohort": "quality",
+      "language": "en",
+      "direction": "EN_TO_RU",
+      "path": "quality/en/common_voice_en_660793.wav",
+      "bytes": 314156,
+      "sha256": "25bcd186c9aefb1fe7703ddfe7fba62fed18cce9bf2fd82e1290e8c5c3ea96fa",
+      "sampleRateHz": 16000,
+      "channels": 1,
+      "bits": 16,
+      "sampleCount": 157056,
+      "durationMs": 9816,
+      "reference": "Tell me if it will hail in Kyrgyzstan",
+      "tags": [
+        "command",
+        "rate_slow"
+      ],
+      "requiredSemanticPhrases": [
+        "tell",
+        "hail",
+        "kyrgyzstan"
+      ],
+      "source": {
+        "url": "https://huggingface.co/datasets/fsicoli/common_voice_17_0/resolve/8262c16bf297c87a9cd88c51997c4758ed7a8ba2/audio/en/test/en_test_0.tar",
+        "revision": "8262c16bf297c87a9cd88c51997c4758ed7a8ba2",
+        "archivePath": "en_test_0/common_voice_en_660793.mp3",
+        "mp3Bytes": 78561,
+        "mp3Sha256": "723b49a35068db7d8fb210b25af21f59867a0adbf82965d669cf2383957c23d5",
+        "originalHz": 48000,
+        "client_id": "cfdafa19b9cc63e508f17ae714a9d4333deb4348944e939d9a413ac4f3e76906d2cd673688b86ef8e94ede31a38e886224311f4bc447fe6a69d2ac69c2be9a97",
+        "wpm": 48.9
+      }
+    },
+    {
+      "id": "common_voice_en_71780",
+      "cohort": "quality",
+      "language": "en",
+      "direction": "EN_TO_RU",
+      "path": "quality/en/common_voice_en_71780.wav",
+      "bytes": 251180,
+      "sha256": "14156aab727ccaa6f5434f3f961386f534e562250e1c927b4ef5996b82d3fe6c",
+      "sampleRateHz": 16000,
+      "channels": 1,
+      "bits": 16,
+      "sampleCount": 125568,
+      "durationMs": 7848,
+      "reference": "Find me animated movies at Amco Entertainment tomorrow",
+      "tags": [
+        "command",
+        "rate_slow"
+      ],
+      "requiredSemanticPhrases": [
+        "find",
+        "animated movies",
+        "amco entertainment",
+        "tomorrow"
+      ],
+      "source": {
+        "url": "https://huggingface.co/datasets/fsicoli/common_voice_17_0/resolve/8262c16bf297c87a9cd88c51997c4758ed7a8ba2/audio/en/test/en_test_0.tar",
+        "revision": "8262c16bf297c87a9cd88c51997c4758ed7a8ba2",
+        "archivePath": "en_test_0/common_voice_en_71780.mp3",
+        "mp3Bytes": 62817,
+        "mp3Sha256": "9c9f5faf189700d8ec80796d0d47d745dcb3b2c0e0aa4957589434dfbbfaae6f",
+        "originalHz": 48000,
+        "client_id": "b9133d904c50a266d3e48f9e78a9ab3094eb446a18fc778549bb0ff6bebadcf807031a23ea264b2b9b0aec18d15c2536299394d0ac9b09759f02d4d4a9b31b0e",
+        "wpm": 61.2
+      }
+    },
+    {
+      "id": "common_voice_ru_18878647",
+      "cohort": "quality",
+      "language": "ru",
+      "direction": "RU_TO_EN",
+      "path": "quality/ru/common_voice_ru_18878647.wav",
+      "bytes": 96812,
+      "sha256": "c56d2b49c92ff19fb3779b9644b4e9da21aff5919ef4efed20b1054c78a5aac8",
+      "sampleRateHz": 16000,
+      "channels": 1,
+      "bits": 16,
+      "sampleCount": 48384,
+      "durationMs": 3024,
+      "reference": "Остановить таймер.",
+      "tags": [
+        "command",
+        "rate_slow"
+      ],
+      "requiredSemanticPhrases": [
+        "остановить",
+        "таймер"
+      ],
+      "source": {
+        "url": "https://huggingface.co/datasets/fsicoli/common_voice_17_0/resolve/8262c16bf297c87a9cd88c51997c4758ed7a8ba2/audio/ru/test/ru_test_0.tar",
+        "revision": "8262c16bf297c87a9cd88c51997c4758ed7a8ba2",
+        "archivePath": "ru_test_0/common_voice_ru_18878647.mp3",
+        "mp3Bytes": 24237,
+        "mp3Sha256": "d09bf9311b84520155f67e6a0548be02416c45b99aa9fcdad48ef6a2e3d41d1a",
+        "originalHz": 48000,
+        "client_id": "04590e848c159871d385d0c38f8987f39002906f4e69c2fc39e4269bc7ec13b62c8caa1618e8bb6ea64cc560608d759a21da1c296b7b7e0eb3e780f06ac863aa",
+        "wpm": 39.7
+      }
+    },
+    {
+      "id": "common_voice_ru_18889191",
+      "cohort": "quality",
+      "language": "ru",
+      "direction": "RU_TO_EN",
+      "path": "quality/ru/common_voice_ru_18889191.wav",
+      "bytes": 84524,
+      "sha256": "b0575a2591783d64d325d47f7127b3daf3d73810f703ac8e793a6dd5743269c4",
+      "sampleRateHz": 16000,
+      "channels": 1,
+      "bits": 16,
+      "sampleCount": 42240,
+      "durationMs": 2640,
+      "reference": "Иди сюда!",
+      "tags": [
+        "command",
+        "rate_slow"
+      ],
+      "requiredSemanticPhrases": [
+        "иди",
+        "сюда"
+      ],
+      "source": {
+        "url": "https://huggingface.co/datasets/fsicoli/common_voice_17_0/resolve/8262c16bf297c87a9cd88c51997c4758ed7a8ba2/audio/ru/test/ru_test_0.tar",
+        "revision": "8262c16bf297c87a9cd88c51997c4758ed7a8ba2",
+        "archivePath": "ru_test_0/common_voice_ru_18889191.mp3",
+        "mp3Bytes": 21165,
+        "mp3Sha256": "bd76f79b0202d807d289e4cb665cc54fea874cf6e870aa30bc1d02423f469bfd",
+        "originalHz": 48000,
+        "client_id": "864f8205d0e1cd486270b94f721e9475504180478a309ebb6f3ff5672bd5e65920f9e4199b934b62e98d34071c78a80287efff31bf474b13eb4f6e0dd36499e4",
+        "wpm": 45.5
+      }
+    },
+    {
+      "id": "common_voice_ru_23146829",
+      "cohort": "quality",
+      "language": "ru",
+      "direction": "RU_TO_EN",
+      "path": "quality/ru/common_voice_ru_23146829.wav",
+      "bytes": 159788,
+      "sha256": "1fe2e87752ebbb06f2c348a9bc704391f282050d815aaef311bffa93d728b82a",
+      "sampleRateHz": 16000,
+      "channels": 1,
+      "bits": 16,
+      "sampleCount": 79872,
+      "durationMs": 4992,
+      "reference": "Сегодня мне нужно сопроводить важного гостя из города.",
+      "tags": [
+        "time",
+        "rate_fast"
+      ],
+      "requiredSemanticPhrases": [
+        "сегодня"
+      ],
+      "source": {
+        "url": "https://huggingface.co/datasets/fsicoli/common_voice_17_0/resolve/8262c16bf297c87a9cd88c51997c4758ed7a8ba2/audio/ru/test/ru_test_0.tar",
+        "revision": "8262c16bf297c87a9cd88c51997c4758ed7a8ba2",
+        "archivePath": "ru_test_0/common_voice_ru_23146829.mp3",
+        "mp3Bytes": 39981,
+        "mp3Sha256": "53afaf8c360efc5284f51a39b9db0a7f15e4069ac4bae64968170b7bc0824a29",
+        "originalHz": 48000,
+        "client_id": "198a312bd7727493644139df5843693a153a7c2afc3accd3b4512092907de1d8c791d348cee930468257d77c6cbe860c1725c64f0480cb764e1f8735a2d348c3",
+        "wpm": 96.2
+      }
+    },
+    {
+      "id": "common_voice_ru_23236345",
+      "cohort": "quality",
+      "language": "ru",
+      "direction": "RU_TO_EN",
+      "path": "quality/ru/common_voice_ru_23236345.wav",
+      "bytes": 205100,
+      "sha256": "ee65e9349aee5f7de0c80f51d65d5554ba4599149e676fdaa638e414048d358f",
+      "sampleRateHz": 16000,
+      "channels": 1,
+      "bits": 16,
+      "sampleCount": 102528,
+      "durationMs": 6408,
+      "reference": "Две недели тому назад было получено кающееся письмо Степана Аркадьича к Долли.",
+      "tags": [
+        "number",
+        "rate_fast"
+      ],
+      "requiredSemanticPhrases": [
+        "две недели",
+        "степана",
+        "аркадьича",
+        "долли"
+      ],
+      "source": {
+        "url": "https://huggingface.co/datasets/fsicoli/common_voice_17_0/resolve/8262c16bf297c87a9cd88c51997c4758ed7a8ba2/audio/ru/test/ru_test_0.tar",
+        "revision": "8262c16bf297c87a9cd88c51997c4758ed7a8ba2",
+        "archivePath": "ru_test_0/common_voice_ru_23236345.mp3",
+        "mp3Bytes": 51309,
+        "mp3Sha256": "b1c707767ba9ef3bb77d3f618dd318e75d7c282dce68b2d2acd6a32610e71b30",
+        "originalHz": 48000,
+        "client_id": "2854881bd47315c709a2f52c8479b8e5a5bbc4c7f6d36928d0d8a8f7680fcc5a2385f599aef601b1d2c452e816fb604f236c434923e42d0691ff6a91ab355f87",
+        "wpm": 112.4
+      }
+    },
+    {
+      "id": "common_voice_ru_23772133",
+      "cohort": "quality",
+      "language": "ru",
+      "direction": "RU_TO_EN",
+      "path": "quality/ru/common_voice_ru_23772133.wav",
+      "bytes": 149036,
+      "sha256": "b53b994c640e831df19208feb110b7a15c62538cab1eae5754372ded36e0b38e",
+      "sampleRateHz": 16000,
+      "channels": 1,
+      "bits": 16,
+      "sampleCount": 74496,
+      "durationMs": 4656,
+      "reference": "Начните с главного.",
+      "tags": [
+        "command",
+        "rate_slow"
+      ],
+      "requiredSemanticPhrases": [
+        "начните",
+        "главного"
+      ],
+      "source": {
+        "url": "https://huggingface.co/datasets/fsicoli/common_voice_17_0/resolve/8262c16bf297c87a9cd88c51997c4758ed7a8ba2/audio/ru/test/ru_test_0.tar",
+        "revision": "8262c16bf297c87a9cd88c51997c4758ed7a8ba2",
+        "archivePath": "ru_test_0/common_voice_ru_23772133.mp3",
+        "mp3Bytes": 37293,
+        "mp3Sha256": "6656543fdd14dec118517b11686c5b157b4b6a51310bc47b8b5202e1b70bef7e",
+        "originalHz": 48000,
+        "client_id": "032b11c1dec7311d3bd027ae76f93411df78dfe5a120a5ce885925fb3d64de0b2dcd537089864c2bb3ff0ede10f8a318d58ae6d510338e897448aba026ccbcc4",
+        "wpm": 38.7
+      }
+    },
+    {
+      "id": "common_voice_ru_26204844",
+      "cohort": "quality",
+      "language": "ru",
+      "direction": "RU_TO_EN",
+      "path": "quality/ru/common_voice_ru_26204844.wav",
+      "bytes": 100268,
+      "sha256": "68c5683f5aa2a738a63b19ffb840fbe92a9f5e834b69413d2020a92d883c507d",
+      "sampleRateHz": 16000,
+      "channels": 1,
+      "bits": 16,
+      "sampleCount": 50112,
+      "durationMs": 3132,
+      "reference": "Я с тобой больше не разговариваю.",
+      "tags": [
+        "negation",
+        "rate_fast"
+      ],
+      "requiredSemanticPhrases": [
+        "не"
+      ],
+      "source": {
+        "url": "https://huggingface.co/datasets/fsicoli/common_voice_17_0/resolve/8262c16bf297c87a9cd88c51997c4758ed7a8ba2/audio/ru/test/ru_test_0.tar",
+        "revision": "8262c16bf297c87a9cd88c51997c4758ed7a8ba2",
+        "archivePath": "ru_test_0/common_voice_ru_26204844.mp3",
+        "mp3Bytes": 18837,
+        "mp3Sha256": "32e44968cab7eba2a55325484db15e77726f4ee1d6d0ecda8b3eebffe12aaf73",
+        "originalHz": 32000,
+        "client_id": "589e31205d1aa837b6573149847880377c46af566fc62a3206cd9837108efd487d180d1e8b08fd3b037844eef034d14645a5af2ca5bb57cae448365640aac5da",
+        "wpm": 114.9
+      }
+    },
+    {
+      "id": "common_voice_ru_26587318",
+      "cohort": "quality",
+      "language": "ru",
+      "direction": "RU_TO_EN",
+      "path": "quality/ru/common_voice_ru_26587318.wav",
+      "bytes": 187820,
+      "sha256": "ded59de288a104374e33e391f05aa5d20cf54386aee14b0ae640f9455ffdf1f0",
+      "sampleRateHz": 16000,
+      "channels": 1,
+      "bits": 16,
+      "sampleCount": 93888,
+      "durationMs": 5868,
+      "reference": "К сожалению, эти предложения не нашли отражения в тексте.",
+      "tags": [
+        "negation",
+        "rate_medium"
+      ],
+      "requiredSemanticPhrases": [
+        "не"
+      ],
+      "source": {
+        "url": "https://huggingface.co/datasets/fsicoli/common_voice_17_0/resolve/8262c16bf297c87a9cd88c51997c4758ed7a8ba2/audio/ru/test/ru_test_0.tar",
+        "revision": "8262c16bf297c87a9cd88c51997c4758ed7a8ba2",
+        "archivePath": "ru_test_0/common_voice_ru_26587318.mp3",
+        "mp3Bytes": 35253,
+        "mp3Sha256": "9d76edeb7856cd771a6f127957a3a898ce2a573adb2fd1208bc1ce336765cffc",
+        "originalHz": 32000,
+        "client_id": "01648c1613193e9f272373de6867c358d542ae833de4da47e9e6141dda355642a70e37a9ce1c55a47022322dd09d12e0c7cb02d5c1443e07a88bb7ed20f26e12",
+        "wpm": 92.0
+      }
+    },
+    {
+      "id": "common_voice_ru_27881172",
+      "cohort": "quality",
+      "language": "ru",
+      "direction": "RU_TO_EN",
+      "path": "quality/ru/common_voice_ru_27881172.wav",
+      "bytes": 89900,
+      "sha256": "5623c0b5ecb0a069969006dc81bb56cb9f53eca48544087fd1560b8b5fd67339",
+      "sampleRateHz": 16000,
+      "channels": 1,
+      "bits": 16,
+      "sampleCount": 44928,
+      "durationMs": 2808,
+      "reference": "Пожалуйста, сделайте это.",
+      "tags": [
+        "command",
+        "rate_medium"
+      ],
+      "requiredSemanticPhrases": [
+        "сделайте"
+      ],
+      "source": {
+        "url": "https://huggingface.co/datasets/fsicoli/common_voice_17_0/resolve/8262c16bf297c87a9cd88c51997c4758ed7a8ba2/audio/ru/test/ru_test_0.tar",
+        "revision": "8262c16bf297c87a9cd88c51997c4758ed7a8ba2",
+        "archivePath": "ru_test_0/common_voice_ru_27881172.mp3",
+        "mp3Bytes": 16893,
+        "mp3Sha256": "5f9f9882fdde25eb6a735275f60b74afdf4913250ab4112c8f504b69cc7b3f7e",
+        "originalHz": 32000,
+        "client_id": "d81c16dfd0df6fc4fa93561be21f5e65f7d8e1efbe20978eb5bbaf940c2aca0982d38b2af4e270816ab0f7ca7d71c3911a7f48087a63cbc57db035faa6cab63b",
+        "wpm": 64.1
+      }
+    },
+    {
+      "id": "common_voice_ru_27938415",
+      "cohort": "quality",
+      "language": "ru",
+      "direction": "RU_TO_EN",
+      "path": "quality/ru/common_voice_ru_27938415.wav",
+      "bytes": 110636,
+      "sha256": "d2ae3eb5e98baebd6af226aabb3ac888f62bee78f823cba108ced89769f2b62f",
+      "sampleRateHz": 16000,
+      "channels": 1,
+      "bits": 16,
+      "sampleCount": 55296,
+      "durationMs": 3456,
+      "reference": "Пожалуйста, подпишите здесь.",
+      "tags": [
+        "command",
+        "rate_slow"
+      ],
+      "requiredSemanticPhrases": [
+        "подпишите",
+        "здесь"
+      ],
+      "source": {
+        "url": "https://huggingface.co/datasets/fsicoli/common_voice_17_0/resolve/8262c16bf297c87a9cd88c51997c4758ed7a8ba2/audio/ru/test/ru_test_0.tar",
+        "revision": "8262c16bf297c87a9cd88c51997c4758ed7a8ba2",
+        "archivePath": "ru_test_0/common_voice_ru_27938415.mp3",
+        "mp3Bytes": 20781,
+        "mp3Sha256": "808eb143507ed1541c8732e2d3c44c61823ed743617f84ef9c0e1adfad0f4304",
+        "originalHz": 32000,
+        "client_id": "ee3a6732204ec9b834b9ae36e1d7026d910d77e3f655e828336a12f2651038db6f0481c2be98812f6d34a17c228a9c5820ea1709e8230d40a3ba9b8dd161aeee",
+        "wpm": 52.1
+      }
+    },
+    {
+      "id": "common_voice_ru_28891753",
+      "cohort": "quality",
+      "language": "ru",
+      "direction": "RU_TO_EN",
+      "path": "quality/ru/common_voice_ru_28891753.wav",
+      "bytes": 104876,
+      "sha256": "ef0f5261a8c13ad085f77533df66f371d435f2863ec46e5fe8a8793c4bcd7289",
+      "sampleRateHz": 16000,
+      "channels": 1,
+      "bits": 16,
+      "sampleCount": 52416,
+      "durationMs": 3276,
+      "reference": "Москва — зелёный город",
+      "tags": [
+        "place",
+        "rate_medium"
+      ],
+      "requiredSemanticPhrases": [
+        "москва"
+      ],
+      "source": {
+        "url": "https://huggingface.co/datasets/fsicoli/common_voice_17_0/resolve/8262c16bf297c87a9cd88c51997c4758ed7a8ba2/audio/ru/test/ru_test_0.tar",
+        "revision": "8262c16bf297c87a9cd88c51997c4758ed7a8ba2",
+        "archivePath": "ru_test_0/common_voice_ru_28891753.mp3",
+        "mp3Bytes": 19701,
+        "mp3Sha256": "2d4aed484e69eb32aff040cc3eb3a5052faec530d6e5dd969570dd44baad4202",
+        "originalHz": 32000,
+        "client_id": "3f8b8d43caa13a8085bd411edcde051f2fb7c1c276fe61231b73f30914831ae6234c359260dfd1a17067a3ad16dc58f26b4a9f50f299f630ead82eb6c5a2d88a",
+        "wpm": 73.3
+      }
+    },
+    {
+      "id": "common_voice_ru_28894094",
+      "cohort": "quality",
+      "language": "ru",
+      "direction": "RU_TO_EN",
+      "path": "quality/ru/common_voice_ru_28894094.wav",
+      "bytes": 116396,
+      "sha256": "b4073509219392242f71c09245a2901952f240a123e0d9b093398b265ccdae7b",
+      "sampleRateHz": 16000,
+      "channels": 1,
+      "bits": 16,
+      "sampleCount": 58176,
+      "durationMs": 3636,
+      "reference": "Завтра... — начал было он.",
+      "tags": [
+        "time",
+        "rate_medium"
+      ],
+      "requiredSemanticPhrases": [
+        "завтра"
+      ],
+      "source": {
+        "url": "https://huggingface.co/datasets/fsicoli/common_voice_17_0/resolve/8262c16bf297c87a9cd88c51997c4758ed7a8ba2/audio/ru/test/ru_test_0.tar",
+        "revision": "8262c16bf297c87a9cd88c51997c4758ed7a8ba2",
+        "archivePath": "ru_test_0/common_voice_ru_28894094.mp3",
+        "mp3Bytes": 21861,
+        "mp3Sha256": "e8c8f651d344ceabbe9c225bfe6d9c515124c048692852756d167c1247c8a2ea",
+        "originalHz": 32000,
+        "client_id": "d1a8196eb4e659c34f1990dc0e6c38b7982e654f6a4deda4b839f2a4308b27d83aa41ad7e2364321a3519837d5bc6d3a8913e96e38cfe453b9a441b5fcbd3c4b",
+        "wpm": 82.5
+      }
+    },
+    {
+      "id": "common_voice_ru_28901473",
+      "cohort": "quality",
+      "language": "ru",
+      "direction": "RU_TO_EN",
+      "path": "quality/ru/common_voice_ru_28901473.wav",
+      "bytes": 182060,
+      "sha256": "85b29aaaca2cf2a608db94734ecf966d5c0ad7f89671be79a8ac3126b84f2a8e",
+      "sampleRateHz": 16000,
+      "channels": 1,
+      "bits": 16,
+      "sampleCount": 91008,
+      "durationMs": 5688,
+      "reference": "Вечером начальник военного округа приехал обратно.",
+      "tags": [
+        "time",
+        "rate_slow"
+      ],
+      "requiredSemanticPhrases": [
+        "вечером"
+      ],
+      "source": {
+        "url": "https://huggingface.co/datasets/fsicoli/common_voice_17_0/resolve/8262c16bf297c87a9cd88c51997c4758ed7a8ba2/audio/ru/test/ru_test_0.tar",
+        "revision": "8262c16bf297c87a9cd88c51997c4758ed7a8ba2",
+        "archivePath": "ru_test_0/common_voice_ru_28901473.mp3",
+        "mp3Bytes": 34173,
+        "mp3Sha256": "4c7e11c1bbaa8f8bf00e9def8abce674756d27b8204017f92af5e51cfd054683",
+        "originalHz": 32000,
+        "client_id": "4ac523fb19c4968038b11a6fe845bdb7601797314f9ee312d5ae89c8457a23db1efc97bd4272a787052888be94c7a0ed24e0708800b76797d8b0f6a1da900f77",
+        "wpm": 63.3
+      }
+    },
+    {
+      "id": "common_voice_ru_29127700",
+      "cohort": "quality",
+      "language": "ru",
+      "direction": "RU_TO_EN",
+      "path": "quality/ru/common_voice_ru_29127700.wav",
+      "bytes": 84140,
+      "sha256": "7292a39cf3ee341857f4d4670d5464aac69a128a862314820113337456a615e3",
+      "sampleRateHz": 16000,
+      "channels": 1,
+      "bits": 16,
+      "sampleCount": 42048,
+      "durationMs": 2628,
+      "reference": "сто сорок шесть груш",
+      "tags": [
+        "number",
+        "rate_medium"
+      ],
+      "requiredSemanticPhrases": [
+        "сто сорок шесть"
+      ],
+      "source": {
+        "url": "https://huggingface.co/datasets/fsicoli/common_voice_17_0/resolve/8262c16bf297c87a9cd88c51997c4758ed7a8ba2/audio/ru/test/ru_test_0.tar",
+        "revision": "8262c16bf297c87a9cd88c51997c4758ed7a8ba2",
+        "archivePath": "ru_test_0/common_voice_ru_29127700.mp3",
+        "mp3Bytes": 15813,
+        "mp3Sha256": "3a838bea54f62baf6ebdb4b1400c870ae83c01bb884b0d8c3f857744dae420e4",
+        "originalHz": 32000,
+        "client_id": "ef05c9f5dab4238c20af0fd30a7edc82c123c79c6030e1bac3fd814ff9a7c614517d90e0a8d42a788e1b064225fc716ded84ab011a34fb76549226f94c07e6ab",
+        "wpm": 91.3
+      }
+    },
+    {
+      "id": "common_voice_ru_29275120",
+      "cohort": "quality",
+      "language": "ru",
+      "direction": "RU_TO_EN",
+      "path": "quality/ru/common_voice_ru_29275120.wav",
+      "bytes": 101420,
+      "sha256": "4eef6b83b88994247df6a56c33b005e345c8ed563dc653b6d0043fdbe9e78205",
+      "sampleRateHz": 16000,
+      "channels": 1,
+      "bits": 16,
+      "sampleCount": 50688,
+      "durationMs": 3168,
+      "reference": "Прошло почти два месяца.",
+      "tags": [
+        "number",
+        "rate_medium"
+      ],
+      "requiredSemanticPhrases": [
+        "два месяца"
+      ],
+      "source": {
+        "url": "https://huggingface.co/datasets/fsicoli/common_voice_17_0/resolve/8262c16bf297c87a9cd88c51997c4758ed7a8ba2/audio/ru/test/ru_test_0.tar",
+        "revision": "8262c16bf297c87a9cd88c51997c4758ed7a8ba2",
+        "archivePath": "ru_test_0/common_voice_ru_29275120.mp3",
+        "mp3Bytes": 19053,
+        "mp3Sha256": "93088ceb182d75c4c42a5d9c3740e11de1fe03eec8798282286c258e3e75d0bc",
+        "originalHz": 32000,
+        "client_id": "487b2b766a6921f30a880cfd2d25236112b975d5c85ee291e4e5ebb8968cb936740ece33550e429a59cc4068da503ecdc415d13b4b50d9b627356cd282bd068d",
+        "wpm": 75.8
+      }
+    },
+    {
+      "id": "common_voice_ru_31716467",
+      "cohort": "quality",
+      "language": "ru",
+      "direction": "RU_TO_EN",
+      "path": "quality/ru/common_voice_ru_31716467.wav",
+      "bytes": 99116,
+      "sha256": "8fd5902aca96ed28f0f5c8857fa1f15cfa0a096e24046c613314f6bb16938d92",
+      "sampleRateHz": 16000,
+      "channels": 1,
+      "bits": 16,
+      "sampleCount": 49536,
+      "durationMs": 3096,
+      "reference": "Доктора сказали, что нет надежды.",
+      "tags": [
+        "negation",
+        "rate_fast"
+      ],
+      "requiredSemanticPhrases": [
+        "нет"
+      ],
+      "source": {
+        "url": "https://huggingface.co/datasets/fsicoli/common_voice_17_0/resolve/8262c16bf297c87a9cd88c51997c4758ed7a8ba2/audio/ru/test/ru_test_0.tar",
+        "revision": "8262c16bf297c87a9cd88c51997c4758ed7a8ba2",
+        "archivePath": "ru_test_0/common_voice_ru_31716467.mp3",
+        "mp3Bytes": 18621,
+        "mp3Sha256": "32d5b2f36f6e037b56c416e7eba2eca47e89b0e59cf1b7298284691c6a175665",
+        "originalHz": 32000,
+        "client_id": "587c271008240c2895870963bc6c3f9581789506539992b8dc2d911188d6db076ffe7b0a263def45194a966779f18509870375e157fd6f1f9ed48c08c997110f",
+        "wpm": 96.9
+      }
+    },
+    {
+      "id": "common_voice_ru_31719287",
+      "cohort": "quality",
+      "language": "ru",
+      "direction": "RU_TO_EN",
+      "path": "quality/ru/common_voice_ru_31719287.wav",
+      "bytes": 155564,
+      "sha256": "5c392050f65c8ff2965d578f52fe9b1bc3bb10abe46ee81e0b9d7d417aaa4c47",
+      "sampleRateHz": 16000,
+      "channels": 1,
+      "bits": 16,
+      "sampleCount": 77760,
+      "durationMs": 4860,
+      "reference": "Встреча с петербургским ученым Метровым.",
+      "tags": [
+        "place",
+        "rate_slow"
+      ],
+      "requiredSemanticPhrases": [
+        "петербургским",
+        "метровым"
+      ],
+      "source": {
+        "url": "https://huggingface.co/datasets/fsicoli/common_voice_17_0/resolve/8262c16bf297c87a9cd88c51997c4758ed7a8ba2/audio/ru/test/ru_test_0.tar",
+        "revision": "8262c16bf297c87a9cd88c51997c4758ed7a8ba2",
+        "archivePath": "ru_test_0/common_voice_ru_31719287.mp3",
+        "mp3Bytes": 29205,
+        "mp3Sha256": "6e8565d453a4527ae6c4fdf0ace78a1188d423646af9e18a869e88680a1c88ae",
+        "originalHz": 32000,
+        "client_id": "9447745a12ff227dfbee7ac5b75c16f045488a26f45d60632d4f706f0267ddef461e0de7c588fccd3d1156f1c6fe51976d6430c253f3812bc9fa302b1517fa89",
+        "wpm": 61.7
+      }
+    },
+    {
+      "id": "common_voice_ru_31858695",
+      "cohort": "quality",
+      "language": "ru",
+      "direction": "RU_TO_EN",
+      "path": "quality/ru/common_voice_ru_31858695.wav",
+      "bytes": 107180,
+      "sha256": "8c41e3d8ef7271506d97a72f8b8cd32ed8e12ee57e44672483903cbd165df227",
+      "sampleRateHz": 16000,
+      "channels": 1,
+      "bits": 16,
+      "sampleCount": 53568,
+      "durationMs": 3348,
+      "reference": "Пожалуйста, приезжай.",
+      "tags": [
+        "command",
+        "rate_slow"
+      ],
+      "requiredSemanticPhrases": [
+        "приезжай"
+      ],
+      "source": {
+        "url": "https://huggingface.co/datasets/fsicoli/common_voice_17_0/resolve/8262c16bf297c87a9cd88c51997c4758ed7a8ba2/audio/ru/test/ru_test_0.tar",
+        "revision": "8262c16bf297c87a9cd88c51997c4758ed7a8ba2",
+        "archivePath": "ru_test_0/common_voice_ru_31858695.mp3",
+        "mp3Bytes": 20230,
+        "mp3Sha256": "2ac88f0091787d1b69b630a303bf4789f3cf9697fe1926cbaa721d6029a752e7",
+        "originalHz": 32000,
+        "client_id": "81dc6b41af46fc31dabeb7b01e27318b9730ce2e5ba326f32d5ac19789b05a29db905c3f4983bf6a4e7307b05b7f5d12347ad27dce8256c183dcbd3130124be9",
+        "wpm": 35.8
+      }
+    },
+    {
+      "id": "common_voice_ru_36455466",
+      "cohort": "quality",
+      "language": "ru",
+      "direction": "RU_TO_EN",
+      "path": "quality/ru/common_voice_ru_36455466.wav",
+      "bytes": 162476,
+      "sha256": "3dd0ee8ebb6f12ff132c6ddbc85bb315b154ece96d5cdea1c56791becf58dac1",
+      "sampleRateHz": 16000,
+      "channels": 1,
+      "bits": 16,
+      "sampleCount": 81216,
+      "durationMs": 5076,
+      "reference": "Позвони маме, когда выйдешь из школы.",
+      "tags": [
+        "command",
+        "rate_medium"
+      ],
+      "requiredSemanticPhrases": [
+        "позвони",
+        "маме",
+        "школы"
+      ],
+      "source": {
+        "url": "https://huggingface.co/datasets/fsicoli/common_voice_17_0/resolve/8262c16bf297c87a9cd88c51997c4758ed7a8ba2/audio/ru/test/ru_test_0.tar",
+        "revision": "8262c16bf297c87a9cd88c51997c4758ed7a8ba2",
+        "archivePath": "ru_test_0/common_voice_ru_36455466.mp3",
+        "mp3Bytes": 30598,
+        "mp3Sha256": "2c456c40423d90a0d21205c9f62493ad1983739c879cf93d096596b68dc55ae1",
+        "originalHz": 32000,
+        "client_id": "2202218330bbb59278d3c28b2f56ebc403d9398286848306a4519c6943df68c6f1d02e4bbff4465f89e1f7cc181ae31c874e2d11ecb8ea1a922aa6aec2996f64",
+        "wpm": 70.9
+      }
+    },
+    {
+      "id": "common_voice_ru_37802365",
+      "cohort": "quality",
+      "language": "ru",
+      "direction": "RU_TO_EN",
+      "path": "quality/ru/common_voice_ru_37802365.wav",
+      "bytes": 122156,
+      "sha256": "4a7e96f00be3198e566a0f7305cc163486b939be4c9443aea6c7f6c331fd15d6",
+      "sampleRateHz": 16000,
+      "channels": 1,
+      "bits": 16,
+      "sampleCount": 61056,
+      "durationMs": 3816,
+      "reference": "Хочешь поиграть в четверг?",
+      "tags": [
+        "time",
+        "rate_slow"
+      ],
+      "requiredSemanticPhrases": [
+        "четверг"
+      ],
+      "source": {
+        "url": "https://huggingface.co/datasets/fsicoli/common_voice_17_0/resolve/8262c16bf297c87a9cd88c51997c4758ed7a8ba2/audio/ru/test/ru_test_0.tar",
+        "revision": "8262c16bf297c87a9cd88c51997c4758ed7a8ba2",
+        "archivePath": "ru_test_0/common_voice_ru_37802365.mp3",
+        "mp3Bytes": 22941,
+        "mp3Sha256": "845218a9a11a7a01120e793c301f3e26ddb04b679d585c1efdfc7888527646b3",
+        "originalHz": 32000,
+        "client_id": "b892a8c8fba3a7fee5219d66d996de14f0b2c3f3add9be64744fcf8baaf4f7a82ec72de4567214bdf9cfa680c7338a640019507d478a0515e44ade4027cbaae5",
+        "wpm": 62.9
+      }
+    },
+    {
+      "id": "common_voice_ru_37811436",
+      "cohort": "quality",
+      "language": "ru",
+      "direction": "RU_TO_EN",
+      "path": "quality/ru/common_voice_ru_37811436.wav",
+      "bytes": 106028,
+      "sha256": "254678522dc27495db7ef471783411aa2c154920ba2004b9a9f69d3aa1f7980d",
+      "sampleRateHz": 16000,
+      "channels": 1,
+      "bits": 16,
+      "sampleCount": 52992,
+      "durationMs": 3312,
+      "reference": "Подождите, я должна все это записать.",
+      "tags": [
+        "command",
+        "rate_fast"
+      ],
+      "requiredSemanticPhrases": [
+        "подождите",
+        "записать"
+      ],
+      "source": {
+        "url": "https://huggingface.co/datasets/fsicoli/common_voice_17_0/resolve/8262c16bf297c87a9cd88c51997c4758ed7a8ba2/audio/ru/test/ru_test_0.tar",
+        "revision": "8262c16bf297c87a9cd88c51997c4758ed7a8ba2",
+        "archivePath": "ru_test_0/common_voice_ru_37811436.mp3",
+        "mp3Bytes": 19917,
+        "mp3Sha256": "d797c964e55d25f1e88fa472f37a1965e3f38fd77cdbe45e13e997ad0399ec4e",
+        "originalHz": 32000,
+        "client_id": "a7ad0aaacb9b985f7e13f26bb3effcb50053b9e35d13df1a3d63ee3834859479667fd9eab1f17c3530be97cb94885f8a86d05c05714cda955edfb8f81dde152c",
+        "wpm": 108.7
+      }
+    },
+    {
+      "id": "common_voice_ru_38195444",
+      "cohort": "quality",
+      "language": "ru",
+      "direction": "RU_TO_EN",
+      "path": "quality/ru/common_voice_ru_38195444.wav",
+      "bytes": 150956,
+      "sha256": "074d39d3ca3e9cb3b6393e7a880af5161eb133c1c95f5b555c50bf4c13f70aab",
+      "sampleRateHz": 16000,
+      "channels": 1,
+      "bits": 16,
+      "sampleCount": 75456,
+      "durationMs": 4716,
+      "reference": "Она приехала с намерением пробыть два дня, если поживется.",
+      "tags": [
+        "number",
+        "rate_fast"
+      ],
+      "requiredSemanticPhrases": [
+        "два дня"
+      ],
+      "source": {
+        "url": "https://huggingface.co/datasets/fsicoli/common_voice_17_0/resolve/8262c16bf297c87a9cd88c51997c4758ed7a8ba2/audio/ru/test/ru_test_0.tar",
+        "revision": "8262c16bf297c87a9cd88c51997c4758ed7a8ba2",
+        "archivePath": "ru_test_0/common_voice_ru_38195444.mp3",
+        "mp3Bytes": 28341,
+        "mp3Sha256": "4b1be371a2778468aa390d7e670a3a7f34437118846d2f9db474508690987e51",
+        "originalHz": 32000,
+        "client_id": "a32ed1e8b82f44b100670718a3e6c861caf039a08ea43f10c253989a21fc8abcaab3c2e731e05479de2cf2878fc8d540340f15ce7f4cdae1d0a6eb67dd86bf26",
+        "wpm": 114.5
+      }
+    },
+    {
+      "id": "common_voice_ru_38615634",
+      "cohort": "quality",
+      "language": "ru",
+      "direction": "RU_TO_EN",
+      "path": "quality/ru/common_voice_ru_38615634.wav",
+      "bytes": 122156,
+      "sha256": "5bb6cbf36f93bee826e21313ba39732f8d898485724baec9107ec618adc91e33",
+      "sampleRateHz": 16000,
+      "channels": 1,
+      "bits": 16,
+      "sampleCount": 61056,
+      "durationMs": 3816,
+      "reference": "Никогда со мной этого не бывало.",
+      "tags": [
+        "negation",
+        "rate_medium"
+      ],
+      "requiredSemanticPhrases": [
+        "никогда",
+        "не"
+      ],
+      "source": {
+        "url": "https://huggingface.co/datasets/fsicoli/common_voice_17_0/resolve/8262c16bf297c87a9cd88c51997c4758ed7a8ba2/audio/ru/test/ru_test_0.tar",
+        "revision": "8262c16bf297c87a9cd88c51997c4758ed7a8ba2",
+        "archivePath": "ru_test_0/common_voice_ru_38615634.mp3",
+        "mp3Bytes": 22941,
+        "mp3Sha256": "ae61b9fc2ac27c6e4bd3820b09b852e856d1ee5ad7e789cab9cce77e2b504fd8",
+        "originalHz": 32000,
+        "client_id": "117734911397622f8dd8019d81f26f6b43c6560154b45c6e52014cae87d3c45b369c7ac0099a6f45f804476d389f759cef92db805c980c5f0e2b9eec6e7c2c0e",
+        "wpm": 94.3
+      }
+    },
+    {
+      "id": "common_voice_ru_38648016",
+      "cohort": "quality",
+      "language": "ru",
+      "direction": "RU_TO_EN",
+      "path": "quality/ru/common_voice_ru_38648016.wav",
+      "bytes": 162476,
+      "sha256": "5426ac12901c90fd90976499af8141e9dfedfab33db92af1758883eca4c2f679",
+      "sampleRateHz": 16000,
+      "channels": 1,
+      "bits": 16,
+      "sampleCount": 81216,
+      "durationMs": 5076,
+      "reference": "В это время дверь открылась и в комнату вошёл я.",
+      "tags": [
+        "place",
+        "rate_fast"
+      ],
+      "requiredSemanticPhrases": [
+        "в это время",
+        "комнату"
+      ],
+      "source": {
+        "url": "https://huggingface.co/datasets/fsicoli/common_voice_17_0/resolve/8262c16bf297c87a9cd88c51997c4758ed7a8ba2/audio/ru/test/ru_test_0.tar",
+        "revision": "8262c16bf297c87a9cd88c51997c4758ed7a8ba2",
+        "archivePath": "ru_test_0/common_voice_ru_38648016.mp3",
+        "mp3Bytes": 30501,
+        "mp3Sha256": "dff331099ec3801b8ca758b397f9486758cf8b336630749ff9e399813a821b65",
+        "originalHz": 32000,
+        "client_id": "2d3bb39229b28f9420bcc22993b11ba278658b9a0b26d4c5851ac1c05933e9fb329bad640f4f69b0194ebc24b14c79d095662ded87b2f84e25cf27d77925ea4e",
+        "wpm": 118.2
+      }
+    },
+    {
+      "id": "common_voice_ru_39631486",
+      "cohort": "quality",
+      "language": "ru",
+      "direction": "RU_TO_EN",
+      "path": "quality/ru/common_voice_ru_39631486.wav",
+      "bytes": 164780,
+      "sha256": "ae783dd19c9b505e39a472973542729cec18ce8494275e1d38b438753c3fd9d1",
+      "sampleRateHz": 16000,
+      "channels": 1,
+      "bits": 16,
+      "sampleCount": 82368,
+      "durationMs": 5148,
+      "reference": "Иван, выехав на дорогу, вступил в обоз с другими возами.",
+      "tags": [
+        "place",
+        "rate_fast"
+      ],
+      "requiredSemanticPhrases": [
+        "иван",
+        "дорогу"
+      ],
+      "source": {
+        "url": "https://huggingface.co/datasets/fsicoli/common_voice_17_0/resolve/8262c16bf297c87a9cd88c51997c4758ed7a8ba2/audio/ru/test/ru_test_0.tar",
+        "revision": "8262c16bf297c87a9cd88c51997c4758ed7a8ba2",
+        "archivePath": "ru_test_0/common_voice_ru_39631486.mp3",
+        "mp3Bytes": 30933,
+        "mp3Sha256": "bf65944fff7f744409dd565f60846731a0f48a8453f918cd1e3ed97b27587aca",
+        "originalHz": 32000,
+        "client_id": "5c42fd0d575ed0131b1bd21482a3515ad42148f2ad8363ac254d1f76e9e3c4c3d2c207aec4fe22758b2746ed0b56530092294fa4df833bf1a87cb4cf2ae60fef",
+        "wpm": 116.6
+      }
+    }
+  ]
+}

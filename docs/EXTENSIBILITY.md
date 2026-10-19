@@ -1,0 +1,146 @@
+# Architecture and Extensibility Guide
+
+
+## Start here
+
+Prepare selected resources explicitly, then run inference offline. Conversation processes completed utterances through capture/VAD → recognition → translation → speech output; Text calls the same translation contract without the speech stages. There is no cloud or hidden backend fallback.
+
+| Area | Responsibility and starting point |
+| --- | --- |
+| `app` | Compose screens, settings and selected resource ownership: `runtime/AppRuntime.kt`, `runtime/RuntimeOwner.kt`. |
+| `core` | Contracts and bounded session state: `ConversationPipeline.kt`, `TranslationEngine.kt`. `SpeechToTextPipeline.kt` is a separate evaluation/library consumer, not the Text screen. |
+| `engine-mlkit` | Translation clients and actual Google Task lifetimes, including work that outlives coroutine cancellation. |
+| `engine-sherpa` | Native capture/VAD, selected ASR/LID/Piper adapters, verified model files and native handles. |
+
+Pipelines own mutable session queues; runtime owners serialize configuration changes and await teardown before replacement; adapters own actual SDK/JNI work. Cancelling a coroutine is not resource-release evidence. Only configuration and installed resources persist—not conversation history. Native content logging remains an unresolved privacy limitation.
+
+For a focused change, start with the recipes below: [text language](#1-add-a-text-language), [speech model or adapter](#2-add-a-speech-model-or-adapter), [translation provider](#3-add-a-translation-provider), or [persistent setting](#4-add-or-migrate-a-persistent-setting). Read [CONTRIBUTING](../CONTRIBUTING.md) for build checks and [verification](testing/verify-translator.md) for platform evidence. Detailed platform protocols and dated results are reference material, not onboarding prerequisites.
+
+[APP_VISION.md](APP_VISION.md) defines the product direction; [README.md](../README.md) describes the current state. This guide covers existing architecture, contracts and extension points.
+
+## Current Implementation
+
+
+- `core` supplies language/configuration types and speech/translation contracts. `app` owns settings, UI, runtime construction, and lifecycle coordination. `engine-mlkit` supplies the only registered translation provider; `engine-sherpa` supplies the wired speech implementations and model store.
+- `ConversationRuntimeOwner` constructs `ConversationPipeline`. The current contracts process completed `SpeechSegment`/utterance inputs: `ConversationRecognitionEngine.recognize(segment)`, `TranslationEngine.translate(pair, text)`, and `ConversationSpeechOutput.speak(language, text, onPlaybackStarted)`. Online ASR adapter families do not by themselves establish an incremental end-to-end conversation API.
+- `AppRuntime` constructs common production Sherpa capture/VAD, exactly one selected Android/Sherpa recognizer and exactly one Android/Piper output. Both speech stages require real readiness and awaitable release. Start requires selected native resources plus current recognition/MT/output readiness.
+- `LanguageCatalog` contains `en,vi,es,id,it,zh,ko,de,pl,pt,ru,th,tr,fr,hi,ja`. `AndroidSpeechLocales` is the single ASR/TTS platform mapping; Chinese is `cmn-Hans-CN` recognition and `zh-Hans-CN` output, with Mainland CN/Hans-or-unspecified-script voice eligibility and no Hant/TW/HK/MO substitution. ML Kit still uses base IDs. Catalog support and actual installed service resources are separate.
+- Immutable `AppSettings.languagePair` is the only ordered pair on both main screens. Independent recognition/output selectors live only in advanced Settings. `ConversationSessionConfig` derives both directions, native ASR IDs only for Sherpa and TTS IDs only for Piper. Sherpa/Piper require their genuine RU/EN coverage; System resources cannot be represented by fictional native model-store rows.
+
+### Translation Method Is Not Translation Quality
+
+`TranslationCapability` currently has four states:
+
+| State | Existing meaning |
+| --- | --- |
+| `Direct` | Verified translation without an intermediate language. |
+| `Pivot(via)` | Translation through the stated intermediate language. |
+| `Unsupported` | The provider does not support the pair. |
+| `Unknown` | Directness has not been verified. |
+
+`Direct` and `Pivot` describe method, not a quality verdict. `Unknown` is neither SDK-unsupported nor evidence of poor translation. SDK support, directness evidence, semantic quality, offline operation, speech coverage, and device qualification must remain separate facts.
+
+ML Kit's [translation documentation](https://developers.google.com/ml-kit/language/translation) describes English as the intermediary for non-English pairs; its [supported language codes](https://developers.google.com/ml-kit/language/translation/translation-language-support) are a separate SDK-support boundary. `MlKitTranslationEngine.capability(pair)` first checks `supportedLanguages`, reports non-English pairs as `Pivot(en)`, and reports English partners as `Direct` only when they appear in `verifiedEnglishPartners`; other SDK-supported English partners report `Unknown`.
+
+**Executable support is coordinated across every boundary.** Core `requireSupported()`, `SettingsValidator`, `TranslationEngineRegistry.create()`, and ML Kit selected/prepare/translate accept `Direct`, `Pivot`, and SDK-supported `Unknown`, rejecting genuine `Unsupported`. `Unknown` remains unknown directness, not unsupported or manufactured `Direct`.
+
+The application calls ML Kit once with the original source/target pair. It neither performs manual double translation nor edits inputs to hide failures. Prepare queries/deduplicates only selected non-English SDK model packs; translate never downloads. Selected-pair bounds, cancellation, in-flight SDK leases and error reporting remain. Catalog/UI breadth does not justify a duplicated permanent42-case execution matrix: preserve distinct contract/consumer boundaries and qualify representative real directions separately.
+
+
+## Extension Invariants
+
+1. **Compiled wiring:** Providers and adapter families are compiled into the application. Model metadata is data, not executable code. Do not add reflection-based plugins, downloaded code, or dynamic class loaders.
+2. **Selected-only preparation:** Derive package/SDK resources from the selected configuration. Text-only startup must not scan speech packages or trigger speech downloads. Inference must not implicitly download missing models.
+3. **Shared resources:** Reuse package references and deduplicate requirements, rather than downloading the same weights for each role or language. The multilingual Whisper English ASR definition already reuses language-identification weights.
+4. **Owned lifecycle:** `AppRuntime` and `RuntimeOwnerController` serialize resource ownership. Use the existing `use`, `replace`, and `saveIfIdle` gate; await actual task/native lease teardown before constructing a successor. Preserve unchanged owners when configuration matches. Coroutine cancellation alone is not proof that JNI or SDK work has ended.
+   Shared pair cutover awaits the current Conversation/Text ViewModel's real disposal before `AppRuntime.updateLanguagePair` commits under the owner gate using the latest advanced preferences. Backend Apply patches advanced fields onto the latest pair and awaits incompatible owner teardown BEFORE saving; compatible text owners are retained. `createConversationOwnerIfUnowned` checks ownership, persisted configuration and cancellation before any factory/close effects. Teardown failure blocks save/rebuild; failed save retains the old selection with safe idle recovery; failed postcommit open keeps the new persisted labels and reports a separate unavailable/restart state. Valid text-only pairs are intentionally ownerless and editable, not postcommit-open failure. No auto recording, preparation, retry, fallback or ownership theft. Advanced draft survives pair commit; Apply never restores its stale pair, Close cancels draft only, Reset preserves pair.
+   Pipeline stop/clear and owner close barriers return cached `Result<Unit>` values, including failure, rather than failing the shared awaiter itself. Conversation/Text disposal shares an independently awaited `Deferred<Result<Unit>>`; each consumer explicitly consumes the result before save, replacement or further work. Synchronous Stop/background interruption revokes the session without letting a native stop exception escape the UI callback. Finalization still awaits capture/output/model/translation and other acquired leases after the first failure, retaining the original underlying error with distinct later failures. This is typed cleanup, not exception-message/class/stack heuristics, swallowed success, implicit retry or fallback; coroutine wrapper identity is not the SDK-error provenance contract.
+   Guarded Text/Conversation construction checks the requested configuration against the latest persisted settings BEFORE validating eligibility; stale requests return without building or falsely classifying the newly selected text-only pair as a failed conversation open. The Conversation effect also reads the repository's latest state, rather than trusting a lifecycle-collected older snapshot. It checks freshness before owner effects and again after awaited disposal/refused creation; a non-teardown opening error is retained only for the still-current configuration. Genuine current-config open failures, teardown failures, no-retry policy and competing-owner protection remain distinct. A text-only selection stays ownerless with editable pair controls, not a sticky restart error.
+5. **Bounded inputs:** Preserve strict catalog/settings parsing, safe relative paths, download/extraction quotas, bounded text/audio work, and bounded queues/UI state. Preserve current/previous-utterance presentation without turning the pipeline's historical transcript limits into a growing-feed UX.
+6. **Honest availability:** Catalog metadata, successful installation, native compatibility, semantic quality, offline execution, and release/device qualification are distinct. Do not silently substitute a different language, voice, or engine when the selected combination is unavailable.
+
+### Selected Recognition and Request-local Routing
+
+`SpeechRecognitionBackend` persists `system-offline` or `sherpa`. `ConversationRecognitionEngine` requires `readinessState`, `readiness()`, explicit `install()`, local-only `prepare()`, `recognize()` and awaited release. Typed states are READY, MISSING_LOCAL_MODEL, UNSUPPORTED, ENGINE_UNAVAILABLE, SCHEDULED, DOWNLOADING, DOWNLOAD_FAILED and CHECK_FAILED; scheduled is not installed. The owner's existing model repository combines genuine native projection with its exact recognition instance. Screen/helper/pipeline preparation and readiness use that shared boundary; checks and inference never download.
+
+Android requests are fresh per segment: PCM16 mono16k FD source, AUDIO_SOURCE segmented session, free-form, QUICK_RESPONSE, audio detection and both allowlists exactly the snapshot's two locales. Support uses the same shape with an operation-owned valid FD; online-only languages are not ready. Explicit installation requests only selected languages. Public re-entry/recheck obtains current support without polling or hidden retries.
+
+Terminal source resolution uses a bounded true-confidence mask, saturated selected weak histogram counts and terminal weak-run count, not transcript content, initial locale, previous language or callback-history storage. Only unique selected CONFIDENT/HIGHLY_CONFIDENT (2/3) is strong; successful switching never upgrades confidence. Conflicting/outside/unmapped/missing strong evidence fails. Without strong, require BOTH strict unique selected NOT_CONFIDENT histogram leader≥2 AND matching final consecutive weak run≥2; outside/unmapped tags block only weak-only conclusions and gaps reset the run. Failed/skipped switches and malformed metadata fail. Ordered primary final segments are assembled once, null/trim-empty contributions are ignored, alternatives are not concatenated, and empty final aggregate/over4096/overflow fails. Late callbacks cannot revive revoked requests.
+
+One immutable PCM boundary copy feeds chunked unpaced FD writes; there is no appended silence, full second byte-array copy or second microphone. Segment maximum15s, recognize deadline30s and readiness/init10s bounds retain NonCancellable cancellation/FD/native writer release barriers. A failed turn keeps its error row and resumes listening without MT/output or a guessed language.
+
+### Selected Speech Output and Truthful Timing
+
+`SpeechOutputBackend` persists `system-offline` or `piper`; one backend implements `ConversationSpeechOutput.readiness(): SpeechOutputReadiness` (`READY`, `MISSING_LOCAL_VOICE`, `ENGINE_UNAVAILABLE`, `INITIALIZATION_FAILED`). System selected preparation excludes Piper TTS package download/digest/JNI load; Piper keeps its existing selected models, synthesis, AudioTrack and licensing obligations. System voice data is external engine-owned preparation, not a fabricated model-store package.
+
+`AndroidTtsClient` checks current local inventory/data, excludes network and `KEY_FEATURE_NOT_INSTALLED` voices, and requires exact `setVoice` success/current-voice equality. The shared16 locale mapping selects eligible voices; Mainland Simplified Chinese has the stricter country/script guard described above. There is no `setLanguage` network/default selection. Transaction-local native inventory avoids repeated lookup, not a cached readiness promise.
+
+After all voice RPCs, one unique public `playSilentUtterance(0L, QUEUE_FLUSH, id)` attests the actual engine: capture `Binder.getCallingUid()` inline in matching Start/Done, resolve outside that callback to one installed registered TTS service package/application UID, and compare OS default/request as nomination only. Self/system-relay/shared/ambiguous/unexpected/missing identity fails closed. Android37 metadata RPCs may reconnect on error but do not replay the failed call: after attestation there are no more voice metadata RPCs before user speak, and user text errors are not retried across connections. There is no hidden SDK identity API/reflection or guessed-package compatibility fallback.
+
+The no-audio control has a distinct ID/generation/waiter and never emits user phase/timing, focus, PCM or content logs. Initialization plus first voice/control check shares the existing10s bound; interruption/cancellation/close stops and completes pending work, invalidates identity and awaits actual release. Late callbacks cannot revive an owner; stop/shutdown failures remain sticky, failed identity requires explicit Recheck. User-triggered voice installation awaits fresh identity and checks current owner/config/foreground after await, then safely opens only that engine's exported data activity; absent handlers are an error, not a market/other-engine fallback.
+
+`SpeechPlaybackStart.presentationTimeNanos: Long?` carries provenance: nonnull means first non-silent frame at the actual presentation boundary; `measured` distinguishes AudioTrack timestamp from observed-head-backed estimate. A phase-only platform `onStart` has null timestamp/false measured. The shared pipeline never derives a physical latency from callback/enqueue time, never carries a prior turn's value into that turn, and still preserves translation/completion. Details shows latency unavailable without number/threshold warning for phase-only turns; Piper retains its actual timestamp/head-backed display. This is not performance qualification.
+
+
+## Practical Extension Recipes
+
+Paths abbreviated with `...` below retain the module's existing `src/main/java/com/example/offlinetranslator/` package root.
+
+### 1. Add a Text Language
+
+1. Add canonical lowercase identity and `LanguageMetadata` to `core/src/main/java/com/example/offlinetranslator/core/LanguageCatalog.kt`, including a neutral source-language `warmUpText`. Add the corresponding `language_name_*` resource and `LanguageUiCatalog.languageName` mapping, translate it in every existing UI pack, and supply a complete new interface pack. Add the native UI locale to `app/src/main/res/xml/locale_config.xml` and its deliberate script mapping in `app/.../ui/InterfaceLanguage.kt` when necessary. The shared catalog drives the interface-language picker; do not add a second language catalog or assume speech tags are UI locales.
+2. Check provider SDK support separately from translation method evidence. In `engine-mlkit/src/main/java/com/example/offlinetranslator/mlkit/MlKitTranslationEngine.kt`, `supportedLanguages` and `verifiedEnglishPartners` serve different purposes. Extend the latter only with actual directness evidence; it is not a semantic-quality certification. Preserve meaningful `Unknown` coverage (the existing SDK-supported `ja` fixture) and genuine unsupported-code coverage.
+3. Apply the same executable-support rule at catalog, validator, registry and selected prepare/translate boundaries: accept SDK-supported Direct/Pivot/Unknown without changing method evidence, reject Unsupported before effects. Adding another text language does not change existing speech eligibility.
+4. Update distinct contract/consumer tests for selected resources, genuine unsupported/error/cancellation and actual main-screen chooser/persistence/swap/recreation. Pair selection is immediate and shared; advanced Apply/Close/Reset never acts as a second pair source. Do not add source-copy or same-path language matrices.
+5. Prepare only the selected real model online, then qualify both directions offline with everyday phrases and semantic controls for meaning, negation, names, numbers, and time. Record failures and uncertainty explicitly. Adding a catalog entry does not qualify the pair or add ASR/LID/TTS resources.
+
+### 2. Add a Speech Model or Adapter
+
+The actual catalog is `engine-sherpa/src/main/assets/speech-models.json`, schema version 2, currently pinned to runtime `sherpa-onnx-1.13.8`. Consult `SpeechModelCatalog.kt` and `SpeechModelDefinition.kt` in `engine-sherpa/.../sherpa/` before editing: the parser rejects unknown fields and enforces role/family compatibility.
+
+1. Add or reuse a `packages` entry. Existing fields are `id`, `displayName`, `source`, `license`, `url`, `allowedRedirectHosts`, `format`, `archiveBytes`, `archiveSha256`, `maxUnpackedBytes`, `files`, and optional `maxEntries`. IDs follow `[a-z0-9][a-z0-9.-]{0,79}`. URLs must be HTTPS with allowed redirect hosts; accepted formats are `raw` and `tar.bz2`.
+2. Pin exact artifacts, archive sizes/SHA-256, extraction quotas, and a safe-path inventory of every expected file (`path`, `bytes`, `sha256`). Include license/attribution files where supplied. A license string or an upstream project's later relicensing announcement is not legal clearance for the pinned archive: check that exact code/weight package and its redistribution conditions. The current GigaAM archive metadata explicitly records its noncommercial-license caveat.
+3. Add a `models` entry with `id`, `displayName`, `role`, `languages`, `sampleRateHz`, and `adapter`. Sample rate is model metadata, not a package field. Roles are `VAD`, `ASR`, `LANGUAGE_ID`, and `TTS`. VAD has an empty language list; other roles must satisfy family-specific language rules.
+4. Reuse a compiled `adapter.family`: `silero`, `nemoCtcOffline`, `whisperOffline`, `whisperLanguageId`, `piperVits`, `toneCtcOnline`, or `zipformer2Online`. References use `{ "packageId": "...", "path": "..." }` and must resolve to declared inventory files or, for Piper `dataDir`, an inventoried directory. Match the family's exact parser fields and rate constraints rather than copying another family's JSON.
+5. For a new family, update the sealed `SpeechModelAdapter`, catalog parser, and `SherpaModelFactories.kt` together, including role/rate checks and native teardown. The factories validate typed definitions and create native configurations; metadata alone cannot implement a new engine. Wire any new provider through the existing runtime/pipeline ownership boundary.
+6. Maintain host/evaluator projections and model-manifest checks where affected (`translator-test-kit`, `build-logic`, and `engine-sherpa-model-smoke`). Add package/parser/integrity and actual native model coverage, then qualify the selected conversation combination in both directions. A native decode smoke does not prove automatic language identification, semantic translation, usable voice, or phone performance.
+
+Current parser bounds include a 256 KiB catalog, at most 64 packages and 64 models, at most 512 inventoried files per package, at most 1,024 extraction entries, and 1 GiB archive/unpacked limits. Role-specific rates are narrower than the general 8,000–48,000 Hz model range. Preserve these checks; increasing a bound requires an explicit justified implementation change, not an oversized metadata entry.
+
+### 3. Add a Translation Provider
+
+1. Define a compiled `TranslationProviderDescriptor` with `id`, `displayName`, `provider`, `sdkVersion`, `attribution`, and `termsUrl`. This is a data descriptor, not a plugin interface.
+2. Implement `core/.../core/TranslationEngine.kt`: `modelAvailability()`, `prepare()`, `translate(pair, text)`, `close()`, and `closeAndJoin()`. Preparation is explicit; `translate()` must not download resources. Require valid selected pairs and nonblank bounded input, and preserve offline/resource behavior.
+3. Update `app/.../runtime/TranslationEngineRegistry.kt` consistently: `descriptors`, `descriptor(id)`, `capability(engineId, pair)`, and `create(engineId, pairs)`, including the actual compiled factory. Today the registry is ML Kit-specific; adding a list entry alone does not register a working provider. Its one/two directed-pair bound and `requireSupported` policy must stay consistent with prepare/translate, including executable Unknown and genuine Unsupported.
+4. Report support/method evidence honestly and qualify quality separately. Ensure `closeAndJoin()` awaits all in-flight tasks and client teardown; the interface's default `close()` delegation is insufficient when operations outlive cancellation. Preserve the owner gate and selected-only resource planning across settings and route changes.
+5. Update consumers/tests, attribution and redistribution documentation for the provider. Both routes resolve their own selected descriptor; retain that boundary through branding and Help/terms. Current approved presentation uses one unchanged Google badge above the fixed primary action only for actual descriptor `id == "mlkit"`, including Conversation Stop; no card branding and neutral localized Text action. Another or unavailable descriptor must not inherit Google claims. A real additional provider needs its own verified attribution/terms requirements and a product decision about their presentation; the current ML Kit layout does not supply legal clearance for that future provider. Settings expose mode-specific choices only for real alternatives or an invalid saved ID; a single valid provider has one information block. ML Kit's future-provider wording is shown only while it is the sole registered provider, so adding a real alternative cannot leave a false “not available” claim. Do not advertise arbitrary-pair or replaceable-engine support before a real selected combination works end to end.
+
+### 4. Add or Migrate a Persistent Setting
+
+1. Update immutable `core/.../core/AppSettings.kt` with safe defaults and consistent `textConfig()` / `conversationConfig()` conversion. There is no no-op AppSettings snapshot wrapper; copy mutable collections only at boundaries that genuinely require ownership protection.
+2. Update `app/.../settings/AppSettingsSerializer.kt` read/write handling and schema compatibility. Preserve its 64 KiB input/output bound and typed ID/integer checks. Preserve the repository distinction between corrupt configuration and recoverable I/O errors; do not overwrite valid settings on an I/O failure.
+3. Update `SettingsValidator` in `app/.../runtime/AppRuntime.kt`: persisted advanced/catalog/text validity is independent of `conversationProblems`, which checks complete selected speech eligibility before constructing its owner. Metadata coverage differs from installed-resource readiness; no downloads/digest/JNI while validating chooser rows.
+4. Update repository/runtime Apply and UI consumers. Shared language controls live in `app/.../ui/LanguagePairControls.kt` on both modes; preserve immediate ordered pair, atomic swap, awaited cutover and ownerless text-only editing. `SettingsSheet` owns independent advanced draft Apply/Close and advanced-only Reset, patches latest persisted pair under the gate, and keeps ≥48dp targets. Never resurrect stale draft pairs.
+5. Cover serialization, persistence, unavailable choices, bounds, no-op/mode-specific owner retention, and lifecycle transitions. Keep language choice and installed-resource state distinct from persisted conversation content, which is not part of the product.
+
+Settings schema5 writes closed fields `schemaVersion`, `languagePair` `{source,target}`, `speechRecognitionBackend`, `speechOutputBackend`, `textEngineId`, `conversationEngineId`, `vadModelId`, `languageIdModelId`, `vadMinSilenceMs`, `ttsSpeedPercent`, with known backend IDs only. Strict legacy1–4 readers migrate effective recognition to System. Schemas1–3 preserve their ordered conversation pair/Piper and other preferences; schema4 preserves actual output. Schema1 retains historical unrelated-field tolerance; schema2–4 retain closed contracts. A read/no-op save preserves valid legacy raw bytes, changed save writes5, and explicit schema5 Sherpa survives restart. Fresh defaults use RU→EN/System recognition/System output; advanced Reset preserves the latest pair.
+
+Interface language intentionally does not belong to the schema5 JSON or executable configurations. `InterfaceLanguage` uses native Android `LocaleManager` as its only persisted source; empty preference is normalized to explicit English. Its Settings selector commits independently and immediately, even while advanced controls are unavailable. Do not reset it from advanced Reset or a main-pair save. MainActivity handles only locale/layoutDirection configuration changes in place, gates stale localized drawing until the effective locale matches, and keeps the mounted route state; ordinary rotation/background/process-death behavior is not broadened. New localization must reach `LocalResources` as well as context/configuration inside dialogs and controlled fixtures. Resource completeness is not native-speaker, speech or phone-performance qualification.
+
+
+## Installed Package Reuse and Lazy Migration
+
+`SpeechModelStore` uses `noBackupFilesDir/speech-models`, with content-addressed directories `installed/<package-id>-<archiveSha256.take(16)>` and schema-2 pointers `active-package-<package-id>.txt` containing the directory name.
+
+When a selected package's schema-2 pointer is absent, the store checks its fixed legacy seven-package pointer mapping under the store lock, verifies directory contents/hashes, and atomically creates the new pointer. A corrupt existing schema-2 pointer must not silently fall back to legacy metadata. Migration is per package, without a global version marker: unselected packages are not scanned, and valid byte directories are reused without copying or re-downloading. New model definitions should share existing package references where possible, rather than duplicating storage or introducing a global migration scan.
+
+## Development Agent Skills
+
+Agent skills are optional local development tools, not part of the source
+distribution or build requirements. Local installations under `.agents/skills/`
+are ignored by Git; their licenses and resources stay with those installations.
+
+Use a skill only for a relevant, authorized task and read its instructions first.
+Its prerequisites do not authorize unrelated navigation migrations, dependency
+upgrades or experimental APIs.
+

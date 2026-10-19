@@ -1,0 +1,50 @@
+.gradle/
+.idea/
+.kotlin/
+**/build/
+local.properties
+*.iml
+captures/
+.externalNativeBuild/
+.cxx/
+.codex/
+/.agents/
+.cache/translator-evaluation/
+/engine-sherpa/libs/*.aar
+
+# Local environment and credentials
+/.omp/
+.env
+.env.*
+!.env.example
+keystore.properties
+*.jks
+*.keystore
+*.p12
+!/engine-sherpa/src/test/resources/model-fixture.p12
+*.pem
+*.key
+*.pfx
+google-services.json
+
+# Generated packages, diagnostics, and OS metadata
+*.apk
+*.aab
+*.ap_
+*.dex
+*.hprof
+*.log
+.DS_Store
+Thumbs.db
+
+# Python tooling caches
+__pycache__/
+*.py[cod]
+
+# Local workflow documents and historical records
+/docs/plans/
+/docs/reviews/
+/docs/brainstorm/
+/docs/changes/
+/docs/archived/
+/docs/backlog/
