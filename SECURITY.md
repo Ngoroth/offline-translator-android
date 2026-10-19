@@ -3,18 +3,19 @@
 This is a development repository with no supported production release series or
 committed security response schedule.
 
-## Private reporting is not yet available
+## Private vulnerability reporting
 
-No working private vulnerability-reporting channel has been verified for this
-project. No alternative email address, private endpoint or encryption key is
-announced. **Do not post vulnerability details, exploits, credentials, conversation
-text, recordings or device logs in public issues, discussions or pull requests.**
+Use GitHub's [private vulnerability reporting form](https://github.com/Ngoroth/offline-translator-android/security/advisories/new)
+to send a report to the repository maintainers. Sign in to GitHub to use the form.
+Private vulnerability reporting is enabled for this repository.
+
+**Do not post vulnerability details, exploits, credentials, conversation text,
+recordings or device logs in public issues, discussions or pull requests.**
 
 If GitHub **Security → Report a vulnerability** is unavailable, a public issue may
 ask only for a private security contact, without describing the vulnerability or
 including reproduction steps or sensitive data. Withhold details until a private
 channel is available and confirmed; a “security” label does not make an issue private.
-The owner must enable and verify private reporting before advertising it here.
 
 ## Known privacy limitation
 
