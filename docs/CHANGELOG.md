@@ -4,6 +4,7 @@ Notable capability, behavior and developer-facing compatibility changes. Entries
 
 ## Unreleased
 
+- Added a local Windows release APK builder with external signing credentials, signature and 16 KB alignment verification, SHA-256 output, and packaged license texts and third-party notices.
 - Local development tools and workflow history (`.agents/`, `.omp/`, `docs/archived/`, plans, reviews, brainstorms and iteration notes) are excluded from the source distribution; current setup and verification instructions remain versioned.
 - Translated the domain thesaurus into English and restored it to version control, preserving all 36 canonical identifiers and their concept relationships; naming guidance continues to use the `ubiquitous-language` skill.
 

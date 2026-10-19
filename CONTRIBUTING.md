@@ -71,6 +71,18 @@ Test fixtures must be minimal, deterministic and safe to publish. Record source,
 
 Keep generated reports, recordings, model downloads and machine-local configuration out of submissions. Keep pull requests focused and report failures as well as passes.
 
+## Signed release APK (Windows)
+
+Use PowerShell 7, JDK 17 and `ANDROID_HOME` pointing to an Android SDK with Build Tools 36.0.0. Keep the signing keystore and its password file outside the repository; do not pass the password itself on the command line.
+
+```powershell
+./tools/android/build-release.ps1 -Keystore C:/private/release.p12 -PasswordFile C:/private/release-password.txt
+```
+
+The script builds and lints the release, aligns it for 16 KB pages, signs it, verifies its signature and alignment, and writes the APK and SHA-256 checksum under `app/build/outputs/apk/release/`. The default key alias is `release`; use `-KeyAlias` for another alias. Back up the key and store its password securely: updates require the same signing identity.
+
+The APK includes license texts and third-party notices in `assets/licenses/`. These files do not replace other obligations, including applicable GPL Corresponding Source requirements; see [THIRD_PARTY_NOTICES](THIRD_PARTY_NOTICES.md).
+
 ## Contribution licensing
 
 By submitting an original contribution for inclusion, you agree to license it under the project's [Apache License 2.0](LICENSE), unless the contribution is explicitly identified as third-party material with its own applicable terms. Do not claim ownership or grant rights you do not have. Preserve required upstream notices and identify third-party additions and redistribution obligations in [THIRD_PARTY_NOTICES](THIRD_PARTY_NOTICES.md) and the relevant provenance documentation. Models, voices, datasets, native binaries and trademarks are not automatically relicensed by the root license.

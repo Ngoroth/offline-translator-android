@@ -5,6 +5,16 @@ plugins {
     alias(libs.plugins.compose.compiler)
 }
 
+val licenseAssets = layout.buildDirectory.dir("generated/licenseAssets")
+val generateLicenseAssets = tasks.register<Sync>("generateLicenseAssets") {
+    from(rootProject.layout.projectDirectory.file("LICENSE"))
+    from(rootProject.layout.projectDirectory.file("THIRD_PARTY_NOTICES.md"))
+    from(rootProject.layout.projectDirectory.dir("LICENSES")) { into("LICENSES") }
+    from(rootProject.layout.projectDirectory.file("engine-sherpa/THIRD_PARTY.md")) { into("engine-sherpa") }
+    into(licenseAssets.map { it.dir("licenses") })
+}
+tasks.matching { it.name == "preBuild" }.configureEach { dependsOn(generateLicenseAssets) }
+
 val canonicalSmoke = rootProject.layout.projectDirectory.dir("test-data/corpus/v1/smoke")
 val fixtureAliases = layout.buildDirectory.dir("generated/androidTestOfficialFixtureAliases/debug")
 val generateDebugAndroidTestOfficialFixtureAliases = tasks.register<Sync>("generateDebugAndroidTestOfficialFixtureAliases") {
@@ -65,6 +75,7 @@ android {
 
     packaging.resources.excludes += "/META-INF/{AL2.0,LGPL2.1}"
     sourceSets.getByName("androidTest").assets.setSrcDirs(listOf(fixtureAliases))
+    sourceSets.getByName("main").assets.directories.add(licenseAssets.get().asFile.absolutePath)
 }
 
 // SDK_INT=0 in host Android stubs selects DataStore's renameTo branch, which cannot
