@@ -4,9 +4,29 @@ Notable capability, behavior and developer-facing compatibility changes. Entries
 
 ## Unreleased
 
+### 0.1.1 development prerelease — 2026-10-20
+
+- Published explicit Google recognition-service selection and signer-based admission for the GrapheneOS compatibility fix. VersionCode is now2 so release updates are distinguishable from0.1.0.
+- Limited host-check push triggers to branches; tag-only pushes no longer start a duplicate check run. Pull-request and manual checks remain available.
+
 - Added a local Windows release APK builder with external signing credentials, signature and 16 KB alignment verification, SHA-256 output, and packaged license texts and third-party notices.
 - Local development tools and workflow history (`.agents/`, `.omp/`, `docs/archived/`, plans, reviews, brainstorms and iteration notes) are excluded from the source distribution; current setup and verification instructions remain versioned.
 - Translated the domain thesaurus into English and restored it to version control, preserving all 36 canonical identifiers and their concept relationships; naming guidance continues to use the `ubiquitous-language` skill.
+
+### Explicit Android recognition service — 2026-10-20
+
+- Added a persisted nullable recognition-service preference in settings schema6, with lazy schemas1–5 migration to the unchanged designated route, installed-service discovery and visible missing/incompatible selections.
+- Qualified the explicit Google recognition component only for versionCode210683483 and its pinned current signer; changed identities/releases fail closed without cloud or provider fallback. This does not qualify GrapheneOS, ARM64 or future provider releases.
+- Added bounded Google error14-to-real-inventory compatibility while retaining both-installed language readiness and the original support deadline; generic14 remains a failed check.
+- Gate explicit PCM delivery on actual ready-for-speech plus fresh identity/generation checks, bind inventory readiness to that installed identity, and revoke pending/active work on observed package changes with FD closure and awaited session/writer cleanup.
+- Added a localized app-originated, selected-language public installer action that releases runtime ownership before provider consent. Cancellation/return only rechecks readiness and never starts capture or a second installer automatically; the default route keeps its native preparation semantics.
+- Added the explicit-route production check using the unchanged full human32 cohort and regressions for identity changes, callback/deadline races, installer confinement, owner cutover and large-font recovery. Build/device results remain separate verification evidence, not release qualification.
+
+### Google Speech signer-based admission — 2026-10-20
+
+- Removed the version allowlist after the ARM64 variant210683481 exposed false incompatibility with the emulator-only210683483 policy. Admit the canonical enabled/exported Google recognition service with either inspected current Google signing certificate, regardless of version; unknown/current-multiple signers and other components remain rejected.
+- Preserve full version/update-time/signer identity for update invalidation, stale-inventory refusal and ready-before-PCM barriers. Extended consumer regressions for non-allowlisted trusted versions, stale eligible identities and explicit runtime errors before/after ready, with no same-turn retry/download or translation/output on failure.
+- This explicitly trusts the signed Google provider to honor offline requests; installed-language checks and `PREFER_OFFLINE` are not network-isolation attestations. Historical ARM binary inspection and x86 offline cohorts do not prove actual GrapheneOS/ARM or universal future-release behavior.
 
 ### Runtime bounds and source preparation — 2026-10-17
 

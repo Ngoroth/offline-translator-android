@@ -169,4 +169,11 @@
     <string name="model_asr_whisper_multilingual">Whisper tiny multibahasa · Inggris · offline</string>
     <string name="model_tts_irina">Piper Irina medium · Rusia</string>
     <string name="model_tts_lessac">Piper Lessac medium · Inggris</string>
+    <string name="settings_recognition_service">Layanan pengenalan ucapan</string>
+    <string name="recognition_service_on_device">Layanan di perangkat Android</string>
+    <string name="conversation_recognition_incompatible_service">Layanan pengenalan yang dipilih belum diverifikasi untuk percakapan offline. Pilih layanan yang kompatibel di setelan lanjutan.</string>
+    <string name="conversation_install_recognition_data">Instal data bahasa pengenalan</string>
+    <string name="conversation_recognition_install_error">Tidak dapat membuka penginstal bahasa dari layanan pengenalan yang dipilih.</string>
+    <string name="conversation_recognition_install_hint">Instal bahasa yang belum tersedia, lalu kembali untuk memeriksa kesiapan lagi.</string>
+    <string name="conversation_recognition_service_unavailable">Layanan pengenalan yang dipilih tidak tersedia. Pilih layanan yang terinstal di setelan lanjutan.</string>
 </resources>

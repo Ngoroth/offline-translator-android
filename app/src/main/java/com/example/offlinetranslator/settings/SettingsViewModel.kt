@@ -17,6 +17,7 @@ class SettingsViewModel(
     private val validate: (AppSettings) -> List<ConfigurationProblem>,
     private val persist: suspend (AppSettings) -> Boolean,
     private val teardownFailed: StateFlow<Boolean>,
+    private val recognitionServices: () -> List<Pair<String?, String>> = { emptyList() },
 ) : ViewModel() {
     private val mutableState = MutableStateFlow(SettingsUiState())
     val state = mutableState.asStateFlow()
@@ -45,6 +46,11 @@ class SettingsViewModel(
         editing = true
         val draft = committed ?: mutableState.value.draft
         mutableState.value = mutableState.value.copy(draft = draft, saveError = false, problems = validate(draft))
+        refreshRecognitionServices()
+    }
+
+    fun refreshRecognitionServices() {
+        mutableState.value = mutableState.value.copy(recognitionServices = recognitionServices())
     }
 
     fun updateDraft(value: AppSettings) {

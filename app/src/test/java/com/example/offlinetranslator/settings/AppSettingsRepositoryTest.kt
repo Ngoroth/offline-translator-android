@@ -45,38 +45,46 @@ class AppSettingsRepositoryTest {
     }
 
     @Test
-    fun legacyMigrationIsLazyNoOpPreservesBytesAndChangedSchemaFiveSettingsSurviveRestart() = runBlocking {
-        for (version in 1..4) {
+    fun legacyMigrationIsLazyNoOpPreservesBytesAndChangedSchemaSixSettingsSurviveRestart() = runBlocking {
+        for (version in 1..5) {
             val file = File(temp.root, "schema-$version.json")
-            val source = if (version == 4) AppSettingsTestFixtures.schemaFourDocument() else AppSettingsTestFixtures.legacyDocument(version)
+            val source = when (version) {
+                5 -> AppSettingsTestFixtures.schemaFourDocument().put("schemaVersion", 5)
+                    .put("speechRecognitionBackend", "sherpa")
+                4 -> AppSettingsTestFixtures.schemaFourDocument()
+                else -> AppSettingsTestFixtures.legacyDocument(version)
+            }
+            val migrated = AppSettingsTestFixtures.migrated.copy(speechRecognitionBackend =
+                if (version == 5) SpeechRecognitionBackend.SHERPA else SpeechRecognitionBackend.SYSTEM_OFFLINE)
             val originalBytes = (source.toString(2) + "\n").toByteArray(Charsets.UTF_8)
             file.writeBytes(originalBytes)
             val firstRepo = AppSettingsRepository(file)
             try {
-                assertEquals(AppSettingsTestFixtures.migrated, firstRepo.current())
+                assertEquals(migrated, firstRepo.current())
                 assertArrayEquals(originalBytes, file.readBytes())
-                assertEquals(AppSettingsTestFixtures.migrated, firstRepo.save(firstRepo.current()))
+                assertEquals(migrated, firstRepo.save(firstRepo.current()))
                 assertArrayEquals("A no-op save must not rewrite a legacy file", originalBytes, file.readBytes())
                 assertFalse(firstRepo.corruptionNotice.value)
             } finally {
                 firstRepo.closeAndJoin()
             }
 
-            val updated = AppSettingsTestFixtures.migrated.copy(
+            val updated = migrated.copy(
                 languagePair = LanguagePair(LanguageCatalog.FRENCH, LanguageCatalog.SPANISH),
                 speechOutputBackend = SpeechOutputBackend.SYSTEM_OFFLINE,
                 ttsSpeedPercent = 115,
+                speechRecognitionService = "missing.provider/.RecognitionService",
             )
             val secondRepo = AppSettingsRepository(file)
             try {
-                assertEquals(AppSettingsTestFixtures.migrated, secondRepo.current())
+                assertEquals(migrated, secondRepo.current())
                 assertArrayEquals(originalBytes, file.readBytes())
                 assertEquals(updated, secondRepo.save(updated))
                 assertEquals(updated, secondRepo.current())
                 val document = JSONObject(file.readText(Charsets.UTF_8))
-                assertEquals(5, document.getInt("schemaVersion"))
+                assertEquals(6, document.getInt("schemaVersion"))
                 assertEquals("system-offline", document.getString("speechOutputBackend"))
-                assertEquals("system-offline", document.getString("speechRecognitionBackend"))
+                assertEquals(migrated.speechRecognitionBackend.persistedId, document.getString("speechRecognitionBackend"))
                 for (field in listOf("textPair", "conversationLanguages", "asrModelIds", "ttsModelIds")) {
                     assertFalse(document.has(field))
                 }
@@ -102,6 +110,7 @@ class AppSettingsRepositoryTest {
         val selected = AppSettingsTestFixtures.migrated.copy(
             speechRecognitionBackend = SpeechRecognitionBackend.SHERPA,
             speechOutputBackend = SpeechOutputBackend.PIPER,
+            speechRecognitionService = "missing.provider/.RecognitionService",
         )
         val first = AppSettingsRepository(file)
         try {
@@ -110,7 +119,7 @@ class AppSettingsRepositoryTest {
             first.closeAndJoin()
         }
         val document = JSONObject(file.readText(Charsets.UTF_8))
-        assertEquals(5, document.getInt("schemaVersion"))
+        assertEquals(6, document.getInt("schemaVersion"))
         assertEquals("sherpa", document.getString("speechRecognitionBackend"))
         assertEquals("piper", document.getString("speechOutputBackend"))
 

@@ -2,6 +2,9 @@ package com.example.offlinetranslator.speech
 
 import android.Manifest
 import android.content.Context
+import android.content.BroadcastReceiver
+import android.content.ComponentName
+import android.content.IntentFilter
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.media.AudioFormat
@@ -20,6 +23,7 @@ import android.system.Os
 import android.system.OsConstants
 import android.system.StructPollfd
 import com.example.offlinetranslator.core.SpeechSegment
+import com.example.offlinetranslator.core.SpeechRecognitionReadiness
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.withContext
@@ -30,10 +34,12 @@ import java.io.Closeable
 
 /** The only substituted boundary in host tests is the external Android service/FD. */
 internal interface AndroidSpeechRecognizerClient {
-    fun available(): Boolean
     fun permissionGranted(): Boolean
     suspend fun create(listener: AndroidRecognitionListener): AndroidRecognitionSession
     fun openAudio(): AndroidRecognitionAudio
+    fun serviceStatus(): AndroidRecognitionServiceStatus
+    fun observePackage(onChanged: () -> Unit)
+    fun stopObservingPackage()
 }
 
 internal interface AndroidRecognitionAudio : Closeable {
@@ -50,6 +56,7 @@ internal data class AndroidRecognitionSupport(
     val installed: List<String>, val pending: List<String>, val supported: List<String>, val online: List<String>,
 )
 internal interface AndroidRecognitionListener {
+    fun ready() = Unit
     fun language(tag: String?, confidence: Int?, switchResult: Int?)
     fun segment(primary: String?)
     fun results(primary: String?)
@@ -63,18 +70,51 @@ internal interface AndroidModelDownloadListener {
     fun error(code: Int)
 }
 
-internal class AndroidPlatformSpeechRecognizerClient(context: Context) : AndroidSpeechRecognizerClient {
+internal class AndroidPlatformSpeechRecognizerClient(context: Context, private val selectedService: String?) : AndroidSpeechRecognizerClient {
     private val context = context.applicationContext
     private val mainHandler = Handler(Looper.getMainLooper())
-    override fun available() = SpeechRecognizer.isOnDeviceRecognitionAvailable(context)
+    private var receiver: BroadcastReceiver? = null
+    override fun serviceStatus(): AndroidRecognitionServiceStatus = selectedService?.let {
+        AndroidRecognitionServices.status(context, it)
+    } ?: AndroidRecognitionServiceStatus(
+        if (SpeechRecognizer.isOnDeviceRecognitionAvailable(context)) SpeechRecognitionReadiness.READY
+        else SpeechRecognitionReadiness.ENGINE_UNAVAILABLE,
+    )
+    override fun observePackage(onChanged: () -> Unit) {
+        val component = selectedService?.let(ComponentName::unflattenFromString) ?: return
+        if (receiver != null) return
+        val observer = object : BroadcastReceiver() {
+            override fun onReceive(context: Context, intent: Intent) {
+                if (intent.data?.schemeSpecificPart == component.packageName) onChanged()
+            }
+        }
+        val filter = IntentFilter().apply {
+            addAction(Intent.ACTION_PACKAGE_ADDED)
+            addAction(Intent.ACTION_PACKAGE_REMOVED)
+            addAction(Intent.ACTION_PACKAGE_REPLACED)
+            addAction(Intent.ACTION_PACKAGE_CHANGED)
+            addDataScheme("package")
+            addDataSchemeSpecificPart(component.packageName, android.os.PatternMatcher.PATTERN_LITERAL)
+        }
+        // These protected system actions cannot be sent by an ordinary application.
+        context.registerReceiver(observer, filter, Context.RECEIVER_NOT_EXPORTED)
+        receiver = observer
+    }
+    override fun stopObservingPackage() {
+        receiver?.let { context.unregisterReceiver(it) }
+        receiver = null
+    }
     override fun permissionGranted() = context.checkSelfPermission(Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED
     override fun openAudio(): AndroidRecognitionAudio = PipeAudio()
     override suspend fun create(listener: AndroidRecognitionListener): AndroidRecognitionSession {
         // All factory/session methods are called on the application's main dispatcher by the owner.
-        val recognizer = SpeechRecognizer.createOnDeviceSpeechRecognizer(context)
+        check(serviceStatus().readiness == SpeechRecognitionReadiness.READY) { "Recognition service is not qualified" }
+        val recognizer = selectedService?.let {
+            SpeechRecognizer.createSpeechRecognizer(context, requireNotNull(ComponentName.unflattenFromString(it)))
+        } ?: SpeechRecognizer.createOnDeviceSpeechRecognizer(context)
         try {
             recognizer.setRecognitionListener(object : RecognitionListener {
-                override fun onReadyForSpeech(params: Bundle?) = Unit
+                override fun onReadyForSpeech(params: Bundle?) = listener.ready()
                 override fun onBeginningOfSpeech() = Unit
                 override fun onRmsChanged(rmsdB: Float) = Unit
                 override fun onBufferReceived(buffer: ByteArray?) = Unit
@@ -147,6 +187,7 @@ internal class AndroidPlatformSpeechRecognizerClient(context: Context) : Android
             .putExtra(RecognizerIntent.EXTRA_ENABLE_LANGUAGE_SWITCH, RecognizerIntent.LANGUAGE_SWITCH_QUICK_RESPONSE)
             .putStringArrayListExtra(RecognizerIntent.EXTRA_LANGUAGE_DETECTION_ALLOWED_LANGUAGES, ArrayList(languages))
             .putStringArrayListExtra(RecognizerIntent.EXTRA_LANGUAGE_SWITCH_ALLOWED_LANGUAGES, ArrayList(languages))
+            .apply { if (selectedService != null) putExtra(RecognizerIntent.EXTRA_PREFER_OFFLINE, true) }
     }
     internal class PipeAudio : AndroidRecognitionAudio {
         private val pipe = ParcelFileDescriptor.createReliablePipe()

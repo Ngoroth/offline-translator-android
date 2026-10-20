@@ -169,4 +169,11 @@
     <string name="model_asr_whisper_multilingual">Whisper tiny बहुभाषी · अंग्रेज़ी · ऑफ़लाइन</string>
     <string name="model_tts_irina">Piper Irina medium · रूसी</string>
     <string name="model_tts_lessac">Piper Lessac medium · अंग्रेज़ी</string>
+    <string name="settings_recognition_service">वाक् पहचान सेवा</string>
+    <string name="recognition_service_on_device">Android की डिवाइस पर चलने वाली सेवा</string>
+    <string name="conversation_recognition_incompatible_service">चुनी गई पहचान सेवा ऑफ़लाइन बातचीत के लिए सत्यापित नहीं है। बेहतर सेटिंग में कोई संगत सेवा चुनें।</string>
+    <string name="conversation_install_recognition_data">वाक् पहचान की भाषा का डेटा इंस्टॉल करें</string>
+    <string name="conversation_recognition_install_error">चुनी गई पहचान सेवा का भाषा इंस्टॉलर नहीं खोला जा सका।</string>
+    <string name="conversation_recognition_install_hint">अनुपलब्ध भाषा इंस्टॉल करें, फिर तैयारी की स्थिति दोबारा जाँचने के लिए वापस आएँ।</string>
+    <string name="conversation_recognition_service_unavailable">चुनी गई पहचान सेवा उपलब्ध नहीं है। बेहतर सेटिंग में कोई इंस्टॉल की गई सेवा चुनें।</string>
 </resources>

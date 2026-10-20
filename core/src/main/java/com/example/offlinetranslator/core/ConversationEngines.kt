@@ -16,7 +16,7 @@ class UnsupportedSpeechLanguageException : RuntimeException("Unsupported speech 
 
 /** Selected on-device recognition resources; checking never starts a download. */
 enum class SpeechRecognitionReadiness {
-    READY, MISSING_LOCAL_MODEL, UNSUPPORTED, ENGINE_UNAVAILABLE,
+    READY, MISSING_LOCAL_MODEL, UNSUPPORTED, ENGINE_UNAVAILABLE, INCOMPATIBLE_SERVICE,
     SCHEDULED, DOWNLOADING, DOWNLOAD_FAILED, CHECK_FAILED,
 }
 

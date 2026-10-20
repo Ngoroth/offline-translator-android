@@ -15,6 +15,7 @@ Host checks do not require a device or speech-model downloads. They do not prove
 - Have both debug APKs built, `platform-tools` installed and `ANDROID_HOME` set. System recognition/output availability depends on the device, provider and installed local resources.
 - Before changing device state, preserve the **current** settings, permissions, connectivity, interface language, font scale and orientation. Keep evidence outside the checkout. Never restore a historical session's snapshot or clear someone else's data/model packs.
 - Use only committed or otherwise approved fixed fixtures. Keep the host microphone disabled for injected-audio checks. Do not collect personal conversations or publish raw logcat.
+- Prepared FD-injection instrumentation still requires the application's `android.permission.RECORD_AUDIO` runtime grant: the production adapter checks it before each turn. Record its original state, grant it explicitly for the fixture run when needed, keep host audio disabled, and restore the original grant afterward.
 
 These operations install APKs and can change app/device state. Arrange device access and resource preparation before running them; this guide does not authorize changes to another person's device.
 
@@ -30,6 +31,11 @@ $adb = Join-Path $env:ANDROID_HOME 'platform-tools/adb'
 
 First exercise **Prepare languages through the actual app UI**. Record missing, unsupported, scheduled, failed and ready states; Start must not become ready merely because a download was scheduled. Open the actual selected engine's voice-data installer when necessary. Do not replace consumer preparation evidence with preinstalled resources from a helper.
 
+For explicit System recognition, select the installed service in advanced Settings and Apply. Admission requires the canonical Google component in `AndroidRecognitionServices` and a singleton CURRENT signer `d22cc500299fb22873a01a010de1c82fbe4d061119b94814dd301dab50cb7678` or `7ce83c1b71f3d572fed04c8d40c5cb10ff75e6d87d9df6fbd53f0468c2905053`; there is no version allowlist. Wrong components/unknown current signers must remain incompatible. Verify version-only, update-time-only and trusted-signer changes invalidate stale preparation/inventory and release no PCM before fresh readiness, including before package broadcasts arrive. Readiness requires both selected local languages actually installed, not merely online/supported/pending. Check that Close discards the draft, Reset restores the designated route, restart preserves Apply, and an unavailable saved component remains repairable. Inventory and offline request parameters do not certify future provider/network behavior; the signed Google implementation is trusted to honor its offline contract, not sandboxed by this app.
+
+When a qualified selected language is missing, use **Install recognition language data** from Conversation. Observe the actual provider confirmation, cancel once, then use a fresh explicit action to confirm one missing locale. Return must remain nonrecording and only freshly check inventory; supported/pending/download-success are not both-installed readiness. Reuse existing packs and select an additional supported missing language rather than deleting prepared RU/EN. Generic Prepare must not await Google's known nonresponding SDK download callback. The default designated route keeps its separate native preparation semantics.
+
+
 After that public preparation check, the existing selected-resource inventory preparation can run:
 
 ```powershell
@@ -42,14 +48,20 @@ Preparation can download resources and requires connectivity. It is separate fro
 
 After saving the original radio state, disconnect networking and **verify actual connectivity absence**, not just the airplane-mode icon. Force-stop and reopen the prepared application before an offline restart check. Restore the original state afterward.
 
-Run the original human fixture cohort and the synthetic functional cohort separately:
+Run the original human fixture cohort for both designated and explicit routes, and keep synthetic functional coverage separate:
 
 ```powershell
 & $adb -s emulator-5554 shell am instrument -w -r -e class 'com.example.offlinetranslator.runtime.AndroidConversationRecognitionNativeTest#preparedOfflineProductionConversation' com.example.offlinetranslator.test/androidx.test.runner.AndroidJUnitRunner
+& $adb -s emulator-5554 shell am instrument -w -r -e class 'com.example.offlinetranslator.runtime.AndroidConversationRecognitionNativeTest#preparedOfflineExplicitGoogleProductionConversation' com.example.offlinetranslator.test/androidx.test.runner.AndroidJUnitRunner
 & $adb -s emulator-5554 shell am instrument -w -r -e class 'com.example.offlinetranslator.runtime.AndroidConversationRecognitionNativeTest#preparedOfflineSyntheticProductionConversation' com.example.offlinetranslator.test/androidx.test.runner.AndroidJUnitRunner
 ```
 
 The human cohort checks the pinned RU/EN inputs across the existing orders/directions. The synthetic cohort exercises installed-local-TTS functional coverage and selected translation/output checks. Synthetic completion is not a substitute for a failed human cohort, natural-speech coverage, all-direction semantic quality or microphone acoustics. Record readiness, source resolution, translation meaning and actual non-silent output completion—not merely a phase callback.
+
+The two human methods reuse the same full32 rows, directions, original assets and assertions. Keep complete terminal outcomes and retained per-row failures; do not narrow the explicit cohort, weaken confidence/meaning rules, or substitute synthetic success. A passing prepared-provider probe is not whole-app VAD/ASR/LID/MT/output evidence.
+
+For a controlled missing-ROM-component experiment, use a separate disposable/rootable Android emulator with host audio disabled, the exact qualified Google base/splits, and selected packs prepared through the public installer. Save the effective on-device resource and overlay state, blank only `android:string/config_defaultOnDeviceSpeechRecognitionService` with a scoped fabricated overlay, then verify the actual app's designated route is unavailable while its explicit route still recognizes fixed EN/RU through the production pipeline. Restore the overlay and shut down that emulator afterward. This is an Android resource experiment, not GrapheneOS reproduction, ARM64 qualification or a guarantee of version-atomic service binding.
+
 
 Additional existing boundaries can be checked independently:
 

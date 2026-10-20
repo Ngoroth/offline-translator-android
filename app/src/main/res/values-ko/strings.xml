@@ -169,4 +169,11 @@
     <string name="model_asr_whisper_multilingual">Whisper tiny multilingual · 영어 · 오프라인</string>
     <string name="model_tts_irina">Piper Irina medium · 러시아어</string>
     <string name="model_tts_lessac">Piper Lessac medium · 영어</string>
+    <string name="settings_recognition_service">음성 인식 서비스</string>
+    <string name="recognition_service_on_device">Android 기기 내 서비스</string>
+    <string name="conversation_recognition_incompatible_service">선택한 인식 서비스는 오프라인 대화에 적합한지 검증되지 않았습니다. 고급 설정에서 호환되는 서비스를 선택하세요.</string>
+    <string name="conversation_install_recognition_data">음성 인식 언어 데이터 설치</string>
+    <string name="conversation_recognition_install_error">선택한 인식 서비스의 언어 설치 화면을 열 수 없습니다.</string>
+    <string name="conversation_recognition_install_hint">누락된 언어를 설치한 후 돌아와서 준비 상태를 다시 확인하세요.</string>
+    <string name="conversation_recognition_service_unavailable">선택한 인식 서비스를 사용할 수 없습니다. 고급 설정에서 설치된 서비스를 선택하세요.</string>
 </resources>

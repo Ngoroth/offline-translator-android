@@ -29,6 +29,7 @@ class ConversationSessionConfig(
     val vadMinSilenceMs: Int,
     val ttsSpeedPercent: Int,
     val speechOutputBackend: SpeechOutputBackend,
+    val speechRecognitionService: String? = null,
 ) {
     val languages: List<LanguageId> = languages.toList()
     val asrModelIds: Map<LanguageId, String> = if (speechRecognitionBackend == SpeechRecognitionBackend.SHERPA) {

@@ -62,6 +62,7 @@ class AppRuntime private constructor(context: Context) {
             val latest = settings.current()
             return latest.copy(
                 speechRecognitionBackend = value.speechRecognitionBackend,
+                speechRecognitionService = value.speechRecognitionService,
                 speechOutputBackend = value.speechOutputBackend,
                 textEngineId = value.textEngineId,
                 conversationEngineId = value.conversationEngineId,
@@ -258,6 +259,7 @@ class AppRuntime private constructor(context: Context) {
             settings.languagePair.source == config.languages[0] && settings.languagePair.target == config.languages[1] &&
             settings.speechOutputBackend == config.speechOutputBackend && settings.conversationEngineId == config.engineId &&
             settings.speechRecognitionBackend == config.speechRecognitionBackend &&
+            settings.speechRecognitionService == config.speechRecognitionService &&
             settings.vadModelId == config.vadModelId && settings.languageIdModelId == config.languageIdModelId &&
             settings.vadMinSilenceMs == config.vadMinSilenceMs && settings.ttsSpeedPercent == config.ttsSpeedPercent
 

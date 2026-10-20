@@ -78,6 +78,8 @@ object ConversationTestTags {
     const val RECOGNITION_READINESS = "conversation_recognition_readiness"
     const val RECHECK_RECOGNITION = "conversation_recheck_recognition"
     const val OPEN_ADVANCED_SETTINGS = "conversation_open_advanced_settings"
+    const val INSTALL_RECOGNITION_DATA = "conversation_install_recognition_data"
+    const val RECOGNITION_INSTALL_ERROR = "conversation_recognition_install_error"
     const val PHASE = "conversation_phase"
 }
 
@@ -112,6 +114,10 @@ fun ConversationScreen(
     recognitionReadiness: SpeechRecognitionReadiness? = null,
     canChooseSherpa: Boolean = false,
     onOpenAdvancedSettings: () -> Unit = {},
+    canInstallRecognitionData: Boolean = false,
+    recognitionInstallError: Boolean = false,
+    onInstallRecognitionData: () -> Unit = {},
+    speechRecognitionService: String? = null,
 ) {
     val preparing = preparation == ConversationPreparation.CHECKING ||
         preparation == ConversationPreparation.INSTALLING || preparation == ConversationPreparation.TRANSLATION
@@ -161,15 +167,27 @@ fun ConversationScreen(
                 if (systemRecognition && recognitionReadiness != SpeechRecognitionReadiness.READY) {
                     Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         recognitionReadiness?.let {
-                            Text(stringResource(recognitionReadinessLabel(it)),
+                            Text(stringResource(recognitionReadinessLabel(it, speechRecognitionService != null)),
                                 modifier = Modifier.testTag(ConversationTestTags.RECOGNITION_READINESS))
                         }
+                        if (canInstallRecognitionData) {
+                            Text(stringResource(R.string.conversation_recognition_install_hint))
+                            TextButton(onInstallRecognitionData,
+                                enabled = ownerAvailable && !preparing && !languageChanging && !languageBlocked && !state.sessionActive,
+                                modifier = Modifier.heightIn(min = 48.dp).testTag(ConversationTestTags.INSTALL_RECOGNITION_DATA)) {
+                                Text(stringResource(R.string.conversation_install_recognition_data))
+                            }
+                        }
+                        if (recognitionInstallError) Text(stringResource(R.string.conversation_recognition_install_error),
+                            color = MaterialTheme.colorScheme.error,
+                            modifier = Modifier.testTag(ConversationTestTags.RECOGNITION_INSTALL_ERROR))
                         TextButton(onRecheck,
                             enabled = ownerAvailable && !preparing && !languageChanging && !languageBlocked && !state.sessionActive,
                             modifier = Modifier.heightIn(min = 48.dp).testTag(ConversationTestTags.RECHECK_RECOGNITION)) {
                             Text(stringResource(R.string.conversation_recheck_recognition))
                         }
-                        if (canChooseSherpa) {
+                        if (canChooseSherpa || recognitionReadiness == SpeechRecognitionReadiness.INCOMPATIBLE_SERVICE ||
+                            recognitionReadiness == SpeechRecognitionReadiness.ENGINE_UNAVAILABLE) {
                             TextButton(onOpenAdvancedSettings,
                                 enabled = !preparing && !languageChanging && !languageBlocked && !state.sessionActive,
                                 modifier = Modifier.heightIn(min = 48.dp).testTag(ConversationTestTags.OPEN_ADVANCED_SETTINGS)) {
@@ -260,6 +278,7 @@ fun ConversationScreen(
                                 onClick = onPrepare,
                                 enabled = ownerAvailable && !preparing && !state.sessionActive &&
                                     recognitionReadiness != SpeechRecognitionReadiness.UNSUPPORTED &&
+                                    recognitionReadiness != SpeechRecognitionReadiness.INCOMPATIBLE_SERVICE &&
                                     recognitionReadiness != SpeechRecognitionReadiness.ENGINE_UNAVAILABLE &&
                                     !languageChanging && !languageBlocked,
                                 modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).testTag(ConversationTestTags.PREPARE),
@@ -411,11 +430,13 @@ private fun failureLabel(value: ConversationFailure) = when (value) {
     ConversationFailure.PLAYBACK_FAILED -> R.string.conversation_failure_playback
 }
 
-private fun recognitionReadinessLabel(readiness: SpeechRecognitionReadiness): Int = when (readiness) {
+private fun recognitionReadinessLabel(readiness: SpeechRecognitionReadiness, explicitService: Boolean): Int = when (readiness) {
     SpeechRecognitionReadiness.READY -> R.string.conversation_recognition_ready
     SpeechRecognitionReadiness.MISSING_LOCAL_MODEL -> R.string.conversation_recognition_missing_model
     SpeechRecognitionReadiness.UNSUPPORTED -> R.string.conversation_recognition_unsupported
-    SpeechRecognitionReadiness.ENGINE_UNAVAILABLE -> R.string.conversation_recognition_engine_unavailable
+    SpeechRecognitionReadiness.INCOMPATIBLE_SERVICE -> R.string.conversation_recognition_incompatible_service
+    SpeechRecognitionReadiness.ENGINE_UNAVAILABLE -> if (explicitService) R.string.conversation_recognition_service_unavailable
+        else R.string.conversation_recognition_engine_unavailable
     SpeechRecognitionReadiness.SCHEDULED -> R.string.conversation_recognition_scheduled
     SpeechRecognitionReadiness.DOWNLOADING -> R.string.conversation_recognition_downloading
     SpeechRecognitionReadiness.DOWNLOAD_FAILED -> R.string.conversation_recognition_download_failed

@@ -22,12 +22,12 @@ class AppSettingsSerializerTest {
     private val serializer = AppSettingsSerializer()
 
     @Test
-    fun freshDefaultsRoundTripAsSchemaFiveWithSystemSelectionsAndNoLegacyFields() = runBlocking<Unit> {
+    fun freshDefaultsRoundTripAsSchemaSixWithSystemSelectionsAndNoLegacyFields() = runBlocking<Unit> {
         assertEquals(AppSettingsTestFixtures.freshInstall, serializer.defaultValue)
         val out = ByteArrayOutputStream()
         serializer.writeTo(serializer.defaultValue, out)
         val document = JSONObject(out.toString("UTF-8"))
-        assertEquals(5, document.getInt("schemaVersion"))
+        assertEquals(6, document.getInt("schemaVersion"))
         assertEquals("system-offline", document.getString("speechOutputBackend"))
         assertEquals("system-offline", document.getString("speechRecognitionBackend"))
         assertEquals("ru", document.getJSONObject("languagePair").getString("source"))
@@ -43,6 +43,7 @@ class AppSettingsSerializerTest {
         val original = AppSettingsTestFixtures.migrated.copy(
             languagePair = LanguagePair(LanguageCatalog.FRENCH, LanguageCatalog.SPANISH),
             speechRecognitionBackend = SpeechRecognitionBackend.SHERPA,
+            speechRecognitionService = "missing.provider/.RecognitionService",
             textEngineId = "other-text",
             conversationEngineId = "other-conversation",
             vadModelId = "other-vad",
@@ -53,7 +54,7 @@ class AppSettingsSerializerTest {
         val out = ByteArrayOutputStream()
         serializer.writeTo(original, out)
         val document = JSONObject(out.toString("UTF-8"))
-        assertEquals(5, document.getInt("schemaVersion"))
+        assertEquals(6, document.getInt("schemaVersion"))
         assertEquals("piper", document.getString("speechOutputBackend"))
         assertEquals("sherpa", document.getString("speechRecognitionBackend"))
         assertEquals(original, serializer.readFrom(ByteArrayInputStream(out.toByteArray())))
@@ -86,12 +87,53 @@ class AppSettingsSerializerTest {
     }
 
     @Test
+    fun oldSchemasDefaultServiceWithoutChangingTheirRecognitionBackend() = runBlocking<Unit> {
+        for (version in 1..5) {
+            val source = document(version)
+            val expected = if (version == 5) {
+                source.put("speechRecognitionBackend", "sherpa")
+                AppSettingsTestFixtures.migrated.copy(speechRecognitionBackend = SpeechRecognitionBackend.SHERPA)
+            } else AppSettingsTestFixtures.migrated
+            assertEquals(expected, serializer.readFrom(source.toString().byteInputStream()))
+        }
+    }
+
+    @Test
+    fun schemaSixRequiresNullOrBoundedComponentSyntaxButNotAnInstalledPackage() = runBlocking<Unit> {
+        assertCorrupt(document(6).apply { remove("speechRecognitionService") })
+        for (invalid in listOf("", "on-device", "provider/", "/Service", "provider//Service",
+            "provider/.Bad..Service", "provider/../../Service", "provider with spaces/.Service",
+            "provider/.${"S".repeat(512)}", 12, true, JSONArray(), JSONObject())) {
+            assertCorrupt(document(6).put("speechRecognitionService", invalid))
+        }
+        for (component in listOf("missing.provider/.RecognitionService", "missing.provider/missing.provider.RecognitionService",
+            "p/.${"S".repeat(509)}")) {
+            val selected = AppSettingsTestFixtures.migrated.copy(speechRecognitionBackend = SpeechRecognitionBackend.SHERPA,
+                speechRecognitionService = component)
+            val output = ByteArrayOutputStream()
+            serializer.writeTo(selected, output)
+            assertEquals(selected, serializer.readFrom(output.toByteArray().inputStream()))
+        }
+        assertEquals(AppSettingsTestFixtures.migrated, serializer.readFrom(document(6).toString().byteInputStream()))
+        assertCorrupt(document(5).put("speechRecognitionService", JSONObject.NULL))
+    }
+
+    @Test
+    fun invalidServiceCannotBeWrittenAsAnUnreadablePreference() {
+        val output = ByteArrayOutputStream()
+        assertThrows(IllegalArgumentException::class.java) {
+            runBlocking { serializer.writeTo(AppSettings(speechRecognitionService = "not-a-component"), output) }
+        }
+        assertEquals(0, output.size())
+    }
+
+    @Test
     fun onlySchemaOneToleratesUnknownTopLevelAndPairFields() = runBlocking<Unit> {
         val legacy = document(1).put("unknown", true).apply {
             getJSONObject("textPair").put("unknown", true)
         }
         assertEquals(AppSettingsTestFixtures.migrated, serializer.readFrom(legacy.toString().byteInputStream()))
-        for (version in 2..5) {
+        for (version in 2..6) {
             val pairField = if (version >= 4) "languagePair" else "textPair"
             assertCorrupt(document(version).put("unknown", true))
             assertCorrupt(document(version).apply { getJSONObject(pairField).put("unknown", true) })
@@ -112,10 +154,12 @@ class AppSettingsSerializerTest {
     }
 
     @Test
-    fun schemaFiveRequiresExactKnownRecognitionBackendIds() {
-        assertCorrupt(document(5).apply { remove("speechRecognitionBackend") })
-        for (invalid in listOf("SYSTEM_OFFLINE", "sherpa ", "unknown", "", 12, true, JSONObject.NULL)) {
-            assertCorrupt(document(5).put("speechRecognitionBackend", invalid))
+    fun recognitionSchemasRequireExactKnownRecognitionBackendIds() {
+        for (version in 5..6) {
+            assertCorrupt(document(version).apply { remove("speechRecognitionBackend") })
+            for (invalid in listOf("SYSTEM_OFFLINE", "sherpa ", "unknown", "", 12, true, JSONObject.NULL)) {
+                assertCorrupt(document(version).put("speechRecognitionBackend", invalid))
+            }
         }
         assertCorrupt(document(4).put("speechRecognitionBackend", "sherpa"))
     }
@@ -166,14 +210,15 @@ class AppSettingsSerializerTest {
     }
 
     @Test
-    fun schemasFourAndFiveRequireValidDistinctSharedPair() {
+    fun currentSchemasRequireValidDistinctSharedPair() {
         assertInvalidPair(4, "languagePair")
         assertInvalidPair(5, "languagePair")
+        assertInvalidPair(6, "languagePair")
     }
 
     @Test
     fun allSchemasRejectInvalidTypesIdentifiersAndIntegers() {
-        for (version in 1..5) {
+        for (version in 1..6) {
             for (field in listOf("textEngineId", "conversationEngineId", "vadModelId", "languageIdModelId")) {
                 assertCorrupt(document(version).apply { remove(field) })
                 for (invalid in listOf("../unsafe", "", "a".repeat(129), 12, JSONObject.NULL)) {
@@ -223,12 +268,12 @@ class AppSettingsSerializerTest {
 
     @Test
     fun unsupportedSchemaVersionsThrowCorruptionException() {
-        for (version in listOf(0, 6)) assertCorrupt(document(5).put("schemaVersion", version))
+        for (version in listOf(0, 7)) assertCorrupt(document(6).put("schemaVersion", version))
     }
 
     @Test
     fun documentByteLimitIsInclusiveForCurrentAndLegacyDocuments() = runBlocking<Unit> {
-        for (version in listOf(1, 5)) {
+        for (version in listOf(1, 6)) {
             val bytes = document(version).toString().toByteArray(Charsets.UTF_8)
             val atLimit = bytes + ByteArray(AppSettingsSerializer.MAX_BYTES - bytes.size) { ' '.code.toByte() }
             assertEquals(AppSettingsTestFixtures.migrated, serializer.readFrom(ByteArrayInputStream(atLimit)))
@@ -273,6 +318,7 @@ class AppSettingsSerializerTest {
         4 -> AppSettingsTestFixtures.schemaFourDocument()
         5 -> AppSettingsTestFixtures.schemaFourDocument().put("schemaVersion", 5)
             .put("speechRecognitionBackend", "system-offline")
+        6 -> document(5).put("schemaVersion", 6).put("speechRecognitionService", JSONObject.NULL)
         else -> error("Unsupported test schema")
     }
 

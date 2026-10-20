@@ -55,6 +55,14 @@ class AndroidConversationRecognitionNativeTest {
     }
 
     @Test fun preparedOfflineProductionConversation() = runBlocking<Unit> {
+        preparedHumanConversation(null)
+    }
+
+    @Test fun preparedOfflineExplicitGoogleProductionConversation() = runBlocking<Unit> {
+        preparedHumanConversation(AndroidRecognitionServices.GOOGLE_COMPONENT)
+    }
+
+    private suspend fun preparedHumanConversation(service: String?) {
         assertOffline()
         // Two same-language orders and two alternating orders, each under BOTH initial directions.
         val human = ConversationProofFixtures.SHORT_HUMAN_SOURCES
@@ -65,7 +73,7 @@ class AndroidConversationRecognitionNativeTest {
         var failedRows = 0
         try {
             for (pair in listOf(LanguagePair(russian, english), LanguagePair(english, russian))) {
-                withProductionConversation(pair) { proof ->
+                withProductionConversation(pair, service) { proof ->
                     for ((orderIndex, order) in orders.withIndex()) for (index in order) {
                         val source = human[index]
                         val rowId = "human:${pair.id}/order=$orderIndex/source=$index"
@@ -166,12 +174,13 @@ class AndroidConversationRecognitionNativeTest {
         assertTrue("Synthetic proof retained failures: ${failures.joinToString("; ")}", failures.isEmpty())
     }
 
-    private fun selected(pair: LanguagePair) = AppSettings(languagePair = pair,
+    private fun selected(pair: LanguagePair, service: String? = null) = AppSettings(languagePair = pair,
         speechRecognitionBackend = SpeechRecognitionBackend.SYSTEM_OFFLINE,
+        speechRecognitionService = service,
         speechOutputBackend = SpeechOutputBackend.SYSTEM_OFFLINE)
 
-    private suspend fun withProductionConversation(pair: LanguagePair, block: suspend (Proof) -> Unit) {
-        val config = selected(pair).conversationConfig()
+    private suspend fun withProductionConversation(pair: LanguagePair, service: String? = null, block: suspend (Proof) -> Unit) {
+        val config = selected(pair, service).conversationConfig()
         val store = SpeechModelStore(context)
         val recognition = AndroidConversationRecognitionEngine(context, config)
         val translation = MlKitTranslationEngine(context, config.pairs, MlKitPreparationCoordinator(context))
@@ -215,6 +224,7 @@ class AndroidConversationRecognitionNativeTest {
             rowMetadata.putString("proof_kind", "conversation_row")
             rowMetadata.putString("cohort", cohort)
             rowMetadata.putString("initial", config.languages.first().value)
+            rowMetadata.putString("recognition_service", config.speechRecognitionService ?: "designated-on-device")
             rowMetadata.putString("source_expected", language.value)
             rowMetadata.putString("source_reference", reference)
             rowMetadata.putString("row_outcome", "FATAL")

@@ -37,6 +37,8 @@ class SettingsSheetTest {
 
     @Test fun portraitSelectorsChangeOnlyDraftAndApplyReceivesActualSelections() {
         val state = mutableStateOf(SettingsUiState(loading = false, editable = true))
+        val service = "installed.provider/.RecognitionService"
+        state.value = state.value.copy(recognitionServices = listOf(service to "Installed recognition"))
         var applied: AppSettings? = null
         compose.setContent { MaterialTheme {
             Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
@@ -44,9 +46,11 @@ class SettingsSheetTest {
                     { state.value = state.value.copy(draft = it) }, { applied = state.value.draft }, {}, {}, {})
             }
         } }
+        choose(SettingsTestTags.RECOGNITION_SERVICE, service)
         choose(SettingsTestTags.OUTPUT_BACKEND, "piper")
         compose.onNodeWithTag(SettingsTestTags.LID).assertDoesNotExist()
         choose(SettingsTestTags.RECOGNITION_BACKEND, "sherpa")
+        compose.onNodeWithTag(SettingsTestTags.RECOGNITION_SERVICE).assertDoesNotExist()
         choose(SettingsTestTags.VAD, defaults.vadModelId)
         choose(SettingsTestTags.LID, defaults.languageIdModelId)
         choose(SettingsTestTags.SILENCE, "900")
@@ -55,12 +59,14 @@ class SettingsSheetTest {
             assertEquals(null, applied)
             assertEquals(SpeechOutputBackend.PIPER, state.value.draft.speechOutputBackend)
             assertEquals(SpeechRecognitionBackend.SHERPA, state.value.draft.speechRecognitionBackend)
+            assertEquals(service, state.value.draft.speechRecognitionService)
             assertEquals(defaults.vadModelId, state.value.draft.vadModelId)
             assertEquals(defaults.languageIdModelId, state.value.draft.languageIdModelId)
         }
         compose.onNodeWithTag(SettingsTestTags.APPLY).assertIsDisplayed().performClick()
         compose.runOnIdle {
             assertEquals(SpeechRecognitionBackend.SHERPA, applied?.speechRecognitionBackend)
+            assertEquals(service, applied?.speechRecognitionService)
             assertEquals(SpeechOutputBackend.PIPER, applied?.speechOutputBackend)
             assertEquals(900, applied?.vadMinSilenceMs)
             assertEquals(110, applied?.ttsSpeedPercent)
@@ -187,11 +193,14 @@ class SettingsSheetTest {
             } }
         }
         compose.onNodeWithTag(SettingsTestTags.LID).assertDoesNotExist()
+        choose(SettingsTestTags.RECOGNITION_SERVICE, DEFAULT_RECOGNITION_SERVICE)
         choose(SettingsTestTags.RECOGNITION_BACKEND, "sherpa")
+        compose.onNodeWithTag(SettingsTestTags.RECOGNITION_SERVICE).assertDoesNotExist()
         choose(SettingsTestTags.LID, defaults.languageIdModelId)
         choose(SettingsTestTags.OUTPUT_BACKEND, "piper")
         choose(SettingsTestTags.RECOGNITION_BACKEND, "system-offline")
         compose.onNodeWithTag(SettingsTestTags.LID).assertDoesNotExist()
+        compose.onNodeWithTag(SettingsTestTags.RECOGNITION_SERVICE).performScrollTo().assertIsEnabled()
         compose.runOnIdle {
             assertEquals(SpeechOutputBackend.PIPER, state.value.draft.speechOutputBackend)
             assertEquals(defaults.languageIdModelId, state.value.draft.languageIdModelId)
@@ -232,6 +241,29 @@ class SettingsSheetTest {
             assertEquals("mlkit", state.value.draft.textEngineId)
             assertEquals("mlkit", state.value.draft.conversationEngineId)
         }
+    }
+
+    @Test fun removedRecognitionServiceStaysVisibleUntilExplicitReplacement() {
+        val missing = "removed.provider/.RecognitionService"
+        val installed = "installed.provider/.RecognitionService"
+        val state = mutableStateOf(SettingsUiState(draft = defaults.copy(speechRecognitionService = missing),
+            loading = false, editable = true, recognitionServices = listOf(installed to "Installed recognition")))
+        compose.setContent { MaterialTheme {
+            SettingsSheet(state.value, choices, listOf(MlKitTranslationEngine.descriptor),
+                { state.value = state.value.copy(draft = it) }, {}, {}, {}, {})
+        } }
+        compose.onNodeWithTag(SettingsTestTags.RECOGNITION_SERVICE).performScrollTo()
+            .assertIsEnabled().assertTextContains(missing, substring = true)
+        compose.onNodeWithTag(SettingsTestTags.APPLY).assertIsEnabled()
+        choose(SettingsTestTags.RECOGNITION_SERVICE, installed)
+        compose.runOnIdle { assertEquals(installed, state.value.draft.speechRecognitionService) }
+        choose(SettingsTestTags.RECOGNITION_BACKEND, SpeechRecognitionBackend.SHERPA.persistedId)
+        compose.onNodeWithTag(SettingsTestTags.RECOGNITION_SERVICE).assertDoesNotExist()
+        compose.runOnIdle { assertEquals(installed, state.value.draft.speechRecognitionService) }
+        choose(SettingsTestTags.RECOGNITION_BACKEND, SpeechRecognitionBackend.SYSTEM_OFFLINE.persistedId)
+        compose.onNodeWithTag(SettingsTestTags.RECOGNITION_SERVICE).performScrollTo().assertTextContains("Installed recognition")
+        choose(SettingsTestTags.RECOGNITION_SERVICE, DEFAULT_RECOGNITION_SERVICE)
+        compose.runOnIdle { assertEquals(null, state.value.draft.speechRecognitionService) }
     }
 
 }

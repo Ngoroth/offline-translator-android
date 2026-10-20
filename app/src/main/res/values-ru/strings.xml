@@ -169,4 +169,11 @@
     <string name="model_asr_whisper_multilingual">Whisper tiny multilingual · английский · офлайн</string>
     <string name="model_tts_irina">Piper Irina medium · русский</string>
     <string name="model_tts_lessac">Piper Lessac medium · английский</string>
+    <string name="settings_recognition_service">Служба распознавания речи</string>
+    <string name="recognition_service_on_device">Локальная служба Android</string>
+    <string name="conversation_recognition_incompatible_service">Выбранная служба распознавания не прошла проверку для офлайн-разговора. Выберите совместимую службу в расширенных настройках.</string>
+    <string name="conversation_install_recognition_data">Установить языковые данные распознавания</string>
+    <string name="conversation_recognition_install_error">Не удалось открыть установщик языков выбранной службы распознавания.</string>
+    <string name="conversation_recognition_install_hint">Установите недостающий язык, затем вернитесь и проверьте готовность снова.</string>
+    <string name="conversation_recognition_service_unavailable">Выбранная служба распознавания недоступна. Выберите установленную службу в расширенных настройках.</string>
 </resources>

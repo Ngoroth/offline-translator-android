@@ -2,6 +2,7 @@ name: Host checks
 
 on:
   push:
+    branches: ['**']
   pull_request:
   workflow_dispatch:
 

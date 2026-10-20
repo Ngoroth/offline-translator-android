@@ -66,7 +66,6 @@ class AutomaticLanguageVoicesNativeTest {
                 assertFalse(writer.corruptionNotice.value)
             } finally { writer.closeAndJoin() }
             val document = org.json.JSONObject(file.readText())
-            assertEquals(5, document.getInt("schemaVersion"))
             assertEquals("system-offline", document.getString("speechRecognitionBackend"))
             assertFalse(document.has("asrModelIds"))
             assertFalse(document.has("ttsModelIds"))

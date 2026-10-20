@@ -169,4 +169,11 @@
     <string name="model_asr_whisper_multilingual">Whisper tiny multilingual · tiếng Anh · ngoại tuyến</string>
     <string name="model_tts_irina">Piper Irina medium · tiếng Nga</string>
     <string name="model_tts_lessac">Piper Lessac medium · tiếng Anh</string>
+    <string name="settings_recognition_service">Dịch vụ nhận dạng giọng nói</string>
+    <string name="recognition_service_on_device">Dịch vụ trên thiết bị của Android</string>
+    <string name="conversation_recognition_incompatible_service">Dịch vụ nhận dạng đã chọn chưa được xác nhận phù hợp cho hội thoại ngoại tuyến. Hãy chọn dịch vụ tương thích trong cài đặt nâng cao.</string>
+    <string name="conversation_install_recognition_data">Cài đặt dữ liệu ngôn ngữ nhận dạng</string>
+    <string name="conversation_recognition_install_error">Không thể mở trình cài đặt ngôn ngữ của dịch vụ nhận dạng đã chọn.</string>
+    <string name="conversation_recognition_install_hint">Hãy cài đặt ngôn ngữ còn thiếu, rồi quay lại để kiểm tra trạng thái sẵn sàng.</string>
+    <string name="conversation_recognition_service_unavailable">Dịch vụ nhận dạng đã chọn không khả dụng. Hãy chọn một dịch vụ đã cài đặt trong cài đặt nâng cao.</string>
 </resources>

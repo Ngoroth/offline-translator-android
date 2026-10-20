@@ -169,4 +169,11 @@
     <string name="model_asr_whisper_multilingual">Whisper tiny หลายภาษา · อังกฤษ · ออฟไลน์</string>
     <string name="model_tts_irina">Piper Irina medium · รัสเซีย</string>
     <string name="model_tts_lessac">Piper Lessac medium · อังกฤษ</string>
+    <string name="settings_recognition_service">บริการรู้จำเสียงพูด</string>
+    <string name="recognition_service_on_device">บริการบนอุปกรณ์ของ Android</string>
+    <string name="conversation_recognition_incompatible_service">บริการรู้จำเสียงที่เลือกยังไม่ได้รับการยืนยันว่าเหมาะสำหรับการสนทนาออฟไลน์ เลือกบริการที่เข้ากันได้ในการตั้งค่าขั้นสูง</string>
+    <string name="conversation_install_recognition_data">ติดตั้งข้อมูลภาษาสำหรับการรู้จำเสียง</string>
+    <string name="conversation_recognition_install_error">ไม่สามารถเปิดตัวติดตั้งภาษาของบริการรู้จำเสียงที่เลือกได้</string>
+    <string name="conversation_recognition_install_hint">ติดตั้งภาษาที่ขาดอยู่ แล้วกลับมาตรวจสอบความพร้อมอีกครั้ง</string>
+    <string name="conversation_recognition_service_unavailable">บริการรู้จำเสียงที่เลือกไม่พร้อมใช้งาน เลือกบริการที่ติดตั้งไว้ในการตั้งค่าขั้นสูง</string>
 </resources>

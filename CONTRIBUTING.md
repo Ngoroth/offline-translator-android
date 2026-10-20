@@ -13,6 +13,8 @@ Small focused pull requests are welcome. Explain the problem, behavior changed, 
 
 The [host workflow](.github/workflows/host-checks.yml) provisions official Android command-line tools archive revision **16111833** (CLI 23.0), JDK 17, platform 37.0 and Build Tools 36.0.0 on Ubuntu 24.04. Locally, install the named packages with the official SDK Manager and review/accept its licenses; the project's Apache license does not grant SDK or third-party rights.
 
+Host checks run for branch pushes, pull requests and manual dispatch. Tag-only pushes do not start this workflow; publish release tags only after checking their branch commit.
+
 The app compiles against API 37, targets API 36, requires API 34 (Android 14), and packages `arm64-v8a` and `x86_64`. Build/dependency downloads require network access; host checks need neither speech models nor an emulator.
 
 ## Baseline host checks

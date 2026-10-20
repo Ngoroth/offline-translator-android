@@ -121,6 +121,27 @@ class RuntimeSettingsNativeTest {
         } finally { runtime.release(fresh) }
     }
 
+    @Test fun recognitionServiceCutoverRevokesOwnerAndRejectsOldServiceBeforeCapture() = runBlocking {
+        assertTrue(runtime.applySettings(runtime.settings.current().copy(speechRecognitionBackend = SpeechRecognitionBackend.SYSTEM_OFFLINE)))
+        val previous = runtime.settings.current()
+        val stale = previous.conversationConfig()
+        val owner = runtime.createConversationOwner(stale)
+        val selected = previous.copy(speechRecognitionService = "missing.provider/.RecognitionService")
+        assertTrue(runtime.applySettings(selected))
+        assertEquals(selected, runtime.settings.current())
+        assertFalse(runtime.owners.isCurrent(owner))
+        var staleCaptureBuilt = false
+        assertNull(runtime.createConversationOwnerIfUnowned(stale) { _, _ ->
+            staleCaptureBuilt = true
+            error("Stale service must be rejected before capture construction")
+        })
+        assertFalse(staleCaptureBuilt)
+        assertFalse(runtime.startConversation(owner))
+        runtime.closeAndJoin()
+        runtime = AppRuntime.get(context)
+        assertEquals(selected, runtime.settings.current())
+    }
+
     private fun loadOfficialRussianPcm(): ShortArray {
         val testContext = InstrumentationRegistry.getInstrumentation().context
         val temp = File(context.cacheDir, "temp-native-ru.wav")

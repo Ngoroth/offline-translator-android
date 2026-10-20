@@ -169,4 +169,11 @@
     <string name="model_asr_whisper_multilingual">Whisper tiny multilingual · 英语 · 离线</string>
     <string name="model_tts_irina">Piper Irina medium · 俄语</string>
     <string name="model_tts_lessac">Piper Lessac medium · 英语</string>
+    <string name="settings_recognition_service">语音识别服务</string>
+    <string name="recognition_service_on_device">Android 设备端服务</string>
+    <string name="conversation_recognition_incompatible_service">所选识别服务尚未通过离线对话验证。请在高级设置中选择兼容的服务。</string>
+    <string name="conversation_install_recognition_data">安装语音识别语言数据</string>
+    <string name="conversation_recognition_install_error">无法打开所选识别服务的语言安装程序。</string>
+    <string name="conversation_recognition_install_hint">请安装缺少的语言，然后返回重新检查就绪状态。</string>
+    <string name="conversation_recognition_service_unavailable">所选识别服务不可用。请在高级设置中选择已安装的服务。</string>
 </resources>
