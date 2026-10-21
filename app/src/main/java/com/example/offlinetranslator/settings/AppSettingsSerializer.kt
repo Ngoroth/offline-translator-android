@@ -32,14 +32,15 @@ class AppSettingsSerializer : Serializer<AppSettings> {
         try {
             val root = JSONObject(raw.toString(Charsets.UTF_8))
             val version = integer(root, "schemaVersion")
-            require(version in 1..5) { "Unsupported settings schema" }
+            require(version in 1..6) { "Unsupported settings schema" }
             if (version == 1) validateLegacyModels(root.getJSONObject("ttsModelIds"))
             else {
                 val allowedFields = when (version) {
                     2 -> V2_FIELDS
                     3 -> V3_FIELDS
                     4 -> V4_FIELDS
-                    else -> V5_FIELDS
+                    5 -> V5_FIELDS
+                    else -> V6_FIELDS
                 }
                 require(root.keys().asSequence().all { it in allowedFields }) { "Unknown settings field" }
             }
@@ -62,7 +63,7 @@ class AppSettingsSerializer : Serializer<AppSettings> {
                 backend = SpeechOutputBackend.entries.firstOrNull { it.persistedId == backendId }
                     ?: throw IllegalArgumentException("Unknown speech output backend")
             }
-            val recognitionBackend = if (version == 5) {
+            val recognitionBackend = if (version >= 5) {
                 val backendId = string(root, "speechRecognitionBackend")
                 SpeechRecognitionBackend.entries.firstOrNull { it.persistedId == backendId }
                     ?: throw IllegalArgumentException("Unknown speech recognition backend")
@@ -71,6 +72,7 @@ class AppSettingsSerializer : Serializer<AppSettings> {
                 languagePair = pair,
                 speechOutputBackend = backend,
                 speechRecognitionBackend = recognitionBackend,
+                speechRecognitionService = if (version >= 6) recognitionService(root) else null,
                 textEngineId = identifier(root, "textEngineId"),
                 conversationEngineId = identifier(root, "conversationEngineId"),
                 vadModelId = identifier(root, "vadModelId"),
@@ -86,11 +88,13 @@ class AppSettingsSerializer : Serializer<AppSettings> {
     }
 
     override suspend fun writeTo(t: AppSettings, output: OutputStream) {
+        t.speechRecognitionService?.let { require(validRecognitionService(it)) { "Invalid recognition service component" } }
         val root = JSONObject()
-            .put("schemaVersion", 5)
+            .put("schemaVersion", 6)
             .put("languagePair", JSONObject().put("source", t.languagePair.source.value).put("target", t.languagePair.target.value))
             .put("speechOutputBackend", t.speechOutputBackend.persistedId)
             .put("speechRecognitionBackend", t.speechRecognitionBackend.persistedId)
+            .put("speechRecognitionService", t.speechRecognitionService ?: JSONObject.NULL)
             .put("textEngineId", t.textEngineId)
             .put("conversationEngineId", t.conversationEngineId)
             .put("vadModelId", t.vadModelId)
@@ -123,6 +127,16 @@ class AppSettingsSerializer : Serializer<AppSettings> {
         }
     }
 
+    private fun recognitionService(root: JSONObject): String? {
+        val value = root.get("speechRecognitionService")
+        if (value === JSONObject.NULL) return null
+        require(value is String && validRecognitionService(value)) { "Invalid recognition service component" }
+        return value
+    }
+
+    private fun validRecognitionService(value: String): Boolean =
+        value.length <= 512 && COMPONENT.matches(value)
+
     private fun identifier(root: JSONObject, key: String): String = string(root, key).also { require(ID.matches(it)) }
     private fun string(root: JSONObject, key: String): String = root.get(key).let { require(it is String); it }
     private fun integer(root: JSONObject, key: String): Int {
@@ -147,6 +161,8 @@ class AppSettingsSerializer : Serializer<AppSettings> {
             "vadMinSilenceMs", "ttsSpeedPercent",
         )
         private val V5_FIELDS = V4_FIELDS + "speechRecognitionBackend"
+        private val V6_FIELDS = V5_FIELDS + "speechRecognitionService"
+        private val COMPONENT = Regex("[A-Za-z_][A-Za-z0-9_]*(?:\\.[A-Za-z_][A-Za-z0-9_]*)*/\\.?[A-Za-z_\\$][A-Za-z0-9_\\$]*(?:\\.[A-Za-z_\\$][A-Za-z0-9_\\$]*)*")
         private val ID = Regex("[a-z0-9][a-z0-9._-]{0,127}")
     }
 }

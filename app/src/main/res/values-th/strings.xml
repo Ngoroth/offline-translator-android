@@ -142,7 +142,7 @@
     <string name="settings_interface_language_immediate">ใช้ทันที</string>
     <string name="settings_interface_language_error">เปลี่ยนภาษาอินเทอร์เฟซไม่ได้ เลือกอีกครั้งเพื่อลองใหม่</string>
     <string name="settings_about_translation">เกี่ยวกับการแปล</string>
-    <string name="settings_mlkit_summary">ML Kit เน้นการแปลบนอุปกรณ์อย่างรวดเร็ว แต่อาจตีความความหมายผิด มีแผนเพิ่มเครื่องมือแปลอื่นที่เน้นคุณภาพ แต่ยังไม่พร้อมใช้งาน</string>
+    <string name="settings_mlkit_summary">ML Kit เน้นการแปลบนอุปกรณ์อย่างรวดเร็ว แต่อาจตีความความหมายผิด</string>
     <string name="settings_provider_summary">เครื่องมือแปลที่เลือก: %1$s</string>
     <string name="help_google_translation">ML Kit ใช้ Google Translate เพื่อแปลบนอุปกรณ์ ลิงก์ด้านล่างอธิบายข้อกำหนดการระบุแหล่งที่มาของ Google</string>
     <string name="google_attribution_requirements_link">ข้อกำหนดการระบุแหล่งที่มาของ Google</string>
@@ -169,4 +169,22 @@
     <string name="model_asr_whisper_multilingual">Whisper tiny หลายภาษา · อังกฤษ · ออฟไลน์</string>
     <string name="model_tts_irina">Piper Irina medium · รัสเซีย</string>
     <string name="model_tts_lessac">Piper Lessac medium · อังกฤษ</string>
+    <string name="translation_verifying">กำลังตรวจสอบความสมบูรณ์ของโมเดลแปล…</string>
+    <string name="translation_loading">กำลังโหลดและเตรียมเครื่องแปลภายในอุปกรณ์…</string>
+    <string name="translation_download_bytes">%1$d / %2$d ไบต์</string>
+    <string name="translation_model_repair">โมเดลแปลหายไปหรือเสียหาย โปรดเตรียมการแปลออฟไลน์อีกครั้ง</string>
+    <string name="translation_storage_error">บันทึกหรือดาวน์โหลดโมเดลไม่ได้ ตรวจสอบพื้นที่ว่างและ Wi‑Fi แล้วเตรียมอีกครั้ง</string>
+    <string name="translation_runtime_error">โหลดเครื่องแปลภายในไม่ได้ โปรดเตรียมอีกครั้ง หากยังเกิดปัญหาให้เริ่มแอปใหม่</string>
+    <string name="translation_memory_error">หน่วยความจำไม่พอสำหรับการแปล ปิดแอปอื่นแล้วเตรียมใหม่ หรือย่อข้อความ</string>
+    <string name="translation_limit_error">เกินขีดจำกัดบริบทหรือผลลัพธ์ โปรดย่อข้อความต้นฉบับ ไม่มีการเก็บคำแปลที่ไม่สมบูรณ์</string>
+    <string name="translation_encoding_error">ต้นฉบับมี Unicode ที่ไม่ถูกต้อง โปรดแก้ไขข้อความแล้วลองอีกครั้ง</string>
+    <string name="translation_timeout">การเตรียมการแปลใช้เวลานานเกินไป โปรดตรวจสอบสถานะแล้วลองเตรียมอีกครั้ง</string>
+    <string name="tencent_model_explanation">Tencent Hy-MT2 ใช้โมเดล 1.13 GB เดียวสำหรับทุกภาษา ดาวน์โหลดเมื่อกดเตรียมผ่าน Wi‑Fi เท่านั้น หลังเปิดใหม่ต้องเตรียมภายในอีกครั้ง อาจใช้หน่วยความจำหลาย GB คุณภาพการแปลและประสิทธิภาพบนโทรศัพท์ยังไม่ผ่านการรับรอง</string>
+    <string name="settings_recognition_service">บริการรู้จำเสียงพูด</string>
+    <string name="recognition_service_on_device">บริการบนอุปกรณ์ของ Android</string>
+    <string name="conversation_recognition_incompatible_service">บริการรู้จำเสียงที่เลือกยังไม่ได้รับการยืนยันว่าเหมาะสำหรับการสนทนาออฟไลน์ เลือกบริการที่เข้ากันได้ในการตั้งค่าขั้นสูง</string>
+    <string name="conversation_install_recognition_data">ติดตั้งข้อมูลภาษาสำหรับการรู้จำเสียง</string>
+    <string name="conversation_recognition_install_error">ไม่สามารถเปิดตัวติดตั้งภาษาของบริการรู้จำเสียงที่เลือกได้</string>
+    <string name="conversation_recognition_install_hint">ติดตั้งภาษาที่ขาดอยู่ แล้วกลับมาตรวจสอบความพร้อมอีกครั้ง</string>
+    <string name="conversation_recognition_service_unavailable">บริการรู้จำเสียงที่เลือกไม่พร้อมใช้งาน เลือกบริการที่ติดตั้งไว้ในการตั้งค่าขั้นสูง</string>
 </resources>

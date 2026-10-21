@@ -11,6 +11,7 @@ val generateLicenseAssets = tasks.register<Sync>("generateLicenseAssets") {
     from(rootProject.layout.projectDirectory.file("THIRD_PARTY_NOTICES.md"))
     from(rootProject.layout.projectDirectory.dir("LICENSES")) { into("LICENSES") }
     from(rootProject.layout.projectDirectory.file("engine-sherpa/THIRD_PARTY.md")) { into("engine-sherpa") }
+    from(rootProject.layout.projectDirectory.file("engine-tencent/THIRD_PARTY.md")) { into("engine-tencent") }
     into(licenseAssets.map { it.dir("licenses") })
 }
 tasks.matching { it.name == "preBuild" }.configureEach { dependsOn(generateLicenseAssets) }
@@ -60,10 +61,14 @@ android {
         applicationId = "com.example.offlinetranslator"
         minSdk = 34
         targetSdk = 36
-        versionCode = 1
-        versionName = "0.1.0"
+        versionCode = 3
+        versionName = "0.1.2"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         ndk { abiFilters += setOf("arm64-v8a", "x86_64") }
+    }
+
+    buildTypes.getByName("debug") {
+        versionNameSuffix = "-debug"
     }
 
     buildFeatures { compose = true }
@@ -94,6 +99,7 @@ configurations.configureEach {
 dependencies {
     implementation(project(":core"))
     implementation(project(":engine-mlkit"))
+    implementation(project(":engine-tencent"))
     implementation(project(":engine-sherpa"))
     // `:engine-sherpa` owns the runtime through the root's local verified artifact repo.
     implementation(platform(libs.androidx.compose.bom))

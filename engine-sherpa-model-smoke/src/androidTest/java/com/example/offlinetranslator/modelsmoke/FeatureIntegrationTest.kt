@@ -38,6 +38,7 @@ class FeatureIntegrationTest {
             override fun close()=Unit
         }
         val mt=object: TranslationEngine {
+            override val preparation = kotlinx.coroutines.flow.MutableStateFlow(TranslationPreparationState(TranslationPreparationPhase.READY))
             override suspend fun modelAvailability()=ModelAvailability.READY
             override suspend fun prepare(): ModelAvailability=error("offline fake cannot prepare")
             override suspend fun translate(pair: LanguagePair,text: String)="translated"

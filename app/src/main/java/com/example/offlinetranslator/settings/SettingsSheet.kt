@@ -33,6 +33,7 @@ object SettingsTestTags {
     const val SPEED = "settings_speed"
     const val OUTPUT_BACKEND = "settings_output_backend"
     const val RECOGNITION_BACKEND = "settings_recognition_backend"
+    const val RECOGNITION_SERVICE = "settings_recognition_service"
     const val INTERFACE_LANGUAGE = "settings_interface_language"
 }
 
@@ -98,6 +99,16 @@ fun SettingsSheet(
                         ), enabled, SettingsTestTags.RECOGNITION_BACKEND) { selected ->
                             onDraftChanged(draft.copy(speechRecognitionBackend = SpeechRecognitionBackend.entries.first { it.persistedId == selected }))
                         }
+                        if (!state.usesSherpaRecognition) {
+                            val defaultLabel = stringResource(R.string.recognition_service_on_device)
+                            val services = listOf(DEFAULT_RECOGNITION_SERVICE to defaultLabel) +
+                                state.recognitionServices.mapNotNull { (component, label) -> component?.let { it to label } }
+                            Choice(stringResource(R.string.settings_recognition_service),
+                                draft.speechRecognitionService ?: DEFAULT_RECOGNITION_SERVICE,
+                                services, enabled, SettingsTestTags.RECOGNITION_SERVICE) { selected ->
+                                onDraftChanged(draft.copy(speechRecognitionService = selected.takeUnless { it == DEFAULT_RECOGNITION_SERVICE }))
+                            }
+                        }
                         Choice(stringResource(R.string.settings_output_backend), draft.speechOutputBackend.persistedId, listOf(
                             SpeechOutputBackend.SYSTEM_OFFLINE.persistedId to stringResource(R.string.settings_output_system),
                             SpeechOutputBackend.PIPER.persistedId to stringResource(R.string.settings_output_piper),
@@ -135,8 +146,11 @@ fun SettingsSheet(
                         Text(stringResource(R.string.settings_about_translation), style = MaterialTheme.typography.titleMedium)
                         for (provider in providers) {
                             if (provider.id == draft.textEngineId || provider.id == draft.conversationEngineId) {
-                                Text(if (provider.id == "mlkit" && providers.size == 1) stringResource(R.string.settings_mlkit_summary)
-                                    else stringResource(R.string.settings_provider_summary, provider.displayName))
+                                Text(when (provider.id) {
+                                    "mlkit" -> stringResource(R.string.settings_mlkit_summary)
+                                    "tencent" -> stringResource(R.string.tencent_model_explanation)
+                                    else -> stringResource(R.string.settings_provider_summary, provider.displayName)
+                                })
                             }
                         }
                         Text(stringResource(R.string.settings_advanced_reset_explanation), style = MaterialTheme.typography.bodySmall)
@@ -156,6 +170,9 @@ fun SettingsSheet(
     }
 }
 }
+
+// A UI-only ID: flattened Android components always contain a slash.
+internal const val DEFAULT_RECOGNITION_SERVICE = "on-device"
 
 @Composable
 private fun Choice(label: String, selected: String, options: List<Pair<String, String>>, enabled: Boolean, tag: String, onSelect: (String) -> Unit) {

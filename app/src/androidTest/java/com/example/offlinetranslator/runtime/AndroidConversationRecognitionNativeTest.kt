@@ -8,8 +8,6 @@ import android.util.Log
 import androidx.test.platform.app.InstrumentationRegistry
 import com.example.offlinetranslator.conversation.ConversationProofFixtures
 import com.example.offlinetranslator.core.*
-import com.example.offlinetranslator.mlkit.MlKitPreparationCoordinator
-import com.example.offlinetranslator.mlkit.MlKitTranslationEngine
 import com.example.offlinetranslator.sherpa.SelectedSpeechResources
 import com.example.offlinetranslator.sherpa.SpeechModelStore
 import com.example.offlinetranslator.speech.*
@@ -22,7 +20,7 @@ import java.io.File
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
 
-/** Real on-device adapter + production VAD/ML Kit/local output. No microphone or natural14 claim. */
+/** Real on-device adapter + production VAD/selected local translation/output. No microphone or natural14 claim. */
 class AndroidConversationRecognitionNativeTest {
     private val instrumentation = InstrumentationRegistry.getInstrumentation()
     private val context = instrumentation.targetContext
@@ -55,6 +53,14 @@ class AndroidConversationRecognitionNativeTest {
     }
 
     @Test fun preparedOfflineProductionConversation() = runBlocking<Unit> {
+        preparedHumanConversation(null)
+    }
+
+    @Test fun preparedOfflineExplicitGoogleProductionConversation() = runBlocking<Unit> {
+        preparedHumanConversation(AndroidRecognitionServices.GOOGLE_COMPONENT)
+    }
+
+    private suspend fun preparedHumanConversation(service: String?) {
         assertOffline()
         // Two same-language orders and two alternating orders, each under BOTH initial directions.
         val human = ConversationProofFixtures.SHORT_HUMAN_SOURCES
@@ -65,7 +71,7 @@ class AndroidConversationRecognitionNativeTest {
         var failedRows = 0
         try {
             for (pair in listOf(LanguagePair(russian, english), LanguagePair(english, russian))) {
-                withProductionConversation(pair) { proof ->
+                withProductionConversation(pair, service = service) { proof ->
                     for ((orderIndex, order) in orders.withIndex()) for (index in order) {
                         val source = human[index]
                         val rowId = "human:${pair.id}/order=$orderIndex/source=$index"
@@ -114,6 +120,26 @@ class AndroidConversationRecognitionNativeTest {
         assertOffline()
         assertEquals(32, completed)
         assertTrue("All original human32 rows must qualify; failures=${failures.joinToString("; ")}", failures.isEmpty())
+    }
+
+    @Test fun preparedOfflineTencentRussianEnglishConversation() = runBlocking<Unit> {
+        assertOffline()
+        val failures = mutableListOf<String>()
+        withProductionConversation(LanguagePair(russian, english), engineId = "tencent") { proof ->
+            for (language in listOf(russian, english)) {
+                val source = SYNTHETIC.getValue(language.value)
+                val pcm = proof.output.fixturePcm(language, source)
+                failures += proof.turn(pcm, language, source, "tencent-ru-en:synthetic-functional",
+                    retainAssertions = true) { translated ->
+                    assertMeaning(translated, if (language == russian)
+                        listOf("\\b(?:two|2)\\b", "\\btickets?\\b") else listOf("(?:два|две|2)", "билет"))
+                }
+            }
+            assertTrue(proof.pipeline.stop().isSuccess)
+            assertFalse(proof.pipeline.state.value.sessionActive)
+        }
+        assertOffline()
+        assertTrue("Tencent/system-speech proof retained failures: ${failures.joinToString("; ")}", failures.isEmpty())
     }
 
     @Test fun preparedOfflineSyntheticProductionConversation() = runBlocking<Unit> {
@@ -166,15 +192,21 @@ class AndroidConversationRecognitionNativeTest {
         assertTrue("Synthetic proof retained failures: ${failures.joinToString("; ")}", failures.isEmpty())
     }
 
-    private fun selected(pair: LanguagePair) = AppSettings(languagePair = pair,
+    private fun selected(pair: LanguagePair, service: String? = null) = AppSettings(languagePair = pair,
         speechRecognitionBackend = SpeechRecognitionBackend.SYSTEM_OFFLINE,
+        speechRecognitionService = service,
         speechOutputBackend = SpeechOutputBackend.SYSTEM_OFFLINE)
 
-    private suspend fun withProductionConversation(pair: LanguagePair, block: suspend (Proof) -> Unit) {
-        val config = selected(pair).conversationConfig()
+    private suspend fun withProductionConversation(
+        pair: LanguagePair,
+        engineId: String = "mlkit",
+        service: String? = null,
+        block: suspend (Proof) -> Unit,
+    ) {
+        val config = selected(pair, service).copy(conversationEngineId = engineId).conversationConfig()
         val store = SpeechModelStore(context)
         val recognition = AndroidConversationRecognitionEngine(context, config)
-        val translation = MlKitTranslationEngine(context, config.pairs, MlKitPreparationCoordinator(context))
+        val translation = AppRuntime.get(context).registry.create(engineId, config.pairs)
         val models = SelectedSpeechResources.forConversation(store, config)
         val output = ObservedOutput(config)
         val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
@@ -190,6 +222,10 @@ class AndroidConversationRecognitionNativeTest {
             assertTrue(config.ttsModelIds.isEmpty())
             val resourcesReady = owner.models.isConversationReady()
             assertTrue("BLOCKED: selected native VAD and the owner's exact recognizer must be ready", resourcesReady)
+            if (engineId == "tencent") {
+                // Explicit local initialization after owner creation; offline prerequisite forbids network repair.
+                assertEquals(ModelAvailability.READY, translation.prepare())
+            }
             val mtReady = translation.modelAvailability()
             assertEquals("BLOCKED: prepare selected MT before offline proof", ModelAvailability.READY, mtReady)
             val voiceReady = output.delegate.readiness()
@@ -214,7 +250,9 @@ class AndroidConversationRecognitionNativeTest {
             val failures = mutableListOf<String>()
             rowMetadata.putString("proof_kind", "conversation_row")
             rowMetadata.putString("cohort", cohort)
+            rowMetadata.putString("translation_engine", config.engineId)
             rowMetadata.putString("initial", config.languages.first().value)
+            rowMetadata.putString("recognition_service", config.speechRecognitionService ?: "designated-on-device")
             rowMetadata.putString("source_expected", language.value)
             rowMetadata.putString("source_reference", reference)
             rowMetadata.putString("row_outcome", "FATAL")

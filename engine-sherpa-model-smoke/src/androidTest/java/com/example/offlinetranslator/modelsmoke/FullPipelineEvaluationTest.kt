@@ -93,6 +93,7 @@ internal class SynthesisTranslation(
     private val emissions: ConcurrentLinkedQueue<Long>,val outputs: JSONArray,private val sampleId: String? = null,
     private val warmup: Boolean = false,
 ) : TranslationEngine {
+    override val preparation get() = mt.preparation
     override suspend fun modelAvailability() = mt.modelAvailability()
     override suspend fun prepare(): ModelAvailability = error("Offline evaluation cannot prepare models")
     override suspend fun translate(direction: LanguagePair,text: String): String {

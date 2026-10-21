@@ -20,12 +20,14 @@ data class AppSettings(
     val languageIdModelId: String = "lid-whisper-tiny",
     val vadMinSilenceMs: Int = 700,
     val ttsSpeedPercent: Int = 100,
+    val speechRecognitionService: String? = null,
 ) {
     fun textConfig(): TextRuntimeConfig = TextRuntimeConfig(languagePair, textEngineId)
     fun conversationConfig(): ConversationSessionConfig = ConversationSessionConfig(
         languages = listOf(languagePair.source, languagePair.target),
         engineId = conversationEngineId,
         speechRecognitionBackend = speechRecognitionBackend,
+        speechRecognitionService = speechRecognitionService,
         vadModelId = vadModelId,
         languageIdModelId = languageIdModelId,
         vadMinSilenceMs = vadMinSilenceMs,

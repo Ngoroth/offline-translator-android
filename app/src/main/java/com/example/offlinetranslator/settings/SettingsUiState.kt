@@ -14,6 +14,7 @@ data class SettingsUiState(
     val saveError: Boolean = false,
     val teardownError: Boolean = false,
     val problems: List<ConfigurationProblem> = emptyList(),
+    val recognitionServices: List<Pair<String?, String>> = emptyList(),
 ) {
     val usesSherpaRecognition: Boolean get() = draft.speechRecognitionBackend == SpeechRecognitionBackend.SHERPA
     val canApply: Boolean get() = editable && !loading && !saving && !loadError && !teardownError && problems.isEmpty()

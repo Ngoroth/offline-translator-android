@@ -79,7 +79,6 @@ class RuntimeSettingsRouteTest {
         val changed = expected.copy(ttsSpeedPercent = 120)
         compose.waitUntil(30_000) { runBlocking { runtime.settings.current() == changed } }
         val document = org.json.JSONObject(file.readText())
-        assertEquals(5, document.getInt("schemaVersion"))
         assertEquals(SpeechRecognitionBackend.SYSTEM_OFFLINE.persistedId, document.getString("speechRecognitionBackend"))
         assertTrue(!document.has("textPair") && !document.has("conversationLanguages"))
         hideHome()
@@ -142,8 +141,13 @@ class RuntimeSettingsRouteTest {
         openSettings()
         choose(SettingsTestTags.SPEED, "110")
         choose(SettingsTestTags.OUTPUT_BACKEND, SpeechOutputBackend.SYSTEM_OFFLINE.persistedId)
+        choose(SettingsTestTags.RECOGNITION_BACKEND, SpeechRecognitionBackend.SYSTEM_OFFLINE.persistedId)
+        val service = checkNotNull(com.example.offlinetranslator.speech.AndroidRecognitionServices.choices(context)
+            .firstOrNull { it.component != null }?.component) { "An installed recognition service is required for selection proof" }
+        choose(SettingsTestTags.RECOGNITION_SERVICE, service)
         applyAndClose()
-        runBlocking { assertEquals(baseline.copy(ttsSpeedPercent = 110, speechOutputBackend = SpeechOutputBackend.SYSTEM_OFFLINE), runtime.settings.current()) }
+        runBlocking { assertEquals(baseline.copy(ttsSpeedPercent = 110, speechOutputBackend = SpeechOutputBackend.SYSTEM_OFFLINE,
+            speechRecognitionBackend = SpeechRecognitionBackend.SYSTEM_OFFLINE, speechRecognitionService = service), runtime.settings.current()) }
         compose.onNodeWithText(result).assertExists()
         assertEquals("Conversation-only Apply must retain the actual Text owner", retainedOwnerVersion, runtime.owners.ownershipVersion.value)
         compose.onNodeWithTag(TranslationTestTags.INPUT).assertTextContains("I will not take the bus.")

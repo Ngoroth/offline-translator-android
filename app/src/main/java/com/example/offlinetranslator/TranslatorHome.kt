@@ -15,6 +15,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.offlinetranslator.conversation.ConversationRoute
 import com.example.offlinetranslator.runtime.AppRuntime
@@ -24,6 +26,7 @@ import com.example.offlinetranslator.sherpa.SpeechModelStore
 import com.example.offlinetranslator.settings.SettingsSheet
 import com.example.offlinetranslator.settings.SettingsViewModel
 import com.example.offlinetranslator.translation.TranslationRoute
+import com.example.offlinetranslator.speech.AndroidRecognitionServices
 
 @Composable
 fun TranslatorHome(
@@ -32,6 +35,7 @@ fun TranslatorHome(
 ) {
     val context = LocalContext.current
     val runtime = remember(context) { AppRuntime.get(context) }
+    val discoveryContext = context.applicationContext
     val settingsVm: SettingsViewModel = viewModel {
         SettingsViewModel(
             repository = runtime.settings,
@@ -39,6 +43,7 @@ fun TranslatorHome(
             validate = runtime::validationProblems,
             persist = runtime::applySettings,
             teardownFailed = runtime.owners.teardownFailed,
+            recognitionServices = { AndroidRecognitionServices.choices(discoveryContext).map { it.component to it.label } },
         )
     }
     val settingsState by settingsVm.state.collectAsStateWithLifecycle()
@@ -48,6 +53,9 @@ fun TranslatorHome(
     val configuration = LocalConfiguration.current
     val interfaceLanguage = remember(context, configuration) { InterfaceLanguage.current(context) }
     var interfaceLanguageError by remember { mutableStateOf(false) }
+    LifecycleEventEffect(Lifecycle.Event.ON_START) {
+        if (settingsOpen) settingsVm.refreshRecognitionServices()
+    }
 
     TranslatorHomeLayout(
         conversation = conversation,

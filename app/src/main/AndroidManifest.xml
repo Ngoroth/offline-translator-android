@@ -13,6 +13,9 @@
         <intent>
             <action android:name="android.speech.tts.engine.INSTALL_TTS_DATA" />
         </intent>
+        <intent>
+            <action android:name="com.google.recognition.action.DOWNLOAD_LANGUAGE" />
+        </intent>
     </queries>
 
     <application

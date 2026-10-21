@@ -20,6 +20,8 @@ import com.example.offlinetranslator.core.SpeechModelStatus
 import com.example.offlinetranslator.core.SpeechOutputBackend
 import com.example.offlinetranslator.core.SpeechSegment
 import com.example.offlinetranslator.core.TranslationEngine
+import com.example.offlinetranslator.core.TranslationPreparationState
+import com.example.offlinetranslator.core.TranslationPreparationPhase
 import com.example.offlinetranslator.runtime.ConversationRuntimeOwner
 import com.example.offlinetranslator.runtime.RuntimeOwnerController
 import kotlinx.coroutines.CompletableDeferred
@@ -939,6 +941,7 @@ class SystemConversationSpeechOutputTest {
     }
 
     private class ConsumerTranslation : TranslationEngine {
+        override val preparation = kotlinx.coroutines.flow.MutableStateFlow(TranslationPreparationState(TranslationPreparationPhase.READY))
         var closes = 0
         var closeFailure: Throwable? = null
         override suspend fun modelAvailability() = ModelAvailability.READY

@@ -6,6 +6,8 @@ import com.example.offlinetranslator.core.*
 import com.example.offlinetranslator.runtime.ConversationRuntimeOwner
 import com.example.offlinetranslator.runtime.RuntimeOwnerController
 import com.example.offlinetranslator.speech.SystemConversationSpeechOutput
+import com.example.offlinetranslator.speech.AndroidConversationRecognitionEngine
+import com.example.offlinetranslator.speech.AndroidRecognitionDataInstallRequest
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -23,6 +25,9 @@ class ConversationViewModel(
     val recognitionReadiness = owner.recognition.readinessState
     private val mutablePreparation = MutableStateFlow(ConversationPreparation.CHECKING)
     val preparation = mutablePreparation.asStateFlow()
+    val translationPreparation = owner.translation.preparation
+    private val mutablePreparationFailure = MutableStateFlow<TranslationFailure?>(null)
+    val preparationFailure = mutablePreparationFailure.asStateFlow()
     private val mutableReady = MutableStateFlow(false)
     val ready = mutableReady.asStateFlow()
     private val mutableOutputReadiness = MutableStateFlow<SpeechOutputReadiness?>(null)
@@ -38,6 +43,20 @@ class ConversationViewModel(
             val engine = output.voiceDataEnginePackage()
             currentCoroutineContext().ensureActive()
             if (allowed()) engine else null
+        }
+    }
+
+    /** Attestation ends at the owner gate; the caller launches external consent only after this returns. */
+    internal suspend fun recognitionDataInstallRequest(isFresh: () -> Boolean): AndroidRecognitionDataInstallRequest? {
+        fun allowed() = !disposed && foreground && hasCurrentOwner && isFresh() &&
+            !state.value.sessionActive && preparationJob?.isActive != true && !readinessJob.isActive
+        if (!allowed()) return null
+        return owners.use(owner) {
+            if (!allowed()) return@use null
+            val recognition = owner.recognition as? AndroidConversationRecognitionEngine ?: return@use null
+            val request = recognition.recognitionDataInstallRequest()
+            currentCoroutineContext().ensureActive()
+            if (allowed()) request else null
         }
     }
     private val mutablePermissionDenied = MutableStateFlow(false)
@@ -88,7 +107,10 @@ class ConversationViewModel(
     }
     private val recognitionObservation = viewModelScope.launch {
         recognitionReadiness.collect { readiness ->
-            if (readiness != SpeechRecognitionReadiness.READY) mutableReady.value = false
+            if (readiness != SpeechRecognitionReadiness.READY) {
+                mutableReady.value = false
+                if (state.value.sessionActive) stop()
+            }
         }
     }
 
@@ -97,6 +119,7 @@ class ConversationViewModel(
         if (disposed || !foreground || !hasCurrentOwner || preparationJob?.isActive == true || state.value.sessionActive) return
         mutableReady.value = false
         mutablePreparation.value = ConversationPreparation.INSTALLING
+        mutablePreparationFailure.value = null
         preparationJob = viewModelScope.launch {
             readinessJob.cancelAndJoin()
             try {
@@ -119,8 +142,9 @@ class ConversationViewModel(
                 mutablePreparation.value = if (mutableReady.value) ConversationPreparation.IDLE else ConversationPreparation.ERROR
             } catch (cancelled: CancellationException) {
                 throw cancelled
-            } catch (_: Exception) {
+            } catch (failure: Exception) {
                 mutableReady.value = false
+                mutablePreparationFailure.value = failure as? TranslationFailure
                 mutablePreparation.value = ConversationPreparation.ERROR
             }
         }
@@ -187,6 +211,9 @@ class ConversationViewModel(
                     checking.join()
                     preparing?.join()
                     if (pipeline.clear().isFailure) cleanup()
+                    if (config.speechRecognitionService != null) {
+                        (owner.recognition as? AndroidConversationRecognitionEngine)?.leaveForegroundAndJoin()
+                    }
                 } catch (_: Throwable) {
                     cleanup()
                 }

@@ -2,6 +2,7 @@ name: Host checks
 
 on:
   push:
+    branches: ['**']
   pull_request:
   workflow_dispatch:
 
@@ -39,6 +40,10 @@ jobs:
           accept-android-sdk-licenses: true
           log-accepted-android-sdk-licenses: false
 
+      - name: Prepare pinned Tencent JNI runtime
+        shell: bash
+        run: python3 tools/android/prepare-tencent-native.py
+
       - name: Prepare verified Sherpa runtime
         shell: bash
         run: bash ./gradlew :engine-sherpa:prepareSherpaArchive --no-daemon --console=plain
@@ -49,6 +54,7 @@ jobs:
           bash ./gradlew
           :core:testDebugUnitTest
           :engine-mlkit:testDebugUnitTest
+          :engine-tencent:testDebugUnitTest
           :engine-sherpa:testDebugUnitTest
           :app:testDebugUnitTest
           :translator-test-kit:testDebugUnitTest
@@ -71,6 +77,7 @@ jobs:
           path: |
             core/build/test-results/testDebugUnitTest/
             engine-mlkit/build/test-results/testDebugUnitTest/
+            engine-tencent/build/test-results/testDebugUnitTest/
             engine-sherpa/build/test-results/testDebugUnitTest/
             app/build/test-results/testDebugUnitTest/
             translator-test-kit/build/test-results/testDebugUnitTest/

@@ -56,10 +56,12 @@ class SettingsViewModelTest {
             vm.beginEditing()
             vm.updateDraft(vm.state.value.draft.copy(speechRecognitionBackend = SpeechRecognitionBackend.SHERPA,
                 speechOutputBackend = SpeechOutputBackend.PIPER, ttsSpeedPercent = 110))
+            vm.updateDraft(vm.state.value.draft.copy(speechRecognitionService = "missing.provider/.RecognitionService"))
             repo.save(repo.current().copy(languagePair = frenchSpanish))
             runCurrent()
             val draft = AppSettings(languagePair = frenchSpanish, speechRecognitionBackend = SpeechRecognitionBackend.SHERPA,
                 speechOutputBackend = SpeechOutputBackend.PIPER, ttsSpeedPercent = 110)
+                .copy(speechRecognitionService = "missing.provider/.RecognitionService")
             assertEquals(draft, vm.state.value.draft)
             vm.cancelDraft()
             assertEquals(AppSettings(languagePair = frenchSpanish), vm.state.value.draft)
@@ -180,5 +182,43 @@ class SettingsViewModelTest {
                 assertEquals(SpeechOutputBackend.SYSTEM_OFFLINE, reloaded.current().speechOutputBackend)
             } finally { reloaded.closeAndJoin() }
         } finally { repo.closeAndJoin(); Dispatchers.resetMain() }
+    }
+
+    @Test fun inventoryRefreshRetainsMissingDraftUntilUserRepairsOrResetsIt() = runTest {
+        val dispatcher = StandardTestDispatcher(testScheduler)
+        Dispatchers.setMain(dispatcher)
+        val repo = AppSettingsRepository(File(temp.root, "services.json"), dispatcher)
+        val selected = "installed.provider/.RecognitionService"
+        var inventory: List<Pair<String?, String>> = listOf(null to "Default", selected to "Installed service")
+        val vm = SettingsViewModel(repo, MutableStateFlow(true), { emptyList() },
+            { repo.save(it); true }, MutableStateFlow(false), { inventory })
+        try {
+            runCurrent()
+            vm.beginEditing()
+            vm.updateDraft(vm.state.value.draft.copy(speechRecognitionService = selected))
+            inventory = listOf(null to "Default")
+            vm.refreshRecognitionServices()
+            assertEquals(selected, vm.state.value.draft.speechRecognitionService)
+            assertTrue(vm.state.value.canApply)
+            assertEquals(inventory, vm.state.value.recognitionServices)
+            vm.apply()
+            runCurrent()
+            assertEquals(selected, repo.current().speechRecognitionService)
+            vm.updateDraft(vm.state.value.draft.copy(speechRecognitionService = null))
+            vm.cancelDraft()
+            assertEquals(selected, vm.state.value.draft.speechRecognitionService)
+            vm.beginEditing()
+            inventory = listOf(null to "Default", selected to "Reinstalled service")
+            vm.refreshRecognitionServices()
+            assertEquals(selected, vm.state.value.draft.speechRecognitionService)
+            assertEquals(inventory, vm.state.value.recognitionServices)
+            vm.reset()
+            runCurrent()
+            assertEquals(null, repo.current().speechRecognitionService)
+        } finally {
+            vm.viewModelScope.cancel()
+            repo.closeAndJoin()
+            Dispatchers.resetMain()
+        }
     }
 }

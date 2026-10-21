@@ -7,15 +7,32 @@ import com.example.offlinetranslator.core.LanguageId
 import com.example.offlinetranslator.core.LanguagePair
 import com.example.offlinetranslator.core.ModelAvailability
 import com.example.offlinetranslator.core.TranslationEngine
+import com.example.offlinetranslator.core.TranslationPreparationState
+import com.example.offlinetranslator.core.TranslationPreparationPhase
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class TranslationEngineRegistryTest {
+    @Test fun tencentSelectionNeverConstructsMlKitAndRejectsUnknownCatalogLanguage() {
+        val mlkit = RecordingFactory()
+        val tencent = RecordingFactory()
+        val registry = TranslationEngineRegistry(mlkit::create, tencent::create)
+        val engine = registry.create("tencent", setOf(ruEn, ruEn.reverse()))
+        try {
+            assertEquals(listOf(setOf(ruEn, ruEn.reverse())), tencent.selections)
+            mlkit.assertNoEffects()
+            assertProblem(ConfigurationProblem.UNSUPPORTED_PAIR, runCatching {
+                registry.create("tencent", setOf(LanguagePair(LanguageCatalog.ENGLISH, LanguageId("zz"))))
+            }.exceptionOrNull())
+            assertEquals(1, tencent.selections.size)
+        } finally { engine.close() }
+    }
+
     @Test fun unknownEngineRetainsDistinctReasonWithoutCreatingAnyOwner() {
         val factory = RecordingFactory()
-        val registry = TranslationEngineRegistry(factory::create)
+        val registry = TranslationEngineRegistry(factory::create, factory::create)
 
         assertProblem(ConfigurationProblem.UNKNOWN_ENGINE, runCatching { registry.descriptor("removed-engine") }.exceptionOrNull())
         assertProblem(ConfigurationProblem.UNKNOWN_ENGINE, runCatching { registry.capability("removed-engine", ruEn) }.exceptionOrNull())
@@ -25,7 +42,7 @@ class TranslationEngineRegistryTest {
 
     @Test fun unsupportedPairRefusesBeforeFactoryEvenAfterSupportedSelection() {
         val factory = RecordingFactory()
-        val registry = TranslationEngineRegistry(factory::create)
+        val registry = TranslationEngineRegistry(factory::create, factory::create)
         val unsupported = LanguagePair(LanguageCatalog.ENGLISH, LanguageId("zz"))
         assertProblem(
             ConfigurationProblem.UNSUPPORTED_PAIR,
@@ -36,7 +53,7 @@ class TranslationEngineRegistryTest {
 
     @Test fun pivotAndSdkUnknownReachFactoryWithoutManualEnglishIntermediatePairs() {
         val factory = RecordingFactory()
-        val registry = TranslationEngineRegistry(factory::create)
+        val registry = TranslationEngineRegistry(factory::create, factory::create)
         val pivot = LanguagePair(LanguageCatalog.FRENCH, LanguageCatalog.SPANISH)
         val sdkUnknown = LanguagePair(LanguageCatalog.ENGLISH, LanguageId("ja"))
         registry.create("mlkit", setOf(pivot, pivot.reverse())).close()
@@ -48,7 +65,7 @@ class TranslationEngineRegistryTest {
 
     @Test fun factoryReceivesOnlyImmutableSelectedPairSnapshot() = runTest {
         val factory = RecordingFactory()
-        val registry = TranslationEngineRegistry(factory::create)
+        val registry = TranslationEngineRegistry(factory::create, factory::create)
         val selected = linkedSetOf(enDe)
         val engine = registry.create("mlkit", selected)
         selected.clear()
@@ -62,7 +79,7 @@ class TranslationEngineRegistryTest {
 
     @Test fun conversationFactoryReceivesOnlyTheTwoSelectedDirections() {
         val factory = RecordingFactory()
-        val registry = TranslationEngineRegistry(factory::create)
+        val registry = TranslationEngineRegistry(factory::create, factory::create)
         registry.create("mlkit", setOf(ruEn, ruEn.reverse())).close()
         assertEquals(listOf(setOf(ruEn, ruEn.reverse())), factory.selections)
         assertEquals(0, factory.preparations)
@@ -71,7 +88,7 @@ class TranslationEngineRegistryTest {
 
     @Test fun emptyOrUnboundedSelectionCannotReachFactory() {
         val factory = RecordingFactory()
-        val registry = TranslationEngineRegistry(factory::create)
+        val registry = TranslationEngineRegistry(factory::create, factory::create)
         for (selection in listOf(emptySet(), setOf(ruEn, ruEn.reverse(), enDe))) {
             assertTrue(runCatching { registry.create("mlkit", selection) }.exceptionOrNull() is IllegalArgumentException)
         }
@@ -96,6 +113,7 @@ private class RecordingFactory {
     fun create(pairs: Set<LanguagePair>): TranslationEngine {
         selections += pairs
         return object : TranslationEngine {
+            override val preparation = kotlinx.coroutines.flow.MutableStateFlow(TranslationPreparationState(TranslationPreparationPhase.READY))
             override suspend fun modelAvailability() = ModelAvailability.READY
             override suspend fun prepare(): ModelAvailability {
                 preparations += 1

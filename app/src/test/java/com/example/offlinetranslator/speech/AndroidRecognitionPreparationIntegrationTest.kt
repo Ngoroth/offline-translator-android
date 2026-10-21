@@ -14,6 +14,117 @@ import org.junit.Test
 /** Consumer proof: only the external Android recognizer/FD boundary replaces recognition. */
 @OptIn(ExperimentalCoroutinesApi::class)
 class AndroidRecognitionPreparationIntegrationTest {
+    @Test fun explicitPublicPreparationReturnsMissingSelectedLocaleWithoutSdkDownloadOrHeldOwnerGate() = runTest {
+        withEnvironment { environment ->
+            val platform = Platform(explicit = true)
+            val fixture = environment.create(platform)
+            assertFalse(fixture.model.ready.value)
+            assertNull(fixture.model.recognitionDataInstallRequest { false })
+            val first = fixture.model.recognitionDataInstallRequest { true }
+            assertEquals("ru-RU", first?.language)
+            assertFalse(environment.controller.busy.value)
+            // A returned request is not consent completion or readiness, and does not retain the owner gate.
+            assertTrue(environment.controller.saveIfIdle(retainOwner = { true }) {})
+            fixture.model.prepareLanguages()
+            runCurrent()
+            assertEquals(ConversationPreparation.ERROR, fixture.model.preparation.value)
+            assertFalse(fixture.model.ready.value)
+            assertTrue(platform.downloads.isEmpty())
+            fixture.model.leaveForeground()
+            runCurrent()
+            assertNull(platform.packageChanged)
+            platform.installed += "ru-RU"
+            fixture.model.enterForeground()
+            runCurrent()
+            assertFalse(fixture.model.ready.value)
+            assertEquals("en-US", fixture.model.recognitionDataInstallRequest { true }?.language)
+            assertEquals(0, fixture.capture.starts)
+            fixture.model.leaveForeground()
+            runCurrent()
+            platform.installed += "en-US"
+            fixture.model.enterForeground()
+            runCurrent()
+            assertTrue(fixture.model.ready.value)
+            assertNull(fixture.model.recognitionDataInstallRequest { true })
+            assertTrue(platform.downloads.isEmpty())
+            assertEquals(0, fixture.capture.starts)
+            fixture.model.start()
+            runCurrent()
+            fixture.capture.emit()
+            runCurrent()
+            assertEquals(ConversationTranscriptStatus.COMPLETE, fixture.model.state.value.transcripts.single().status)
+        }
+    }
+
+    @Test fun cancelledInstallerAttestationAndLateInventoryCannotLaunchOrEnableReplacedOwner() = runTest {
+        withEnvironment { environment ->
+            val platform = Platform(explicit = true)
+            val old = environment.create(platform)
+            platform.holdSupport = true
+            val request = async { old.model.recognitionDataInstallRequest { true } }
+            runCurrent()
+            val callback = platform.supportCallbacks.single()
+            old.model.leaveForeground()
+            request.cancelAndJoin()
+            runCurrent()
+            val current = environment.create(Platform(explicit = true).apply { installed += listOf("ru-RU", "en-US") })
+            callback(AndroidRecognitionSupport(listOf("ru-RU", "en-US"), emptyList(), emptyList(), emptyList()), null)
+            runCurrent()
+            assertTrue(request.isCancelled)
+            assertFalse(old.model.ready.value)
+            assertTrue(current.model.ready.value)
+            assertNull(old.model.recognitionDataInstallRequest { true })
+            assertTrue(platform.downloads.isEmpty())
+            assertEquals(0, old.capture.starts)
+            assertEquals(0, current.capture.starts)
+        }
+    }
+
+    @Test fun packageReplacementStopsCaptureAndAwaitsWriterJoinBeforeReplacementOwner() = runTest {
+        withEnvironment { environment ->
+            val platform = Platform(explicit = true).apply {
+                installed += listOf("ru-RU", "en-US")
+                automaticResults = false
+                writerGate = CompletableDeferred()
+            }
+            val old = environment.create(platform)
+            old.model.start()
+            runCurrent()
+            old.capture.emit()
+            runCurrent()
+            val session = platform.started.single()
+            val audio = requireNotNull(session.audio)
+            assertTrue(audio.writerEntered.isCompleted)
+            platform.packageChanged!!()
+            runCurrent()
+            assertFalse(old.capture.running)
+            assertFalse(old.model.ready.value)
+            assertTrue(audio.closed.isCompleted && session.destroyed)
+            assertFalse(audio.writerReleased.isCompleted)
+            var built = false
+            val replacement = async {
+                environment.controller.replace {
+                    built = true
+                    environment.build(Platform(explicit = true), AppSettings().languagePair, true).owner
+                }
+            }
+            runCurrent()
+            assertFalse(built)
+            assertFalse(replacement.isCompleted)
+            session.listener.ready()
+            session.listener.language("ru-RU", 3, 0)
+            session.listener.segment("Late.")
+            session.listener.terminal()
+            requireNotNull(platform.writerGate).complete(Unit)
+            replacement.await()
+            runCurrent()
+            assertTrue(audio.writerReleased.isCompleted)
+            assertTrue(built)
+            assertTrue(old.translation.phrases.isEmpty() && old.output.spoken.isEmpty())
+            assertNull(platform.packageChanged)
+        }
+    }
+
     @Test fun explicitPrepareScheduledThenForegroundInstalledDoesNotDownloadOrStartImplicitly() = runTest {
         withEnvironment { environment ->
             val platform = Platform().apply { downloadOutcome = DownloadOutcome.SCHEDULED }
@@ -121,6 +232,88 @@ class AndroidRecognitionPreparationIntegrationTest {
             assertEquals(listOf(LanguageCatalog.ENGLISH to "translated phrase"), fixture.output.spoken)
             assertEquals(ConversationPhase.LISTENING, fixture.model.state.value.phase)
             assertTrue(platform.downloads.isEmpty())
+        }
+    }
+
+    @Test fun explicitRuntimeErrorsBeforeAndAfterReadyFailOnlyTurnThenSeparatelyCapturedPhraseSucceeds() = runTest {
+        for (code in listOf(14, 5)) for (ready in listOf(false, true)) withEnvironment { environment ->
+            val platform = Platform(explicit = true).apply {
+                installed += listOf("ru-RU", "en-US")
+                holdSupport = true
+                automaticReady = false
+                automaticResults = false
+            }
+            val fixture = environment.create(platform)
+            val support = platform.supportCallbacks.single()
+            // Error14 is provisional only at the support boundary, never a readiness result.
+            support(null, 14)
+            runCurrent()
+            assertFalse(fixture.model.ready.value)
+            assertTrue(platform.started.isEmpty() && platform.downloads.isEmpty())
+            support(AndroidRecognitionSupport(platform.installed.toList(), emptyList(), emptyList(), emptyList()), null)
+            runCurrent()
+            assertTrue(fixture.model.ready.value)
+            platform.holdSupport = false
+            fixture.model.start()
+            runCurrent()
+            val sessionsBefore = platform.sessions.size
+            val requestsBefore = platform.requestPairs.size
+            fixture.capture.emit()
+            runCurrent()
+            val rejected = platform.started.single()
+            val audio = requireNotNull(rejected.audio)
+            assertFalse(audio.writerEntered.isCompleted)
+            if (ready) {
+                rejected.listener.ready()
+                runCurrent()
+                assertTrue(audio.writerEntered.isCompleted && audio.writerReleased.isCompleted)
+            }
+            // The same code at the recognition boundary must fail immediately, even before ready.
+            rejected.listener.error(code)
+            runCurrent()
+            val failure = fixture.model.state.value.transcripts.single()
+            assertEquals(ConversationTranscriptStatus.ERROR, failure.status)
+            assertEquals(ConversationFailure.RECOGNITION_FAILED, failure.failure)
+            assertEquals(ConversationPhase.LISTENING, fixture.model.state.value.phase)
+            assertTrue(fixture.model.state.value.sessionActive && fixture.model.state.value.captureActive && fixture.capture.running)
+            assertTrue(fixture.translation.phrases.isEmpty() && fixture.output.spoken.isEmpty())
+            assertTrue(rejected.destroyed && audio.closed.isCompleted)
+            assertEquals(ready, audio.writerEntered.isCompleted)
+            assertEquals(ready, audio.writerReleased.isCompleted)
+            assertTrue(platform.sessions.all { it.destroyed })
+            assertTrue(platform.audios.all { it.closed.isCompleted })
+            rejected.listener.ready()
+            rejected.listener.language("ru-RU", 3, 0)
+            rejected.listener.segment("late rejected phrase")
+            rejected.listener.terminal()
+            advanceTimeBy(AndroidConversationRecognitionEngine.REQUEST_TIMEOUT_MILLIS + 1)
+            runCurrent()
+            assertEquals(listOf(failure), fixture.model.state.value.transcripts)
+            assertEquals(1, platform.started.size)
+            assertEquals(sessionsBefore + 1, platform.sessions.size)
+            assertEquals(requestsBefore + 1, platform.requestPairs.size)
+            assertTrue(platform.downloads.isEmpty())
+            assertTrue(fixture.translation.phrases.isEmpty() && fixture.output.spoken.isEmpty())
+            platform.automaticReady = true
+            platform.automaticResults = true
+            fixture.capture.emit()
+            runCurrent()
+            val completed = fixture.model.state.value.transcripts
+            assertEquals(2, completed.size)
+            assertEquals(failure, completed.first())
+            assertEquals(ConversationTranscriptStatus.COMPLETE, completed.last().status)
+            assertEquals(LanguagePair(LanguageCatalog.RUSSIAN, LanguageCatalog.ENGLISH), completed.last().direction)
+            assertEquals("recognized phrase", completed.last().original)
+            assertEquals("translated phrase", completed.last().translation)
+            assertEquals(listOf("recognized phrase"), fixture.translation.phrases)
+            assertEquals(listOf(LanguageCatalog.ENGLISH to "translated phrase"), fixture.output.spoken)
+            assertEquals(2, platform.started.size)
+            assertEquals(ConversationPhase.LISTENING, fixture.model.state.value.phase)
+            assertTrue(fixture.model.state.value.sessionActive && fixture.model.state.value.captureActive && fixture.capture.running)
+            assertTrue(platform.downloads.isEmpty())
+            assertTrue(platform.sessions.all { it.destroyed })
+            assertTrue(platform.audios.all { it.closed.isCompleted })
+            assertTrue(requireNotNull(platform.started.last().audio).writerReleased.isCompleted)
         }
     }
 
@@ -429,7 +622,8 @@ class AndroidRecognitionPreparationIntegrationTest {
             return fixture
         }
         fun build(platform: Platform, pair: LanguagePair, nativeReady: Boolean): Fixture {
-            val config = AppSettings(languagePair = pair).conversationConfig()
+            val config = AppSettings(languagePair = pair,
+                speechRecognitionService = if (platform.explicit) AndroidRecognitionServices.GOOGLE_COMPONENT else null).conversationConfig()
             val native = NativeResources(nativeReady)
             val capture = Capture()
             val translation = Translation()
@@ -452,7 +646,13 @@ class AndroidRecognitionPreparationIntegrationTest {
 
     private enum class DownloadOutcome { SCHEDULED, FAILED, HELD, SUCCESS }
     private data class Download(val languages: List<String>, val listener: AndroidModelDownloadListener)
-    private class Platform : AndroidSpeechRecognizerClient {
+    private class Platform(val explicit: Boolean = false) : AndroidSpeechRecognizerClient {
+        var packageChanged: (() -> Unit)? = null
+        override fun serviceStatus() = AndroidRecognitionServiceStatus(SpeechRecognitionReadiness.READY,
+            if (explicit) AndroidRecognitionServiceIdentity(AndroidRecognitionServices.GOOGLE_COMPONENT,
+                210683481L, 1, AndroidRecognitionServices.GOOGLE_SIGNER) else null)
+        override fun observePackage(onChanged: () -> Unit) { packageChanged = onChanged }
+        override fun stopObservingPackage() { packageChanged = null }
         var supported = true
         var holdSupport = false
         val supportCallbacks = mutableListOf<(AndroidRecognitionSupport?, Int?) -> Unit>()
@@ -460,6 +660,7 @@ class AndroidRecognitionPreparationIntegrationTest {
         val pending = mutableSetOf<String>()
         var downloadOutcome = DownloadOutcome.SUCCESS
         var failNextPhrase = false
+        var automaticReady = true
         var automaticResults = true
         var writerGate: CompletableDeferred<Unit>? = null
         var queuedScope: CoroutineScope? = null
@@ -474,7 +675,6 @@ class AndroidRecognitionPreparationIntegrationTest {
         val sessions = mutableListOf<Session>()
         val started = mutableListOf<Session>()
         val audios = mutableListOf<Audio>()
-        override fun available() = true
         override fun permissionGranted() = true
         override fun openAudio(): AndroidRecognitionAudio = Audio(this).also { audios += it }
         override suspend fun create(listener: AndroidRecognitionListener): AndroidRecognitionSession =
@@ -511,6 +711,7 @@ class AndroidRecognitionPreparationIntegrationTest {
             platform.requestPairs += languages.toList()
             this.audio = audio as Audio
             platform.started += this
+            if (platform.automaticReady) listener.ready()
             if (!platform.automaticResults) return
             listener.segment("recognized phrase")
             if (platform.failNextPhrase) {
@@ -567,6 +768,7 @@ class AndroidRecognitionPreparationIntegrationTest {
         override fun close() { running = false }
     }
     private class Translation : TranslationEngine {
+        override val preparation = kotlinx.coroutines.flow.MutableStateFlow(TranslationPreparationState(TranslationPreparationPhase.READY))
         val phrases = mutableListOf<String>()
         override suspend fun modelAvailability() = ModelAvailability.READY
         override suspend fun prepare() = ModelAvailability.READY

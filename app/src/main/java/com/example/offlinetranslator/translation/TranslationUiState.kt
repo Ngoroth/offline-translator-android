@@ -5,8 +5,10 @@ import com.example.offlinetranslator.core.LanguageCatalog
 import com.example.offlinetranslator.core.LanguagePair
 import com.example.offlinetranslator.core.TranslationEngine
 import com.example.offlinetranslator.core.TranslationProviderDescriptor
+import com.example.offlinetranslator.core.TranslationFailure
+import com.example.offlinetranslator.core.TranslationPreparationState
 
-enum class ModelUiStatus { CHECKING, MISSING, DOWNLOADING, READY }
+enum class ModelUiStatus { CHECKING, MISSING, DOWNLOADING, VERIFYING, LOADING, READY }
 enum class TranslationLanguageChangeError { SAVE, OPEN, TEARDOWN }
 
 enum class TranslationUiError {
@@ -26,10 +28,14 @@ data class TranslationUiState(
     val error: TranslationUiError? = null,
     val configurationProblem: ConfigurationProblem? = null,
     val provider: TranslationProviderDescriptor? = null,
+    val preparation: TranslationPreparationState? = null,
+    val isPreparing: Boolean = false,
+    val failure: TranslationFailure? = null,
 ) {
     val operationInProgress: Boolean
-        get() = modelStatus == ModelUiStatus.CHECKING ||
-            modelStatus == ModelUiStatus.DOWNLOADING || isTranslating
+        get() = isPreparing || modelStatus == ModelUiStatus.CHECKING ||
+            modelStatus == ModelUiStatus.DOWNLOADING || modelStatus == ModelUiStatus.VERIFYING ||
+            modelStatus == ModelUiStatus.LOADING || isTranslating
 
     val canPrepare: Boolean
         get() = configurationProblem == null && modelStatus == ModelUiStatus.MISSING && !operationInProgress

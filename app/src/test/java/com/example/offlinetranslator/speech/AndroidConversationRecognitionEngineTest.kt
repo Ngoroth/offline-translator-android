@@ -25,6 +25,234 @@ import org.junit.Test
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class AndroidConversationRecognitionEngineTest {
+    @Test fun qualifiedError14WaitsForRealInventoryWithinOriginalBudgetAndFirstInventoryWins() = runTest {
+        val f = Fixture(this, explicit = true)
+        try {
+            f.platform.ignoreSupport = true
+            val checking = async { f.engine.readiness() }
+            runCurrent()
+            val callback = f.platform.supportCallback!!
+            callback(null, 14)
+            advanceTimeBy(9_999)
+            runCurrent()
+            assertFalse(checking.isCompleted)
+            callback(readySupport(), null)
+            callback(readySupport().copy(installed = emptyList()), null)
+            callback(null, 5)
+            assertEquals(SpeechRecognitionReadiness.READY, checking.await())
+            assertNull(f.engine.errorCode)
+            assertEquals(readySupport(), f.engine.supportInventory)
+            callback(null, 14)
+            assertEquals(SpeechRecognitionReadiness.READY, f.engine.readinessState.value)
+            assertNull(f.engine.errorCode)
+        } finally { f.engine.closeAndJoin() }
+    }
+
+    @Test fun error14AloneExpiresAtOriginalDeadlineAndGeneric14IsNotUnsupported() = runTest {
+        for (explicit in listOf(false, true)) {
+            val f = Fixture(this, explicit = explicit)
+            try {
+                f.platform.supportError = 14
+                val checking = async { f.engine.readiness() }
+                runCurrent()
+                if (explicit) {
+                    advanceTimeBy(9_999)
+                    runCurrent()
+                    assertFalse(checking.isCompleted)
+                    advanceTimeBy(1)
+                    runCurrent()
+                } else assertTrue(checking.isCompleted)
+                assertEquals(SpeechRecognitionReadiness.CHECK_FAILED, checking.await())
+                assertEquals(14, f.engine.errorCode)
+                assertTrue(f.platform.sessions.all { it.destroyed && it.cancelled })
+                assertTrue(f.platform.audio.all { it.closed })
+                f.platform.supportCallback!!(readySupport(), null)
+                assertEquals(SpeechRecognitionReadiness.CHECK_FAILED, f.engine.readinessState.value)
+            } finally { f.engine.closeAndJoin() }
+        }
+    }
+
+    @Test fun qualifiedOtherErrorRemainsTerminalAndPartialInventoryNeverEnablesStartOrDownloads() = runTest {
+        val f = Fixture(this, explicit = true)
+        try {
+            f.platform.ignoreSupport = true
+            val checking = async { f.engine.readiness() }
+            runCurrent()
+            f.platform.supportCallback!!(null, 14)
+            f.platform.supportCallback!!(null, 5)
+            f.platform.supportCallback!!(readySupport(), null)
+            assertEquals(SpeechRecognitionReadiness.CHECK_FAILED, checking.await())
+            f.platform.ignoreSupport = false
+            for ((inventory, expected) in listOf(
+                readySupport().copy(installed = listOf("ru-RU")) to SpeechRecognitionReadiness.MISSING_LOCAL_MODEL,
+                readySupport().copy(installed = listOf("ru-RU"), pending = listOf("en-US")) to SpeechRecognitionReadiness.SCHEDULED,
+                AndroidRecognitionSupport(emptyList(), emptyList(), emptyList(), listOf("ru-RU", "en-US")) to SpeechRecognitionReadiness.UNSUPPORTED,
+            )) {
+                f.platform.support = inventory
+                assertEquals(expected, f.engine.readiness())
+                f.engine.install()
+                assertTrue(runCatching { f.engine.recognize(segment()) }.isFailure)
+            }
+            assertEquals(0, f.platform.downloads)
+        } finally { f.engine.closeAndJoin() }
+    }
+
+    @Test fun incompatibleAndMissingSelectionsNeverCreateSessionOrWriteAudio() = runTest {
+        val f = Fixture(this, explicit = true)
+        try {
+            for (state in listOf(SpeechRecognitionReadiness.INCOMPATIBLE_SERVICE, SpeechRecognitionReadiness.ENGINE_UNAVAILABLE)) {
+                f.platform.status = AndroidRecognitionServiceStatus(state)
+                assertEquals(state, f.engine.readiness())
+                f.engine.install()
+                assertTrue(runCatching { f.engine.recognize(segment()) }.isFailure)
+                assertTrue(f.platform.sessions.isEmpty())
+                assertTrue(f.platform.audio.isEmpty())
+            }
+        } finally { f.engine.closeAndJoin() }
+    }
+
+    @Test fun replacementBeforeReadyAndBetweenReadyAndWriterDispatchReleasesNoPcm() = runTest {
+        for (cutover in listOf("before-ready", "after-ready-event", "after-ready-identity")) {
+            for (change in listOf("updatedAt", "version")) {
+                val f = Fixture(this, explicit = true)
+                try {
+                    f.ready()
+                    val recognizing = async { runCatching { f.engine.recognize(segment()) } }
+                    runCurrent()
+                    val session = f.platform.sessions.last()
+                    val audio = f.platform.audio.last()
+                    assertEquals(0, audio.writes)
+                    if (cutover != "before-ready") session.listener.ready()
+                    val identity = f.platform.status!!.identity!!
+                    f.platform.status = f.platform.status!!.copy(identity = when (change) {
+                        "version" -> identity.copy(version = identity.version + 1)
+                        else -> identity.copy(updatedAt = identity.updatedAt + 1)
+                    })
+                    if (cutover == "after-ready-event") f.platform.packageChanged!!()
+                    if (cutover == "before-ready") session.listener.ready()
+                    runCurrent()
+                    assertTrue(recognizing.isCancelled || recognizing.await().isFailure)
+                    assertEquals(0, audio.writes)
+                    assertTrue(audio.closed && session.destroyed && session.cancelled)
+                    assertEquals(SpeechRecognitionReadiness.CHECK_FAILED, f.engine.readinessState.value)
+                    session.listener.ready()
+                    session.listener.language("en-US", 3, 0)
+                    session.listener.segment("Late.")
+                    session.listener.terminal()
+                    assertEquals(SpeechRecognitionReadiness.CHECK_FAILED, f.engine.readinessState.value)
+                } finally { f.engine.closeAndJoin() }
+            }
+        }
+    }
+
+    @Test fun observedReplacementClosesActiveWriterAndJoinsBeforeNextSupportAndBackgroundUnregisters() = runTest {
+        val f = Fixture(this, explicit = true)
+        try {
+            f.ready()
+            f.platform.blockWriter = true
+            val recognizing = async { runCatching { f.engine.recognize(segment()) } }
+            runCurrent()
+            val session = f.platform.sessions.last()
+            session.listener.ready()
+            runCurrent()
+            val audio = f.platform.audio.last()
+            assertEquals(1, audio.writes)
+            assertFalse(audio.finished)
+            f.platform.packageChanged!!()
+            val rechecking = async { f.engine.readiness() }
+            runCurrent()
+            assertTrue(recognizing.isCancelled || recognizing.await().isFailure)
+            assertTrue(audio.closed && audio.finished && session.destroyed && session.cancelled)
+            assertEquals(SpeechRecognitionReadiness.READY, rechecking.await())
+            f.engine.leaveForegroundAndJoin()
+            assertNull(f.platform.packageChanged)
+            assertEquals(SpeechRecognitionReadiness.CHECK_FAILED, f.engine.readinessState.value)
+            f.ready()
+            assertNotNull(f.platform.packageChanged)
+        } finally { f.engine.closeAndJoin(); assertNull(f.platform.packageChanged) }
+    }
+
+    @Test fun revokedProvisionalSupportAndOldReadyCannotMutateOrCancelTheNextSession() = runTest {
+        val f = Fixture(this, explicit = true)
+        try {
+            f.platform.ignoreSupport = true
+            val checking = async { f.engine.readiness() }
+            runCurrent()
+            val oldCallback = f.platform.supportCallback!!
+            val old = f.platform.sessions.single()
+            oldCallback(null, 14)
+            f.platform.packageChanged!!()
+            runCurrent()
+            assertTrue(checking.isCancelled)
+            assertTrue(old.destroyed && old.cancelled)
+            f.platform.ignoreSupport = false
+            f.ready()
+            val next = async { f.engine.recognize(segment()) }
+            runCurrent()
+            val fresh = f.platform.sessions.last()
+            oldCallback(readySupport().copy(installed = emptyList()), null)
+            old.listener.ready()
+            old.listener.error(5)
+            fresh.listener.ready()
+            fresh.listener.language("en-US", 3, 0)
+            fresh.listener.segment("Fresh.")
+            fresh.listener.terminal()
+            assertEquals("Fresh.", next.await().text)
+            assertEquals(SpeechRecognitionReadiness.READY, f.engine.readinessState.value)
+        } finally { f.engine.closeAndJoin() }
+    }
+
+    @Test fun readinessCachedBeforeIdentityChangeCannotStartAnotherSession() = runTest {
+        val f = Fixture(this, explicit = true)
+        try {
+            f.ready()
+            val sessions = f.platform.sessions.size
+            f.platform.status = AndroidRecognitionServiceStatus(SpeechRecognitionReadiness.INCOMPATIBLE_SERVICE)
+            assertTrue(runCatching { f.engine.recognize(segment()) }.isFailure)
+            assertEquals(sessions, f.platform.sessions.size)
+            assertEquals(SpeechRecognitionReadiness.INCOMPATIBLE_SERVICE, f.engine.readinessState.value)
+            assertTrue(f.platform.audio.all { it.writes == 0 })
+        } finally { f.engine.closeAndJoin() }
+    }
+
+    @Test fun qualifiedReinstallBeforeBroadcastCannotInheritInstalledInventory() = runTest {
+        for (change in listOf("updatedAt", "version", "signer")) {
+            val f = Fixture(this, explicit = true)
+            try {
+                f.ready()
+                val sessions = f.platform.sessions.size
+                val identity = f.platform.status!!.identity!!
+                f.platform.status = f.platform.status!!.copy(identity = when (change) {
+                    "version" -> identity.copy(version = identity.version + 1)
+                    "signer" -> identity.copy(signer = AndroidRecognitionServices.GOOGLE_ALTERNATE_SIGNER)
+                    else -> identity.copy(updatedAt = identity.updatedAt + 1)
+                })
+                val recognizing = async { runCatching { f.engine.recognize(segment()) } }
+                runCurrent()
+                if (f.platform.sessions.size > sessions) {
+                    val stale = f.platform.sessions.last()
+                    stale.listener.ready()
+                    stale.listener.language("en-US", 3, 0)
+                    stale.listener.segment("Stale inventory.")
+                    stale.listener.terminal()
+                }
+                assertTrue(recognizing.await().isFailure)
+                assertEquals(sessions, f.platform.sessions.size)
+                assertEquals(SpeechRecognitionReadiness.CHECK_FAILED, f.engine.readinessState.value)
+                assertTrue(f.platform.audio.all { it.writes == 0 })
+                f.ready()
+                val fresh = async { f.engine.recognize(segment()) }
+                runCurrent()
+                val session = f.platform.sessions.last()
+                session.listener.ready()
+                session.listener.language("en-US", 3, 0)
+                session.listener.segment("Fresh inventory.")
+                session.listener.terminal()
+                assertEquals("Fresh inventory.", fresh.await().text)
+            } finally { f.engine.closeAndJoin() }
+        }
+    }
+
     @Test fun uniqueTrueConfidenceOverridesOppositeWeakTailWithoutInitialOrPreviousLanguage() = runTest {
         for (initial in listOf(LanguageCatalog.RUSSIAN, LanguageCatalog.ENGLISH)) {
             val f = Fixture(this, initial)
@@ -367,9 +595,14 @@ class AndroidConversationRecognitionEngineTest {
         for (tag in listOf("zh-CN", "cmn-CN", "zh-Hans-CN", "cmn-Hans-CN")) assertEquals(LanguageId("zh"), AndroidSpeechLocales.source(tag))
     }
 
-    private class Fixture(scope: TestScope, initial: LanguageId = LanguageCatalog.RUSSIAN) {
-        val platform = Platform()
-        private val config = AppSettings(languagePair = LanguagePair(initial, if (initial == LanguageCatalog.RUSSIAN) LanguageCatalog.ENGLISH else LanguageCatalog.RUSSIAN)).conversationConfig()
+    private class Fixture(scope: TestScope, initial: LanguageId = LanguageCatalog.RUSSIAN, explicit: Boolean = false) {
+        val platform = Platform().apply {
+            if (explicit) status = AndroidRecognitionServiceStatus(SpeechRecognitionReadiness.READY,
+                AndroidRecognitionServiceIdentity(AndroidRecognitionServices.GOOGLE_COMPONENT, 210683483L,
+                    1, AndroidRecognitionServices.GOOGLE_SIGNER))
+        }
+        private val config = AppSettings(languagePair = LanguagePair(initial, if (initial == LanguageCatalog.RUSSIAN) LanguageCatalog.ENGLISH else LanguageCatalog.RUSSIAN),
+            speechRecognitionService = if (explicit) AndroidRecognitionServices.GOOGLE_COMPONENT else null).conversationConfig()
         private val dispatcher = StandardTestDispatcher(scope.testScheduler)
         val engine = AndroidConversationRecognitionEngine(config, platform, dispatcher, dispatcher)
         suspend fun ready() { assertEquals(SpeechRecognitionReadiness.READY, engine.readiness()) }
@@ -383,11 +616,17 @@ class AndroidConversationRecognitionEngineTest {
         var downloads = 0
         var blockWriter = false
         var onCreate: (() -> Unit)? = null
+        var status: AndroidRecognitionServiceStatus? = null
+        var packageChanged: (() -> Unit)? = null
+        var supportCallback: ((AndroidRecognitionSupport?, Int?) -> Unit)? = null
+        override fun serviceStatus() = status ?: AndroidRecognitionServiceStatus(
+            if (available) SpeechRecognitionReadiness.READY else SpeechRecognitionReadiness.ENGINE_UNAVAILABLE)
+        override fun observePackage(onChanged: () -> Unit) { packageChanged = onChanged }
+        override fun stopObservingPackage() { packageChanged = null }
         var downloadAction: (AndroidModelDownloadListener) -> Unit = { it.success() }
         val sessions = mutableListOf<Session>()
         val audio = mutableListOf<Audio>()
         val requests = mutableListOf<List<String>>()
-        override fun available() = available
         override fun permissionGranted() = permission
         override suspend fun create(listener: AndroidRecognitionListener): AndroidRecognitionSession = Session(this, listener).also { sessions += it; onCreate?.invoke() }
         override fun openAudio(): AndroidRecognitionAudio = Audio(blockWriter).also { audio += it }
@@ -397,6 +636,7 @@ class AndroidConversationRecognitionEngineTest {
         var cancelled = false
         override fun support(languages: List<String>, audio: AndroidRecognitionAudio, callback: (AndroidRecognitionSupport?, Int?) -> Unit) {
             platform.requests += languages
+            platform.supportCallback = callback
             if (!platform.ignoreSupport) callback(if (platform.supportError == null) platform.support else null, platform.supportError)
         }
         override fun download(languages: List<String>, audio: AndroidRecognitionAudio, listener: AndroidModelDownloadListener) {
@@ -411,8 +651,10 @@ class AndroidConversationRecognitionEngineTest {
     private class Audio(val blocked: Boolean) : AndroidRecognitionAudio {
         var closed = false
         var finished = false
+        var writes = 0
         val released = CompletableDeferred<Unit>()
         override suspend fun write(pcm: ShortArray) {
+            writes++
             try { if (blocked) withContext(NonCancellable) { released.await() } }
             finally { finished = true }
         }

@@ -391,6 +391,7 @@ class SpeechToTextPipelineTest {
     }
 
     private class FakeTranslation : TranslationEngine {
+        override val preparation = kotlinx.coroutines.flow.MutableStateFlow(TranslationPreparationState(TranslationPreparationPhase.READY))
         var calls = 0
         var failNext = false
 

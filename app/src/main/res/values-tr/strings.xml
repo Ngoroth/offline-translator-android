@@ -142,7 +142,7 @@
     <string name="settings_interface_language_immediate">Hemen uygulanır</string>
     <string name="settings_interface_language_error">Arayüz dili değiştirilemedi. Tekrar denemek için yeniden seçin.</string>
     <string name="settings_about_translation">Çeviri hakkında</string>
-    <string name="settings_mlkit_summary">ML Kit, cihazda hızlı çeviriye öncelik verir ancak anlamı yanlış yorumlayabilir. Kalite odaklı başka çevirmenler planlanıyor; henüz kullanılamıyorlar.</string>
+    <string name="settings_mlkit_summary">ML Kit, cihazda hızlı çeviriye öncelik verir ancak anlamı yanlış yorumlayabilir.</string>
     <string name="settings_provider_summary">Seçilen çevirmen: %1$s</string>
     <string name="help_google_translation">ML Kit, cihazda çeviri için Google Translate kullanır. Aşağıdaki bağlantı Google’ın kaynak belirtme gerekliliklerini açıklar.</string>
     <string name="google_attribution_requirements_link">Google kaynak belirtme gereklilikleri</string>
@@ -169,4 +169,22 @@
     <string name="model_asr_whisper_multilingual">Whisper tiny çok dilli · İngilizce · çevrimdışı</string>
     <string name="model_tts_irina">Piper Irina medium · Rusça</string>
     <string name="model_tts_lessac">Piper Lessac medium · İngilizce</string>
+    <string name="translation_verifying">Çeviri modelinin bütünlüğü doğrulanıyor…</string>
+    <string name="translation_loading">Yerel çeviri yükleniyor ve ısıtılıyor…</string>
+    <string name="translation_download_bytes">%1$d / %2$d bayt</string>
+    <string name="translation_model_repair">Çeviri modeli eksik veya bozuk. Çevrimdışı çeviriyi yeniden hazırlayın.</string>
+    <string name="translation_storage_error">Model kaydedilemedi veya indirilemedi. Boş alanı ve Wi‑Fi bağlantısını kontrol edip yeniden hazırlayın.</string>
+    <string name="translation_runtime_error">Yerel çeviri motoru yüklenemedi. Yeniden hazırlayın; sürerse uygulamayı yeniden başlatın.</string>
+    <string name="translation_memory_error">Yerel çeviri için bellek yetersiz. Diğer uygulamaları kapatıp yeniden hazırlayın veya metni kısaltın.</string>
+    <string name="translation_limit_error">Bağlam veya çıktı sınırı aşıldı. Kaynak metni kısaltın; kısmi çeviri saklanmadı.</string>
+    <string name="translation_encoding_error">Kaynak geçersiz Unicode içeriyor. Metni düzeltip yeniden deneyin.</string>
+    <string name="translation_timeout">Çeviri hazırlığı çok uzun sürdü. Hazırlık durumunu kontrol edip yeniden deneyin.</string>
+    <string name="tencent_model_explanation">Tencent Hy-MT2 tüm diller için 1,13 GB tek model kullanır; yalnızca Wi‑Fi üzerinden Hazırla ile indirilir. Yeniden açıldığında yerel hazırlık da gerekir. Birkaç GB bellek gerekebilir; çeviri kalitesi ve telefon performansı doğrulanmamıştır.</string>
+    <string name="settings_recognition_service">Konuşma tanıma hizmeti</string>
+    <string name="recognition_service_on_device">Android cihaz üzeri hizmeti</string>
+    <string name="conversation_recognition_incompatible_service">Seçilen tanıma hizmetinin çevrimdışı konuşma için uygunluğu doğrulanmamıştır. Gelişmiş ayarlardan uyumlu bir hizmet seçin.</string>
+    <string name="conversation_install_recognition_data">Tanıma dili verilerini yükle</string>
+    <string name="conversation_recognition_install_error">Seçilen tanıma hizmetinin dil yükleyicisi açılamadı.</string>
+    <string name="conversation_recognition_install_hint">Eksik dili yükleyin, ardından hazır olma durumunu yeniden kontrol etmek için geri dönün.</string>
+    <string name="conversation_recognition_service_unavailable">Seçilen tanıma hizmeti kullanılamıyor. Gelişmiş ayarlardan yüklü bir hizmet seçin.</string>
 </resources>

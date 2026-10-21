@@ -36,7 +36,8 @@ class AppRuntime private constructor(context: Context) {
     val speechModels = SpeechModelStore(this.context)
     val catalog: SpeechModelCatalog get() = speechModels.catalog
     val coordinator = MlKitPreparationCoordinator(this.context)
-    val registry = TranslationEngineRegistry(this.context, coordinator)
+    private val tencentArtifacts = com.example.offlinetranslator.tencent.TencentArtifactPreparation(this.context)
+    val registry = TranslationEngineRegistry(this.context, coordinator, tencentArtifacts)
     internal val owners = RuntimeOwnerController(scope)
     internal val conversationCaptureFactory: (SpeechModelStore, ConversationSessionConfig) -> SpeechCaptureEngine =
         { store, selected -> SherpaSpeechCaptureEngine(this.context, store, selected.vadModelId, selected.vadMinSilenceMs) }
@@ -62,6 +63,7 @@ class AppRuntime private constructor(context: Context) {
             val latest = settings.current()
             return latest.copy(
                 speechRecognitionBackend = value.speechRecognitionBackend,
+                speechRecognitionService = value.speechRecognitionService,
                 speechOutputBackend = value.speechOutputBackend,
                 textEngineId = value.textEngineId,
                 conversationEngineId = value.conversationEngineId,
@@ -258,6 +260,7 @@ class AppRuntime private constructor(context: Context) {
             settings.languagePair.source == config.languages[0] && settings.languagePair.target == config.languages[1] &&
             settings.speechOutputBackend == config.speechOutputBackend && settings.conversationEngineId == config.engineId &&
             settings.speechRecognitionBackend == config.speechRecognitionBackend &&
+            settings.speechRecognitionService == config.speechRecognitionService &&
             settings.vadModelId == config.vadModelId && settings.languageIdModelId == config.languageIdModelId &&
             settings.vadMinSilenceMs == config.vadMinSilenceMs && settings.ttsSpeedPercent == config.ttsSpeedPercent
 

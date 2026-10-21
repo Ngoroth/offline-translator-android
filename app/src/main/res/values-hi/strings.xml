@@ -142,7 +142,7 @@
     <string name="settings_interface_language_immediate">तुरंत लागू होती है</string>
     <string name="settings_interface_language_error">इंटरफ़ेस भाषा बदली नहीं जा सकी। फिर कोशिश करने के लिए दोबारा चुनें।</string>
     <string name="settings_about_translation">अनुवाद के बारे में</string>
-    <string name="settings_mlkit_summary">ML Kit डिवाइस पर तेज़ अनुवाद को प्राथमिकता देता है, लेकिन अर्थ गलत समझ सकता है। गुणवत्ता पर केंद्रित अन्य अनुवादकों की योजना है; वे अभी उपलब्ध नहीं हैं।</string>
+    <string name="settings_mlkit_summary">ML Kit डिवाइस पर तेज़ अनुवाद को प्राथमिकता देता है, लेकिन अर्थ गलत समझ सकता है।</string>
     <string name="settings_provider_summary">चुना हुआ अनुवादक: %1$s</string>
     <string name="help_google_translation">ML Kit डिवाइस पर अनुवाद के लिए Google Translate इस्तेमाल करता है। नीचे दिया लिंक Google को श्रेय देने की आवश्यकताएँ बताता है।</string>
     <string name="google_attribution_requirements_link">Google को श्रेय देने की आवश्यकताएँ</string>
@@ -169,4 +169,22 @@
     <string name="model_asr_whisper_multilingual">Whisper tiny बहुभाषी · अंग्रेज़ी · ऑफ़लाइन</string>
     <string name="model_tts_irina">Piper Irina medium · रूसी</string>
     <string name="model_tts_lessac">Piper Lessac medium · अंग्रेज़ी</string>
+    <string name="translation_verifying">अनुवाद मॉडल की अखंडता जाँची जा रही है…</string>
+    <string name="translation_loading">स्थानीय अनुवाद लोड और तैयार किया जा रहा है…</string>
+    <string name="translation_download_bytes">%1$d / %2$d बाइट</string>
+    <string name="translation_model_repair">अनुवाद मॉडल नहीं है या क्षतिग्रस्त है। ऑफलाइन अनुवाद फिर तैयार करें।</string>
+    <string name="translation_storage_error">मॉडल सहेजा या डाउनलोड नहीं किया जा सका। खाली जगह और Wi‑Fi जाँचकर फिर तैयार करें।</string>
+    <string name="translation_runtime_error">स्थानीय अनुवाद इंजन लोड नहीं हुआ। फिर तैयार करें; समस्या रहे तो ऐप फिर शुरू करें।</string>
+    <string name="translation_memory_error">स्थानीय अनुवाद के लिए मेमोरी कम है। दूसरे ऐप बंद करके फिर तैयार करें या पाठ छोटा करें।</string>
+    <string name="translation_limit_error">संदर्भ या परिणाम की सीमा पार हो गई। मूल पाठ छोटा करें; अधूरा अनुवाद नहीं रखा गया।</string>
+    <string name="translation_encoding_error">मूल पाठ में अमान्य Unicode है। पाठ सुधारकर फिर प्रयास करें।</string>
+    <string name="translation_timeout">अनुवाद की तैयारी में बहुत समय लगा। तैयारी की स्थिति जाँचकर फिर प्रयास करें।</string>
+    <string name="tencent_model_explanation">Tencent Hy-MT2 सभी भाषाओं के लिए एक 1.13 GB मॉडल उपयोग करता है, जो केवल Wi‑Fi पर तैयार करें दबाने से डाउनलोड होता है। फिर खोलने पर स्थानीय तैयारी भी चाहिए। कई GB मेमोरी लग सकती है; अनुवाद गुणवत्ता और फोन प्रदर्शन अभी प्रमाणित नहीं हैं।</string>
+    <string name="settings_recognition_service">वाक् पहचान सेवा</string>
+    <string name="recognition_service_on_device">Android की डिवाइस पर चलने वाली सेवा</string>
+    <string name="conversation_recognition_incompatible_service">चुनी गई पहचान सेवा ऑफ़लाइन बातचीत के लिए सत्यापित नहीं है। बेहतर सेटिंग में कोई संगत सेवा चुनें।</string>
+    <string name="conversation_install_recognition_data">वाक् पहचान की भाषा का डेटा इंस्टॉल करें</string>
+    <string name="conversation_recognition_install_error">चुनी गई पहचान सेवा का भाषा इंस्टॉलर नहीं खोला जा सका।</string>
+    <string name="conversation_recognition_install_hint">अनुपलब्ध भाषा इंस्टॉल करें, फिर तैयारी की स्थिति दोबारा जाँचने के लिए वापस आएँ।</string>
+    <string name="conversation_recognition_service_unavailable">चुनी गई पहचान सेवा उपलब्ध नहीं है। बेहतर सेटिंग में कोई इंस्टॉल की गई सेवा चुनें।</string>
 </resources>

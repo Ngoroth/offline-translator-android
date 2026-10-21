@@ -13,6 +13,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.offlinetranslator.core.*
 import com.example.offlinetranslator.runtime.AppRuntime
 import com.example.offlinetranslator.sherpa.SpeechModelStore
+import com.example.offlinetranslator.speech.AndroidRecognitionDataInstaller
 import kotlinx.coroutines.*
 import kotlin.coroutines.coroutineContext
 
@@ -45,6 +46,7 @@ fun ConversationRoute(
     var languageError by remember { mutableStateOf<ConversationLanguageChangeError?>(null) }
     var failedOpenConfig by remember { mutableStateOf<ConversationSessionConfig?>(null) }
     var installError by remember { mutableStateOf(false) }
+    var recognitionInstallError by remember { mutableStateOf(false) }
     var installRequest by remember { mutableStateOf<Any?>(null) }
     var installJob by remember { mutableStateOf<Job?>(null) }
     var pendingStart by remember { mutableStateOf<ConversationViewModel?>(null) }
@@ -160,6 +162,7 @@ fun ConversationRoute(
         changing = true
         languageError = null
         installError = false
+        recognitionInstallError = false
         installRequest = null
         installJob?.cancel()
         pendingStart = null
@@ -189,6 +192,8 @@ fun ConversationRoute(
     val permissionDenied = shown?.permissionDenied?.collectAsStateWithLifecycle()?.value ?: false
     val outputReadiness = shown?.outputReadiness?.collectAsStateWithLifecycle()?.value
     val recognitionReadiness = shown?.recognitionReadiness?.collectAsStateWithLifecycle()?.value
+    val translationPreparation = shown?.translationPreparation?.collectAsStateWithLifecycle()?.value
+    val preparationFailure = shown?.preparationFailure?.collectAsStateWithLifecycle()?.value
     val sherpaEligible = remember(settings) {
         settings.speechRecognitionBackend == SpeechRecognitionBackend.SYSTEM_OFFLINE &&
             RecommendedConversationRecognition.modelId(settings.languagePair.source) != null &&
@@ -199,6 +204,7 @@ fun ConversationRoute(
         state = state, models = statuses, preparation = preparation,
         ready = ready && installRequest == null && !changing && !teardownFailed, permissionDenied = permissionDenied,
         ownerAvailable = shown != null,
+        translationPreparation = translationPreparation, preparationFailure = preparationFailure,
         onPrepare = { if (installRequest == null && !changing && !teardownFailed) shown?.prepareLanguages() },
         onSessionAction = {
             if (shown?.state?.value?.sessionActive == true) { pendingStart = null; shown.stop() }
@@ -218,16 +224,54 @@ fun ConversationRoute(
         onPairSelected = selectPair, onOpenText = onOpenText,
         systemRecognition = settings.speechRecognitionBackend == SpeechRecognitionBackend.SYSTEM_OFFLINE,
         recognitionReadiness = recognitionReadiness,
+        speechRecognitionService = settings.speechRecognitionService,
         canChooseSherpa = sherpaEligible,
         onOpenAdvancedSettings = open@{
             val latest = runtime.settings.state.value.settings ?: return@open
             if (mounted && foreground && !changing && !runtime.owners.busy.value && !teardownFailed &&
-                latest == settings && latest.speechRecognitionBackend == SpeechRecognitionBackend.SYSTEM_OFFLINE &&
-                runtime.conversationProblems(latest.copy(speechRecognitionBackend = SpeechRecognitionBackend.SHERPA)).isEmpty()) {
+                latest == settings && latest.speechRecognitionBackend == SpeechRecognitionBackend.SYSTEM_OFFLINE) {
                 onOpenAdvancedSettings()
             }
         },
         systemOutput = settings.speechOutputBackend == SpeechOutputBackend.SYSTEM_OFFLINE,
+        canInstallRecognitionData = shown != null && settings.speechRecognitionService != null &&
+            recognitionReadiness in setOf(SpeechRecognitionReadiness.MISSING_LOCAL_MODEL, SpeechRecognitionReadiness.SCHEDULED) &&
+            installRequest == null && foreground && !changing && !teardownFailed &&
+            preparation in setOf(ConversationPreparation.IDLE, ConversationPreparation.ERROR) && !state.sessionActive,
+        recognitionInstallError = recognitionInstallError,
+        onInstallRecognitionData = install@{
+            val requested = shown ?: return@install
+            val initialSettings = runtime.settings.state.value.settings ?: return@install
+            val initialOwnership = runtime.owners.ownershipVersion.value
+            fun fresh(): Boolean {
+                val latest = runtime.settings.state.value
+                return mounted && foreground && lifecycleOwner.lifecycle.currentState.isAtLeast(Lifecycle.State.STARTED) &&
+                    viewModel === requested && requested.hasCurrentOwner && !changing &&
+                    !runtime.owners.teardownFailed.value && !latest.loading && !latest.loadError &&
+                    latest.settings == initialSettings && runtime.matches(initialSettings, requested.config) &&
+                    runtime.owners.ownershipVersion.value == initialOwnership
+            }
+            if (installRequest != null || runtime.owners.busy.value || !fresh() || requested.state.value.sessionActive ||
+                requested.preparation.value !in setOf(ConversationPreparation.IDLE, ConversationPreparation.ERROR)) return@install
+            val token = Any()
+            installRequest = token
+            recognitionInstallError = false
+            pendingStart = null
+            installJob = scope.launch {
+                try {
+                    val request = requested.recognitionDataInstallRequest { installRequest === token && fresh() }
+                    coroutineContext.ensureActive()
+                    // owners.use has returned: external consent cannot retain the runtime owner gate.
+                    if (installRequest === token && fresh()) recognitionInstallError = !AndroidRecognitionDataInstaller(context).install(request)
+                } catch (cancelled: CancellationException) {
+                    throw cancelled
+                } catch (_: Exception) {
+                    if (installRequest === token && fresh()) recognitionInstallError = true
+                } finally {
+                    if (installRequest === token) installRequest = null
+                }
+            }
+        },
         outputReadiness = outputReadiness, installError = installError,
         canInstallVoiceData = shown != null && outputReadiness == SpeechOutputReadiness.MISSING_LOCAL_VOICE &&
             installRequest == null && foreground && !changing &&
@@ -270,7 +314,11 @@ fun ConversationRoute(
         onRecheck = {
             val latest = runtime.settings.state.value.settings
             if (installRequest == null && shown != null && latest != null && shown.hasCurrentOwner && runtime.matches(latest, shown.config) &&
-                foreground && !changing && !teardownFailed) { installError = false; shown.recheckReadiness() }
+                foreground && !changing && !teardownFailed) {
+                installError = false
+                recognitionInstallError = false
+                shown.recheckReadiness()
+            }
         },
     )
 }

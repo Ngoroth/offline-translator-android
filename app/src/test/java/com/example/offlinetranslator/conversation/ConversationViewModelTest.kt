@@ -17,6 +17,9 @@ import com.example.offlinetranslator.core.SpeechModelStatus
 import com.example.offlinetranslator.core.SpeechPlaybackStart
 import com.example.offlinetranslator.core.SpeechSegment
 import com.example.offlinetranslator.core.TranslationEngine
+import com.example.offlinetranslator.core.ConversationTranscriptStatus
+import com.example.offlinetranslator.core.TranslationPreparationState
+import com.example.offlinetranslator.core.TranslationPreparationPhase
 import com.example.offlinetranslator.core.SpeechOutputBackend
 import com.example.offlinetranslator.core.SpeechOutputReadiness
 import com.example.offlinetranslator.core.SpeechRecognitionBackend
@@ -47,6 +50,26 @@ import org.junit.Test
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class ConversationViewModelTest {
+    @Test fun translationLimitKeepsRecognizedSourceAndSkipsPlaybackWithoutStoppingNextTurn() = runTest {
+        withModel { fixture ->
+            fixture.model.start()
+            runCurrent()
+            fixture.translation.failure = com.example.offlinetranslator.core.TranslationFailure.TokenLimit()
+            fixture.capture.emit()
+            runCurrent()
+            val row = fixture.model.state.value.transcripts.last()
+            assertEquals("original", row.original)
+            assertTrue(row.translationFailure is com.example.offlinetranslator.core.TranslationFailure.TokenLimit)
+            assertEquals(ConversationTranscriptStatus.ERROR, row.status)
+            assertEquals(null, row.translation)
+            assertTrue(fixture.output.spoken.isEmpty())
+            assertEquals(ConversationPhase.LISTENING, fixture.model.state.value.phase)
+            fixture.capture.emit()
+            runCurrent()
+            assertEquals(ConversationTranscriptStatus.COMPLETE, fixture.model.state.value.transcripts.last().status)
+        }
+    }
+
 
     @Test fun scheduledRecognitionRequiresExplicitForegroundRecheckAndNeverStartsOrDownloadsImplicitly() = runTest {
         withModel(configure = { it.recognition.readinessState.value = SpeechRecognitionReadiness.MISSING_LOCAL_MODEL }) { fixture ->
@@ -724,6 +747,9 @@ class ConversationViewModelTest {
     }
 
     private class FakeTranslation(private var ready: Boolean) : TranslationEngine {
+        override val preparation = kotlinx.coroutines.flow.MutableStateFlow(TranslationPreparationState(
+            if (ready) TranslationPreparationPhase.READY else TranslationPreparationPhase.MISSING,
+        ))
         var preparations = 0
         var translations = 0
         var preparationGate: CompletableDeferred<ModelAvailability>? = null
@@ -731,6 +757,7 @@ class ConversationViewModelTest {
         var preparationExitGate: CompletableDeferred<Unit>? = null
         val preparationExiting = CompletableDeferred<Unit>()
         var preparationFinished = false
+        var failure: com.example.offlinetranslator.core.TranslationFailure? = null
         override suspend fun modelAvailability() = if (ready) ModelAvailability.READY else ModelAvailability.MISSING
         override suspend fun prepare(): ModelAvailability {
             preparations++
@@ -744,7 +771,11 @@ class ConversationViewModelTest {
                 preparationFinished = true
             }
         }
-        override suspend fun translate(pair: LanguagePair, text: String): String { translations++; return "translation" }
+        override suspend fun translate(pair: LanguagePair, text: String): String {
+            translations++
+            failure?.let { failure = null; throw it }
+            return "translation"
+        }
         override fun close() { closes++ }
     }
 

@@ -63,6 +63,7 @@ import com.example.offlinetranslator.core.SpeechModelInstallState
 import com.example.offlinetranslator.core.SpeechModelStatus
 import com.example.offlinetranslator.core.ConfigurationProblem
 import com.example.offlinetranslator.mlkit.MlKitTranslationEngine
+import com.example.offlinetranslator.tencent.TencentTranslationEngine
 import com.example.offlinetranslator.ui.pressSystemBack
 import com.example.offlinetranslator.ui.TranslatorHelpTestTags
 import org.junit.Assert.assertEquals
@@ -73,6 +74,39 @@ import org.junit.Test
 class ConversationScreenTest {
     @get:Rule val compose = createComposeRule()
 
+
+    @Test fun recognitionInstallerIsReachableAtLargeFontButNeverEnablesStaleStartOrIncompatibleLaunch() {
+        val fontScale = mutableStateOf(1f)
+        val readiness = mutableStateOf(SpeechRecognitionReadiness.MISSING_LOCAL_MODEL)
+        val error = mutableStateOf(false)
+        val installing = mutableStateOf(false)
+        compose.setContent {
+            val density = LocalDensity.current
+            CompositionLocalProvider(LocalDensity provides Density(density.density, fontScale.value)) { MaterialTheme {
+                ConversationScreen(ConversationState(), emptyList(),
+                    if (installing.value) ConversationPreparation.CHECKING else ConversationPreparation.IDLE,
+                    true, false, {}, {},
+                    systemRecognition = true, recognitionReadiness = readiness.value,
+                    canInstallRecognitionData = readiness.value == SpeechRecognitionReadiness.MISSING_LOCAL_MODEL,
+                    recognitionInstallError = error.value,
+                    onInstallRecognitionData = { error.value = true })
+            } }
+        }
+        for (scale in listOf(1f, 2f)) {
+            compose.runOnIdle { fontScale.value = scale }
+            compose.onNodeWithTag(ConversationTestTags.INSTALL_RECOGNITION_DATA).performScrollTo()
+                .assertIsDisplayed().assertIsEnabled().assertHeightIsAtLeast(48.dp).performClick()
+            compose.onNodeWithTag(ConversationTestTags.RECOGNITION_INSTALL_ERROR).performScrollTo().assertIsDisplayed()
+            compose.onNodeWithTag(ConversationTestTags.SESSION_ACTION).assertIsNotEnabled()
+        }
+        compose.runOnIdle { installing.value = true }
+        compose.onNodeWithTag(ConversationTestTags.INSTALL_RECOGNITION_DATA).performScrollTo().assertIsNotEnabled()
+        compose.runOnIdle { installing.value = false; readiness.value = SpeechRecognitionReadiness.INCOMPATIBLE_SERVICE }
+        compose.onNodeWithTag(ConversationTestTags.INSTALL_RECOGNITION_DATA).assertDoesNotExist()
+        compose.onNodeWithTag(ConversationTestTags.OPEN_ADVANCED_SETTINGS).performScrollTo().assertIsEnabled()
+        compose.onNodeWithTag(ConversationTestTags.PREPARE).performScrollTo().assertIsNotEnabled()
+        compose.onNodeWithTag(ConversationTestTags.SESSION_ACTION).assertIsNotEnabled()
+    }
     @Test fun outputRecoveryKeepsInstallAvailableForEverySelectedPairWithoutStarting() {
         val pair = mutableStateOf(LanguagePair(LanguageCatalog.RUSSIAN, LanguageCatalog.ENGLISH))
         compose.setContent { MaterialTheme {
@@ -640,11 +674,9 @@ class ConversationScreenTest {
         }
         compose.runOnIdle { provider.value = null }
         compose.onAllNodesWithContentDescription(attribution, useUnmergedTree = true).assertCountEquals(0)
-        compose.runOnIdle { provider.value = MlKitTranslationEngine.descriptor.copy(
-            id = "isolated-descriptor", displayName = "Other translator", provider = "Other",
-            attribution = "Other translator attribution", termsUrl = "https://example.test/terms") }
+        compose.runOnIdle { provider.value = TencentTranslationEngine.descriptor }
         compose.onAllNodesWithContentDescription(attribution, useUnmergedTree = true).assertCountEquals(0)
-        compose.onNodeWithText("Other translator attribution", useUnmergedTree = true).assertDoesNotExist()
+        compose.onNodeWithText(TencentTranslationEngine.descriptor.attribution, useUnmergedTree = true).assertIsDisplayed()
         compose.onNodeWithText("Новый запрос").assertExists()
         compose.onNodeWithText(requireNotNull(previous.translation)).assertExists()
         compose.runOnIdle { provider.value = MlKitTranslationEngine.descriptor }

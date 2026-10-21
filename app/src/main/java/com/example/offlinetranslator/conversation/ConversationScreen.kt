@@ -78,6 +78,8 @@ object ConversationTestTags {
     const val RECOGNITION_READINESS = "conversation_recognition_readiness"
     const val RECHECK_RECOGNITION = "conversation_recheck_recognition"
     const val OPEN_ADVANCED_SETTINGS = "conversation_open_advanced_settings"
+    const val INSTALL_RECOGNITION_DATA = "conversation_install_recognition_data"
+    const val RECOGNITION_INSTALL_ERROR = "conversation_recognition_install_error"
     const val PHASE = "conversation_phase"
 }
 
@@ -112,6 +114,12 @@ fun ConversationScreen(
     recognitionReadiness: SpeechRecognitionReadiness? = null,
     canChooseSherpa: Boolean = false,
     onOpenAdvancedSettings: () -> Unit = {},
+    translationPreparation: com.example.offlinetranslator.core.TranslationPreparationState? = null,
+    preparationFailure: com.example.offlinetranslator.core.TranslationFailure? = null,
+    canInstallRecognitionData: Boolean = false,
+    recognitionInstallError: Boolean = false,
+    onInstallRecognitionData: () -> Unit = {},
+    speechRecognitionService: String? = null,
 ) {
     val preparing = preparation == ConversationPreparation.CHECKING ||
         preparation == ConversationPreparation.INSTALLING || preparation == ConversationPreparation.TRANSLATION
@@ -161,15 +169,27 @@ fun ConversationScreen(
                 if (systemRecognition && recognitionReadiness != SpeechRecognitionReadiness.READY) {
                     Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         recognitionReadiness?.let {
-                            Text(stringResource(recognitionReadinessLabel(it)),
+                            Text(stringResource(recognitionReadinessLabel(it, speechRecognitionService != null)),
                                 modifier = Modifier.testTag(ConversationTestTags.RECOGNITION_READINESS))
                         }
+                        if (canInstallRecognitionData) {
+                            Text(stringResource(R.string.conversation_recognition_install_hint))
+                            TextButton(onInstallRecognitionData,
+                                enabled = ownerAvailable && !preparing && !languageChanging && !languageBlocked && !state.sessionActive,
+                                modifier = Modifier.heightIn(min = 48.dp).testTag(ConversationTestTags.INSTALL_RECOGNITION_DATA)) {
+                                Text(stringResource(R.string.conversation_install_recognition_data))
+                            }
+                        }
+                        if (recognitionInstallError) Text(stringResource(R.string.conversation_recognition_install_error),
+                            color = MaterialTheme.colorScheme.error,
+                            modifier = Modifier.testTag(ConversationTestTags.RECOGNITION_INSTALL_ERROR))
                         TextButton(onRecheck,
                             enabled = ownerAvailable && !preparing && !languageChanging && !languageBlocked && !state.sessionActive,
                             modifier = Modifier.heightIn(min = 48.dp).testTag(ConversationTestTags.RECHECK_RECOGNITION)) {
                             Text(stringResource(R.string.conversation_recheck_recognition))
                         }
-                        if (canChooseSherpa) {
+                        if (canChooseSherpa || recognitionReadiness == SpeechRecognitionReadiness.INCOMPATIBLE_SERVICE ||
+                            recognitionReadiness == SpeechRecognitionReadiness.ENGINE_UNAVAILABLE) {
                             TextButton(onOpenAdvancedSettings,
                                 enabled = !preparing && !languageChanging && !languageBlocked && !state.sessionActive,
                                 modifier = Modifier.heightIn(min = 48.dp).testTag(ConversationTestTags.OPEN_ADVANCED_SETTINGS)) {
@@ -222,7 +242,9 @@ fun ConversationScreen(
                     }
                 }
                 state.failure?.let { failure ->
-                    Text(stringResource(failureLabel(failure)), color = MaterialTheme.colorScheme.error,
+                    Text(stringResource(state.translationFailure?.let { typed ->
+                        com.example.offlinetranslator.ui.translationFailureLabel(typed)
+                    } ?: failureLabel(failure)), color = MaterialTheme.colorScheme.error,
                         modifier = Modifier.testTag(ConversationTestTags.SESSION_ERROR))
                 }
                 if (state.droppedSegments > 0) {
@@ -237,6 +259,14 @@ fun ConversationScreen(
                             Text(stringResource(preparationLabel(preparation)), style = MaterialTheme.typography.bodyMedium,
                                 color = if (preparation == ConversationPreparation.ERROR) MaterialTheme.colorScheme.error
                                     else MaterialTheme.colorScheme.onSurface)
+                            if (provider?.id == "tencent" && !preparing) Text(stringResource(R.string.tencent_model_explanation))
+                            if (translationPreparation != null && (preparation == ConversationPreparation.TRANSLATION ||
+                                translationPreparation.phase == com.example.offlinetranslator.core.TranslationPreparationPhase.VERIFYING ||
+                                translationPreparation.phase == com.example.offlinetranslator.core.TranslationPreparationPhase.FAILED)) {
+                                com.example.offlinetranslator.ui.TranslationPreparation(translationPreparation)
+                            } else preparationFailure?.let {
+                                Text(stringResource(com.example.offlinetranslator.ui.translationFailureLabel(it)), color = MaterialTheme.colorScheme.error)
+                            }
                             if (preparation == ConversationPreparation.INSTALLING) {
                                 var total = 0L
                                 var downloaded = 0L
@@ -260,6 +290,7 @@ fun ConversationScreen(
                                 onClick = onPrepare,
                                 enabled = ownerAvailable && !preparing && !state.sessionActive &&
                                     recognitionReadiness != SpeechRecognitionReadiness.UNSUPPORTED &&
+                                    recognitionReadiness != SpeechRecognitionReadiness.INCOMPATIBLE_SERVICE &&
                                     recognitionReadiness != SpeechRecognitionReadiness.ENGINE_UNAVAILABLE &&
                                     !languageChanging && !languageBlocked,
                                 modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).testTag(ConversationTestTags.PREPARE),
@@ -306,7 +337,7 @@ fun ConversationScreen(
                         Text(stringResource(phaseLabel(state.phase)), style = MaterialTheme.typography.labelLarge,
                             textAlign = TextAlign.Center, modifier = Modifier.testTag(ConversationTestTags.PHASE))
                     }
-                    if (provider?.id == "mlkit") ProviderAttribution(provider)
+                    ProviderAttribution(provider)
                     Button(
                         onClick = onSessionAction,
                         enabled = state.sessionActive || (configurationProblem == null && ready && !preparing &&
@@ -365,7 +396,9 @@ private fun TranscriptCard(row: ConversationTranscript, primary: Boolean) {
             if (translation != null) {
                 Text(stringResource(transcriptLabel(row.status)), style = MaterialTheme.typography.bodySmall)
             }
-            row.failure?.let { Text(stringResource(failureLabel(it)), color = MaterialTheme.colorScheme.error) }
+            row.failure?.let { Text(stringResource(row.translationFailure?.let { typed ->
+                com.example.offlinetranslator.ui.translationFailureLabel(typed)
+            } ?: failureLabel(it)), color = MaterialTheme.colorScheme.error) }
         }
     }
 }
@@ -411,11 +444,13 @@ private fun failureLabel(value: ConversationFailure) = when (value) {
     ConversationFailure.PLAYBACK_FAILED -> R.string.conversation_failure_playback
 }
 
-private fun recognitionReadinessLabel(readiness: SpeechRecognitionReadiness): Int = when (readiness) {
+private fun recognitionReadinessLabel(readiness: SpeechRecognitionReadiness, explicitService: Boolean): Int = when (readiness) {
     SpeechRecognitionReadiness.READY -> R.string.conversation_recognition_ready
     SpeechRecognitionReadiness.MISSING_LOCAL_MODEL -> R.string.conversation_recognition_missing_model
     SpeechRecognitionReadiness.UNSUPPORTED -> R.string.conversation_recognition_unsupported
-    SpeechRecognitionReadiness.ENGINE_UNAVAILABLE -> R.string.conversation_recognition_engine_unavailable
+    SpeechRecognitionReadiness.INCOMPATIBLE_SERVICE -> R.string.conversation_recognition_incompatible_service
+    SpeechRecognitionReadiness.ENGINE_UNAVAILABLE -> if (explicitService) R.string.conversation_recognition_service_unavailable
+        else R.string.conversation_recognition_engine_unavailable
     SpeechRecognitionReadiness.SCHEDULED -> R.string.conversation_recognition_scheduled
     SpeechRecognitionReadiness.DOWNLOADING -> R.string.conversation_recognition_downloading
     SpeechRecognitionReadiness.DOWNLOAD_FAILED -> R.string.conversation_recognition_download_failed

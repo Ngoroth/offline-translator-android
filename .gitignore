@@ -11,6 +11,8 @@ captures/
 /.agents/
 .cache/translator-evaluation/
 /engine-sherpa/libs/*.aar
+/engine-tencent/.native-cache/
+/engine-tencent/libs/
 
 # Local environment and credentials
 /.omp/
@@ -48,3 +50,4 @@ __pycache__/
 /docs/changes/
 /docs/archived/
 /docs/backlog/
+/docs/workflow/

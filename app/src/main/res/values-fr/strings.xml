@@ -142,7 +142,7 @@
     <string name="settings_interface_language_immediate">S’applique immédiatement</string>
     <string name="settings_interface_language_error">La langue de l’interface n’a pas pu être changée. Sélectionnez-la à nouveau pour réessayer.</string>
     <string name="settings_about_translation">À propos de la traduction</string>
-    <string name="settings_mlkit_summary">ML Kit privilégie la rapidité de traduction sur l’appareil, mais peut mal interpréter le sens. D’autres traducteurs axés sur la qualité sont prévus ; ils ne sont pas encore disponibles.</string>
+    <string name="settings_mlkit_summary">ML Kit privilégie la rapidité de traduction sur l’appareil, mais peut mal interpréter le sens.</string>
     <string name="settings_provider_summary">Traducteur sélectionné : %1$s</string>
     <string name="help_google_translation">ML Kit utilise Google Translate pour traduire sur l’appareil. Le lien ci-dessous décrit les exigences d’attribution de Google.</string>
     <string name="google_attribution_requirements_link">Exigences d’attribution de Google</string>
@@ -169,4 +169,22 @@
     <string name="model_asr_whisper_multilingual">Whisper tiny multilingue · anglais · hors connexion</string>
     <string name="model_tts_irina">Piper Irina medium · russe</string>
     <string name="model_tts_lessac">Piper Lessac medium · anglais</string>
+    <string name="translation_verifying">Vérification de l’intégrité du modèle de traduction…</string>
+    <string name="translation_loading">Chargement et préchauffage de la traduction locale…</string>
+    <string name="translation_download_bytes">%1$d / %2$d octets</string>
+    <string name="translation_model_repair">Le modèle de traduction est absent ou endommagé. Préparez à nouveau la traduction hors connexion.</string>
+    <string name="translation_storage_error">Impossible de stocker ou télécharger le modèle. Vérifiez l’espace libre et le Wi‑Fi, puis préparez à nouveau.</string>
+    <string name="translation_runtime_error">Impossible de charger le moteur local. Relancez la préparation ; si nécessaire, redémarrez l’application.</string>
+    <string name="translation_memory_error">Mémoire insuffisante pour la traduction locale. Fermez les autres applications et préparez à nouveau, ou raccourcissez le texte.</string>
+    <string name="translation_limit_error">Limite de contexte ou de sortie dépassée. Raccourcissez la source ; aucune traduction partielle conservée.</string>
+    <string name="translation_encoding_error">La source contient du Unicode invalide. Corrigez le texte et réessayez.</string>
+    <string name="translation_timeout">La préparation de la traduction a pris trop de temps. Vérifiez son état et réessayez.</string>
+    <string name="tencent_model_explanation">Tencent Hy-MT2 utilise un modèle de 1,13 Go pour toutes les langues, téléchargé uniquement avec Préparer en Wi‑Fi. Une préparation locale est aussi nécessaire après réouverture. Plusieurs Go de mémoire peuvent être requis ; qualité et performances sur téléphone non qualifiées.</string>
+    <string name="settings_recognition_service">Service de reconnaissance vocale</string>
+    <string name="recognition_service_on_device">Service local d’Android</string>
+    <string name="conversation_recognition_incompatible_service">Le service de reconnaissance sélectionné n’a pas été validé pour les conversations hors connexion. Choisissez un service compatible dans les paramètres avancés.</string>
+    <string name="conversation_install_recognition_data">Installer les données linguistiques de reconnaissance</string>
+    <string name="conversation_recognition_install_error">Impossible d’ouvrir le programme d’installation des langues du service de reconnaissance sélectionné.</string>
+    <string name="conversation_recognition_install_hint">Installez la langue manquante, puis revenez vérifier si le service est prêt.</string>
+    <string name="conversation_recognition_service_unavailable">Le service de reconnaissance sélectionné est indisponible. Choisissez un service installé dans les paramètres avancés.</string>
 </resources>
