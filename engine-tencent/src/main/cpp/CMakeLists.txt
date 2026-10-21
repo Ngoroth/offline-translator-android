@@ -30,6 +30,11 @@ if(ANDROID)
         message(FATAL_ERROR "Only arm64-v8a and x86_64 are supported")
     endif()
 endif()
+# Keep build-machine paths out of native diagnostics and debug metadata.
+add_compile_options(
+    "-ffile-prefix-map=${TENCENT_LLAMA_SOURCE}=llama.cpp"
+    "-ffile-prefix-map=${CMAKE_CURRENT_SOURCE_DIR}=tencent-native"
+    "-ffile-prefix-map=${CMAKE_BINARY_DIR}=native-build")
 add_subdirectory("${TENCENT_LLAMA_SOURCE}" llama.cpp)
 add_library(tencent_runtime STATIC tencent_runtime.cpp)
 target_link_libraries(tencent_runtime PUBLIC llama)
