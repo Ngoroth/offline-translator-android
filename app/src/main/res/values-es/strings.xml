@@ -142,7 +142,7 @@
     <string name="settings_interface_language_immediate">Se aplica inmediatamente</string>
     <string name="settings_interface_language_error">No se ha podido cambiar el idioma de la interfaz. Selecciónalo de nuevo para reintentarlo.</string>
     <string name="settings_about_translation">Acerca de la traducción</string>
-    <string name="settings_mlkit_summary">ML Kit prioriza la traducción rápida en el dispositivo, pero puede interpretar mal el significado. Se prevén otros traductores centrados en la calidad; aún no están disponibles.</string>
+    <string name="settings_mlkit_summary">ML Kit prioriza la traducción rápida en el dispositivo, pero puede interpretar mal el significado.</string>
     <string name="settings_provider_summary">Traductor seleccionado: %1$s</string>
     <string name="help_google_translation">ML Kit usa Google Translate para traducir en el dispositivo. El enlace siguiente describe los requisitos de atribución de Google.</string>
     <string name="google_attribution_requirements_link">Requisitos de atribución de Google</string>
@@ -169,6 +169,17 @@
     <string name="model_asr_whisper_multilingual">Whisper tiny multilingüe · inglés · sin conexión</string>
     <string name="model_tts_irina">Piper Irina medium · ruso</string>
     <string name="model_tts_lessac">Piper Lessac medium · inglés</string>
+    <string name="translation_verifying">Verificando la integridad del modelo de traducción…</string>
+    <string name="translation_loading">Cargando y preparando la traducción local…</string>
+    <string name="translation_download_bytes">%1$d / %2$d bytes</string>
+    <string name="translation_model_repair">El modelo de traducción falta o está dañado. Prepara de nuevo la traducción sin conexión.</string>
+    <string name="translation_storage_error">No se pudo guardar o descargar el modelo. Comprueba el espacio libre y el Wi‑Fi y vuelve a prepararlo.</string>
+    <string name="translation_runtime_error">No se pudo cargar el motor local. Vuelve a prepararlo; si persiste, reinicia la aplicación.</string>
+    <string name="translation_memory_error">Memoria insuficiente para la traducción local. Cierra otras aplicaciones y vuelve a preparar, o acorta el texto.</string>
+    <string name="translation_limit_error">Se superó el límite de contexto o salida. Acorta el texto original; no se guardó ninguna traducción parcial.</string>
+    <string name="translation_encoding_error">El original contiene Unicode no válido. Corrige el texto y reintenta.</string>
+    <string name="translation_timeout">La preparación tardó demasiado. Comprueba su estado y reintenta.</string>
+    <string name="tencent_model_explanation">Tencent Hy-MT2 usa un modelo de 1,13 GB para todos los idiomas, descargado solo con Preparar por Wi‑Fi. También necesita preparación local tras reabrir. Puede requerir varios GB de memoria; la calidad y el rendimiento en teléfonos no están cualificados.</string>
     <string name="settings_recognition_service">Servicio de reconocimiento de voz</string>
     <string name="recognition_service_on_device">Servicio local de Android</string>
     <string name="conversation_recognition_incompatible_service">El servicio de reconocimiento seleccionado no se ha verificado para conversaciones sin conexión. Elige un servicio compatible en los ajustes avanzados.</string>

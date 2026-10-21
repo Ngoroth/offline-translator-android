@@ -143,7 +143,7 @@
     <string name="settings_interface_language_immediate">Applies immediately</string>
     <string name="settings_interface_language_error">Could not change the interface language. Select it again to retry.</string>
     <string name="settings_about_translation">About translation</string>
-    <string name="settings_mlkit_summary">ML Kit prioritizes fast on-device translation, but may misinterpret meaning. Other translators focused on quality are planned; they are not available yet.</string>
+    <string name="settings_mlkit_summary">ML Kit prioritizes fast on-device translation, but may misinterpret meaning.</string>
     <string name="settings_provider_summary">Selected translator: %1$s</string>
     <string name="help_google_translation">ML Kit uses Google Translate for on-device translation. The link below describes Google attribution requirements.</string>
     <string name="google_attribution_requirements_link">Google attribution requirements</string>
@@ -170,6 +170,17 @@
     <string name="model_asr_whisper_multilingual">Whisper tiny multilingual · English · offline</string>
     <string name="model_tts_irina">Piper Irina medium · Russian</string>
     <string name="model_tts_lessac">Piper Lessac medium · English</string>
+    <string name="translation_verifying">Verifying translation model integrity…</string>
+    <string name="translation_loading">Loading and warming up local translation…</string>
+    <string name="translation_download_bytes">%1$d / %2$d bytes</string>
+    <string name="translation_model_repair">The translation model is missing or damaged. Prepare offline translation again.</string>
+    <string name="translation_storage_error">The model could not be stored or downloaded. Check free space and Wi‑Fi, then prepare again.</string>
+    <string name="translation_runtime_error">The local translation engine could not load. Prepare again; restart the app if it persists.</string>
+    <string name="translation_memory_error">Not enough memory for local translation. Close other apps and prepare again, or choose a shorter text.</string>
+    <string name="translation_limit_error">The text exceeds the local translation context or output limit. Shorten the source; no partial translation was kept.</string>
+    <string name="translation_encoding_error">The source contains invalid Unicode. Correct the text and retry.</string>
+    <string name="translation_timeout">Translation preparation took too long. Check the preparation state and retry.</string>
+    <string name="tencent_model_explanation">Tencent Hy-MT2 uses one 1.13 GB model for all languages, downloaded only with Prepare over Wi‑Fi. Local initialization also needs Prepare after reopening. It can require several GB of memory; translation quality and phone performance are not qualified.</string>
     <string name="settings_recognition_service">Recognition service</string>
     <string name="recognition_service_on_device">Android on-device service</string>
     <string name="conversation_recognition_incompatible_service">The selected recognition service is not qualified for offline conversation. Choose a compatible service in advanced settings.</string>

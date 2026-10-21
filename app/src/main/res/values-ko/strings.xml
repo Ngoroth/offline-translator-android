@@ -142,7 +142,7 @@
     <string name="settings_interface_language_immediate">즉시 적용됩니다</string>
     <string name="settings_interface_language_error">인터페이스 언어를 변경하지 못했습니다. 다시 선택하여 재시도하세요.</string>
     <string name="settings_about_translation">번역 정보</string>
-    <string name="settings_mlkit_summary">ML Kit은 기기 내 빠른 번역을 우선하지만 의미를 잘못 해석할 수 있습니다. 품질에 중점을 둔 다른 번역기도 계획되어 있지만 아직 사용할 수 없습니다.</string>
+    <string name="settings_mlkit_summary">ML Kit은 기기 내 빠른 번역을 우선하지만 의미를 잘못 해석할 수 있습니다.</string>
     <string name="settings_provider_summary">선택한 번역기: %1$s</string>
     <string name="help_google_translation">ML Kit은 기기 내 번역에 Google Translate를 사용합니다. 아래 링크에서 Google의 출처 표시 요건을 설명합니다.</string>
     <string name="google_attribution_requirements_link">Google 출처 표시 요건</string>
@@ -169,6 +169,17 @@
     <string name="model_asr_whisper_multilingual">Whisper tiny multilingual · 영어 · 오프라인</string>
     <string name="model_tts_irina">Piper Irina medium · 러시아어</string>
     <string name="model_tts_lessac">Piper Lessac medium · 영어</string>
+    <string name="translation_verifying">번역 모델 무결성 확인 중…</string>
+    <string name="translation_loading">로컬 번역을 불러오고 준비하는 중…</string>
+    <string name="translation_download_bytes">%1$d / %2$d 바이트</string>
+    <string name="translation_model_repair">번역 모델이 없거나 손상되었습니다. 오프라인 번역을 다시 준비하세요.</string>
+    <string name="translation_storage_error">모델을 저장하거나 다운로드할 수 없습니다. 여유 공간과 Wi‑Fi를 확인한 후 다시 준비하세요.</string>
+    <string name="translation_runtime_error">로컬 번역 엔진을 불러올 수 없습니다. 다시 준비하고 계속되면 앱을 다시 시작하세요.</string>
+    <string name="translation_memory_error">로컬 번역에 메모리가 부족합니다. 다른 앱을 닫고 다시 준비하거나 텍스트를 줄이세요.</string>
+    <string name="translation_limit_error">문맥 또는 출력 한도를 초과했습니다. 원문을 줄이세요. 불완전한 번역은 저장하지 않았습니다.</string>
+    <string name="translation_encoding_error">원문에 잘못된 Unicode가 있습니다. 텍스트를 수정하고 다시 시도하세요.</string>
+    <string name="translation_timeout">번역 준비가 너무 오래 걸렸습니다. 준비 상태를 확인하고 다시 시도하세요.</string>
+    <string name="tencent_model_explanation">Tencent Hy-MT2는 모든 언어에 하나의 1.13 GB 모델을 사용하며 Wi‑Fi에서 준비를 눌러야 다운로드합니다. 다시 연 후에도 로컬 초기화가 필요합니다. 수 GB 메모리가 필요할 수 있으며 번역 품질과 휴대폰 성능은 아직 검증되지 않았습니다.</string>
     <string name="settings_recognition_service">음성 인식 서비스</string>
     <string name="recognition_service_on_device">Android 기기 내 서비스</string>
     <string name="conversation_recognition_incompatible_service">선택한 인식 서비스는 오프라인 대화에 적합한지 검증되지 않았습니다. 고급 설정에서 호환되는 서비스를 선택하세요.</string>

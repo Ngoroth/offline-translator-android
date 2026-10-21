@@ -23,6 +23,7 @@ import androidx.compose.ui.test.performClick
 import com.example.offlinetranslator.core.LanguageCatalog
 import com.example.offlinetranslator.core.LanguagePair
 import com.example.offlinetranslator.mlkit.MlKitTranslationEngine
+import com.example.offlinetranslator.tencent.TencentTranslationEngine
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -514,7 +515,7 @@ class TranslationScreenTest {
         compose.onNodeWithTag(TranslationTestTags.RESULT_TEXT).performScrollTo().assertTextEquals(translated)
     }
 
-    @Test fun nullAndIsolatedOtherProviderKeepNeutralActionAndPreserveInputAndResultWithoutGoogle() {
+    @Test fun nullAndTencentProviderKeepNeutralActionAndPreserveInputAndResultWithoutGoogle() {
         val provider = mutableStateOf<TranslationProviderDescriptor?>(null)
         val context = InstrumentationRegistry.getInstrumentation().targetContext
         val google = context.getString(R.string.google_translate_attribution)
@@ -529,12 +530,10 @@ class TranslationScreenTest {
         compose.onNodeWithTag(TranslationTestTags.INPUT).performScrollTo().assertTextContains("Keep this request")
         compose.onNodeWithTag(TranslationTestTags.RESULT_TEXT).performScrollTo().assertTextEquals("Keep this result")
         compose.runOnIdle {
-            provider.value = MlKitTranslationEngine.descriptor.copy(id = "isolated-descriptor",
-                displayName = "Other translator", provider = "Other", attribution = "Other translator attribution",
-                termsUrl = "https://example.test/terms")
+            provider.value = TencentTranslationEngine.descriptor
         }
         compose.onNodeWithContentDescription(google).assertDoesNotExist()
-        compose.onNodeWithText("Other translator attribution").assertDoesNotExist()
+        compose.onNodeWithText(TencentTranslationEngine.descriptor.attribution).assertIsDisplayed()
         compose.onNodeWithTag(TranslationTestTags.TRANSLATE).assertIsEnabled()
             .assertTextEquals(context.getString(R.string.translate_action))
         compose.onNodeWithTag(TranslationTestTags.INPUT).performScrollTo().assertTextContains("Keep this request")

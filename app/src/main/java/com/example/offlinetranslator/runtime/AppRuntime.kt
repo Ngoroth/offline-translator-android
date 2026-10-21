@@ -36,7 +36,8 @@ class AppRuntime private constructor(context: Context) {
     val speechModels = SpeechModelStore(this.context)
     val catalog: SpeechModelCatalog get() = speechModels.catalog
     val coordinator = MlKitPreparationCoordinator(this.context)
-    val registry = TranslationEngineRegistry(this.context, coordinator)
+    private val tencentArtifacts = com.example.offlinetranslator.tencent.TencentArtifactPreparation(this.context)
+    val registry = TranslationEngineRegistry(this.context, coordinator, tencentArtifacts)
     internal val owners = RuntimeOwnerController(scope)
     internal val conversationCaptureFactory: (SpeechModelStore, ConversationSessionConfig) -> SpeechCaptureEngine =
         { store, selected -> SherpaSpeechCaptureEngine(this.context, store, selected.vadModelId, selected.vadMinSilenceMs) }

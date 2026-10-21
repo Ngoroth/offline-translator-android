@@ -142,7 +142,7 @@
     <string name="settings_interface_language_immediate">Langsung diterapkan</string>
     <string name="settings_interface_language_error">Bahasa antarmuka tidak dapat diubah. Pilih lagi untuk mencoba ulang.</string>
     <string name="settings_about_translation">Tentang terjemahan</string>
-    <string name="settings_mlkit_summary">ML Kit mengutamakan terjemahan cepat di perangkat, tetapi dapat salah menafsirkan makna. Penerjemah lain yang berfokus pada kualitas direncanakan; saat ini belum tersedia.</string>
+    <string name="settings_mlkit_summary">ML Kit mengutamakan terjemahan cepat di perangkat, tetapi dapat salah menafsirkan makna.</string>
     <string name="settings_provider_summary">Penerjemah yang dipilih: %1$s</string>
     <string name="help_google_translation">ML Kit menggunakan Google Translate untuk terjemahan di perangkat. Tautan di bawah menjelaskan persyaratan atribusi Google.</string>
     <string name="google_attribution_requirements_link">Persyaratan atribusi Google</string>
@@ -169,6 +169,17 @@
     <string name="model_asr_whisper_multilingual">Whisper tiny multibahasa · Inggris · offline</string>
     <string name="model_tts_irina">Piper Irina medium · Rusia</string>
     <string name="model_tts_lessac">Piper Lessac medium · Inggris</string>
+    <string name="translation_verifying">Memverifikasi integritas model terjemahan…</string>
+    <string name="translation_loading">Memuat dan memanaskan terjemahan lokal…</string>
+    <string name="translation_download_bytes">%1$d / %2$d byte</string>
+    <string name="translation_model_repair">Model terjemahan hilang atau rusak. Siapkan kembali terjemahan offline.</string>
+    <string name="translation_storage_error">Model tidak dapat disimpan atau diunduh. Periksa ruang kosong dan Wi‑Fi, lalu siapkan kembali.</string>
+    <string name="translation_runtime_error">Mesin terjemahan lokal tidak dapat dimuat. Siapkan kembali; jika berlanjut, mulai ulang aplikasi.</string>
+    <string name="translation_memory_error">Memori tidak cukup untuk terjemahan lokal. Tutup aplikasi lain dan siapkan kembali atau persingkat teks.</string>
+    <string name="translation_limit_error">Batas konteks atau keluaran terlampaui. Persingkat teks sumber; terjemahan parsial tidak disimpan.</string>
+    <string name="translation_encoding_error">Sumber mengandung Unicode tidak valid. Perbaiki teks dan coba lagi.</string>
+    <string name="translation_timeout">Persiapan terjemahan terlalu lama. Periksa status persiapan dan coba lagi.</string>
+    <string name="tencent_model_explanation">Tencent Hy-MT2 memakai satu model 1,13 GB untuk semua bahasa, hanya diunduh lewat Siapkan di Wi‑Fi. Persiapan lokal juga diperlukan setelah dibuka kembali. Dapat memerlukan beberapa GB memori; kualitas dan kinerja ponsel belum dikualifikasi.</string>
     <string name="settings_recognition_service">Layanan pengenalan ucapan</string>
     <string name="recognition_service_on_device">Layanan di perangkat Android</string>
     <string name="conversation_recognition_incompatible_service">Layanan pengenalan yang dipilih belum diverifikasi untuk percakapan offline. Pilih layanan yang kompatibel di setelan lanjutan.</string>

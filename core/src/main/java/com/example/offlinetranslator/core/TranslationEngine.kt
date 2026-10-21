@@ -1,5 +1,7 @@
 package com.example.offlinetranslator.core
 
+import kotlinx.coroutines.flow.StateFlow
+
 /**
  * A process-scoped translation engine. Implementations must never download a model from [translate].
  * Callers must pass non-blank text of at most [MAX_INPUT_CHARACTERS] UTF-16 code units
@@ -9,6 +11,8 @@ interface TranslationEngine : AutoCloseable {
     companion object {
         const val MAX_INPUT_CHARACTERS = 4096
     }
+
+    val preparation: StateFlow<TranslationPreparationState>
 
     suspend fun modelAvailability(): ModelAvailability
 

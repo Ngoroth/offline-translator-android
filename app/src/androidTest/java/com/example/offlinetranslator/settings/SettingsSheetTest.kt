@@ -17,6 +17,7 @@ import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.unit.Density
 import com.example.offlinetranslator.core.*
 import com.example.offlinetranslator.mlkit.MlKitTranslationEngine
+import com.example.offlinetranslator.tencent.TencentTranslationEngine
 import java.util.Locale
 import org.junit.Assert.assertEquals
 import org.junit.Rule
@@ -215,24 +216,23 @@ class SettingsSheetTest {
     }
 
     @Test fun registeredProviderSelectionsStayModeSpecificAndRemovedProviderIsRepairable() {
-        val other = MlKitTranslationEngine.descriptor.copy(id = "isolated-descriptor", displayName = "Other translator",
-            provider = "Other", attribution = "Other attribution", termsUrl = "https://example.test/terms")
-        val providers = mutableStateOf(listOf(MlKitTranslationEngine.descriptor, other))
+        val tencent = TencentTranslationEngine.descriptor
+        val providers = mutableStateOf(listOf(MlKitTranslationEngine.descriptor, tencent))
         val state = mutableStateOf(SettingsUiState(loading = false, editable = true))
         compose.setContent { MaterialTheme {
             SettingsSheet(state.value, choices, providers.value, { state.value = state.value.copy(draft = it) },
                 {}, {}, {}, {})
         } }
-        choose(SettingsTestTags.TEXT_ENGINE, other.id)
+        choose(SettingsTestTags.TEXT_ENGINE, tencent.id)
         compose.runOnIdle {
-            assertEquals(other.id, state.value.draft.textEngineId)
+            assertEquals(tencent.id, state.value.draft.textEngineId)
             assertEquals("mlkit", state.value.draft.conversationEngineId)
         }
-        choose(SettingsTestTags.CONVERSATION_ENGINE, other.id)
+        choose(SettingsTestTags.CONVERSATION_ENGINE, tencent.id)
         choose(SettingsTestTags.TEXT_ENGINE, "mlkit")
         compose.runOnIdle {
             assertEquals("mlkit", state.value.draft.textEngineId)
-            assertEquals(other.id, state.value.draft.conversationEngineId)
+            assertEquals(tencent.id, state.value.draft.conversationEngineId)
             providers.value = listOf(MlKitTranslationEngine.descriptor)
         }
         compose.onNodeWithTag(SettingsTestTags.CONVERSATION_ENGINE).performScrollTo().assertHasClickAction()

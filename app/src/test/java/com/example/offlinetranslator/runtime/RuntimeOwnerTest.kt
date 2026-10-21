@@ -1019,6 +1019,7 @@ class RuntimeOwnerTest {
         capture: SelectedCapture = SelectedCapture(),
     ) = ConversationRuntimeOwner(AppSettings().conversationConfig(), native, capture, recognition,
         object : TranslationEngine {
+            override val preparation = kotlinx.coroutines.flow.MutableStateFlow(TranslationPreparationState(TranslationPreparationPhase.READY))
             override suspend fun modelAvailability() = ModelAvailability.READY
             override suspend fun prepare() = ModelAvailability.READY
             override suspend fun translate(pair: LanguagePair, text: String): String = error("No phrase in readiness tests")

@@ -8,6 +8,8 @@ import com.example.offlinetranslator.core.LanguagePair
 import com.example.offlinetranslator.core.ModelAvailability
 import com.example.offlinetranslator.core.PreparationFailure
 import com.example.offlinetranslator.core.TranslationEngine
+import com.example.offlinetranslator.core.TranslationPreparationState
+import com.example.offlinetranslator.core.TranslationPreparationPhase
 import com.example.offlinetranslator.core.TextRuntimeConfig
 import com.example.offlinetranslator.runtime.RuntimeOwnerController
 import com.example.offlinetranslator.runtime.TextRuntimeOwner
@@ -34,6 +36,71 @@ import org.junit.Test
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class TranslationViewModelTest {
+    @Test fun verificationAndLoadingProgressCannotEnableActionsOrReviveDisposedOwner() = runTest {
+        val dispatcher = StandardTestDispatcher(testScheduler)
+        Dispatchers.setMain(dispatcher)
+        val engine = FakeEngine(ModelAvailability.MISSING)
+        engine.preparationGate = CompletableDeferred()
+        val fixture = createFixture(engine, dispatcher)
+        try {
+            runCurrent()
+            fixture.model.updateInput("Keep\r\nthis source")
+            fixture.model.prepare()
+            runCurrent()
+            engine.preparation.value = TranslationPreparationState(TranslationPreparationPhase.DOWNLOADING, 70, 100)
+            runCurrent()
+            assertEquals(70L, fixture.model.state.value.preparation?.downloadedBytes)
+            assertFalse(fixture.model.state.value.canTranslate)
+            for (phase in listOf(TranslationPreparationPhase.VERIFYING, TranslationPreparationPhase.LOADING)) {
+                engine.preparation.value = TranslationPreparationState(phase)
+                runCurrent()
+                assertFalse(fixture.model.state.value.canPrepare)
+                assertFalse(fixture.model.state.value.canTranslate)
+            }
+            engine.preparationGate!!.complete(ModelAvailability.READY)
+            runCurrent()
+            assertTrue(fixture.model.state.value.canTranslate)
+            fixture.model.disposeAndJoin()
+            val disposed = fixture.model.state.value
+            engine.preparation.value = TranslationPreparationState(TranslationPreparationPhase.DOWNLOADING, 0, 100)
+            runCurrent()
+            assertEquals(disposed, fixture.model.state.value)
+        } finally {
+            fixture.model.disposeAndJoin()
+            fixture.observationJob.cancelAndJoin()
+            Dispatchers.resetMain()
+        }
+    }
+
+    @Test fun typedArtifactFailureRequiresExplicitRepairWithoutLosingOriginalSource() = runTest {
+        val dispatcher = StandardTestDispatcher(testScheduler)
+        Dispatchers.setMain(dispatcher)
+        val engine = FakeEngine(ModelAvailability.MISSING, prepareFailures = ArrayDeque(listOf(
+            com.example.offlinetranslator.core.TranslationFailure.ArtifactCorrupt(),
+        )))
+        val fixture = createFixture(engine, dispatcher)
+        try {
+            runCurrent()
+            val source = "Keep\r\nthis source\u0000🙂"
+            fixture.model.updateInput(source)
+            fixture.model.prepare()
+            runCurrent()
+            assertTrue(fixture.model.state.value.failure is com.example.offlinetranslator.core.TranslationFailure.ArtifactCorrupt)
+            assertEquals(source, fixture.model.state.value.input)
+            assertFalse(fixture.model.state.value.canTranslate)
+            engine.availability = ModelAvailability.READY
+            fixture.model.retry()
+            runCurrent()
+            assertEquals(2, engine.prepareCalls)
+            assertTrue(fixture.model.state.value.canTranslate)
+            assertEquals(null, fixture.model.state.value.failure)
+        } finally {
+            fixture.model.disposeAndJoin()
+            fixture.observationJob.cancelAndJoin()
+            Dispatchers.resetMain()
+        }
+    }
+
     @Test fun pairCutoverCleanupWaitsActualLeaseAndAllAwaitersShareRelease() = runTest {
         val dispatcher = StandardTestDispatcher(testScheduler)
         Dispatchers.setMain(dispatcher)
@@ -491,6 +558,9 @@ private class FakeEngine(
     var translationFailures: Int = 0,
     private val suspendTranslation: Boolean = false,
 ) : TranslationEngine {
+    override val preparation = kotlinx.coroutines.flow.MutableStateFlow(TranslationPreparationState(
+        if (availability == ModelAvailability.READY) TranslationPreparationPhase.READY else TranslationPreparationPhase.MISSING,
+    ))
     var prepareCalls = 0
     var availabilityCalls = 0
     var availabilityGate: CompletableDeferred<ModelAvailability>? = null

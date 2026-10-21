@@ -55,7 +55,9 @@ class VerificationActionRecoveryTest {
         val aar=File(root,"engine-sherpa/libs/sherpa-onnx-1.13.8.aar")
         aar.parentFile.mkdirs();File(repo,"engine-sherpa/libs/sherpa-onnx-1.13.8.aar").copyTo(aar)
         // Read-only git commands in the action use the existing repository's object database.
-        File(root,".git").writeText("gitdir: ${File(repo,".git").invariantSeparatorsPath}\n")
+        val gitDirectory=BoundedProcess.run(listOf("git","rev-parse","--absolute-git-dir"),10,4096,repo)
+        check(gitDirectory.exitCode==0) { "Fixture requires the current repository's Git directory" }
+        File(root,".git").writeText("gitdir: ${gitDirectory.text.trim()}\n")
         for(module in listOf("core","engine-mlkit","engine-sherpa","app","translator-test-kit","build-logic")) {
             val xml=File(root,"$module/build/test-results/unit/TEST-fixture.xml")
             xml.parentFile.mkdirs();xml.writeText("<testsuite tests=\"1\" failures=\"0\" errors=\"0\" skipped=\"0\"/>")

@@ -57,9 +57,13 @@ skill: ubiquitous-language
 - **Speech segment** `SpeechSegment` kind:value
 - **System voice** `TtsVoice` kind:value
 - **Translate** `Translate` kind:command
+- **Translation artifact** `TranslationArtifact` kind:entity
 - **Translation capability** `TranslationCapability` kind:value
 - **Translation engine** `TranslationEngine` kind:service
+- **Translation failure** `TranslationFailure` kind:state
 - **Translation model readiness** `ModelAvailability` kind:state
+- **Translation preparation** `TranslationPreparationState` kind:state
+- **Translation preparation phase** `TranslationPreparationPhase` kind:state
 - **Translation provider** `TranslationProviderDescriptor` kind:value
 - **Utterance recognition** `ConversationRecognitionEngine` kind:service
 - **Utterance status** `ConversationTranscriptStatus` kind:state
@@ -105,9 +109,9 @@ skill: ubiquitous-language
 - **Evidence**: `core/src/main/java/com/example/offlinetranslator/core/ConversationPipeline.kt:30-39`, `app/src/main/res/values-ru/strings.xml:32-35`.
 
 ### Direct translation
-- **Definition**: A translation path for which the application has confirmed SDK direct-translation evidence for the selected pair.
-- **NOT**: A guarantee of executability, quality or the absence of internal intermediate SDK representations.
-- **Evidence**: `core/src/main/java/com/example/offlinetranslator/core/TranslationCapabilities.kt:3-4,18-19`, `engine-mlkit/src/main/java/com/example/offlinetranslator/mlkit/MlKitTranslationEngine.kt:146-166`.
+- **Definition**: A translation path reported as one source-to-target model invocation, supported by provider-specific routing evidence.
+- **NOT**: A guarantee of output quality or the absence of internal intermediate representations.
+- **Evidence**: `core/src/main/java/com/example/offlinetranslator/core/TranslationCapabilities.kt`, `MlKitTranslationEngine.capability`, `TencentTranslationEngine.capability`.
 
 ### Install
 - **Definition**: Explicitly obtain and verify speech resources owned by the model repository.
@@ -227,6 +231,10 @@ skill: ubiquitous-language
 - **NOT**: Prepare: translation uses local resources and does not download missing models.
 - **Evidence**: `core/src/main/java/com/example/offlinetranslator/core/TranslationEngine.kt:3-13` (`translate`).
 
+### Translation artifact
+- **Definition**: A pinned, integrity-verified local file containing translation weights, shared across selected language pairs without sharing mutable inference state.
+- **NOT**: A Speech resource package or a loaded Translation engine.
+
 ### Translation capability
 - **Definition**: The engine's classification of the selected pair's translation path: direct, pivot, unsupported or unknown.
 - **NOT**: Translation model readiness or confirmation of output quality; an unknown classification is not an unsupported pair.
@@ -239,10 +247,20 @@ skill: ubiquitous-language
 - **Related**: Translation provider, Translate.
 - **Evidence**: `core/src/main/java/com/example/offlinetranslator/core/TranslationEngine.kt:3-13`.
 
+### Translation failure
+- **Definition**: A typed actionable cause of unsuccessful translation preparation or inference, excluding coroutine cancellation.
+
 ### Translation model readiness
 - **Definition**: Local availability of the models needed for the selected translation, with MISSING and READY states.
 - **NOT**: Translation capability: a supported path can still require resource preparation.
 - **Evidence**: `core/src/main/java/com/example/offlinetranslator/core/ModelAvailability.kt:3-6`, `TranslationEngine.kt:8-11` in the same directory.
+
+### Translation preparation
+- **Definition**: An observable snapshot of explicit translation resource preparation, including phase, available byte progress and the last typed failure.
+- **NOT**: Translation model readiness, which only queries locally available resources.
+
+### Translation preparation phase
+- **Definition**: The current stage of translation preparation: checking, missing, downloading, verifying, loading, ready or failed.
 
 ### Translation provider
 - **Definition**: An identifiable translation implementation with a name, provider and SDK information, attribution and terms of use.

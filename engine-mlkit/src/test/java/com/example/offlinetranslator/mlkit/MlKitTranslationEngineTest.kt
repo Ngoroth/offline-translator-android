@@ -8,6 +8,7 @@ import com.example.offlinetranslator.core.LanguagePair
 import com.example.offlinetranslator.core.ModelAvailability
 import com.example.offlinetranslator.core.PreparationFailure
 import com.example.offlinetranslator.core.TranslationCapability
+import com.example.offlinetranslator.core.TranslationPreparationPhase
 import com.google.android.gms.tasks.CancellationToken
 import com.google.android.gms.tasks.OnTokenCanceledListener
 import com.google.android.gms.tasks.TaskCompletionSource
@@ -27,6 +28,25 @@ import org.junit.Test
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class MlKitTranslationEngineTest {
+    @Test fun preparationDoesNotBecomeReadyUntilSelectedInferenceWarmupCompletes() = runTest {
+        val models = ControlledModels()
+        val clients = ControlledClients(pending = true)
+        val engine = MlKitTranslationEngine(setOf(enDe), coordinator(models), clients::create)
+        try {
+            val preparing = async { engine.prepare() }
+            runCurrent()
+            assertEquals(TranslationPreparationPhase.DOWNLOADING, engine.preparation.value.phase)
+            assertEquals(null, engine.preparation.value.totalBytes)
+            models.complete(de)
+            runCurrent()
+            assertEquals(TranslationPreparationPhase.LOADING, engine.preparation.value.phase)
+            assertFalse(preparing.isCompleted)
+            clients.finishPending()
+            assertEquals(ModelAvailability.READY, preparing.await())
+            assertEquals(TranslationPreparationPhase.READY, engine.preparation.value.phase)
+        } finally { clients.finishPending(); engine.closeAndJoin() }
+    }
+
     @Test fun unsupportedSelectionNeverCreatesClientsQueriesModelsOrDownloads() {
         val models = ControlledModels()
         val clients = ControlledClients()

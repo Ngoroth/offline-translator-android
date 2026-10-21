@@ -25,6 +25,9 @@ class ConversationViewModel(
     val recognitionReadiness = owner.recognition.readinessState
     private val mutablePreparation = MutableStateFlow(ConversationPreparation.CHECKING)
     val preparation = mutablePreparation.asStateFlow()
+    val translationPreparation = owner.translation.preparation
+    private val mutablePreparationFailure = MutableStateFlow<TranslationFailure?>(null)
+    val preparationFailure = mutablePreparationFailure.asStateFlow()
     private val mutableReady = MutableStateFlow(false)
     val ready = mutableReady.asStateFlow()
     private val mutableOutputReadiness = MutableStateFlow<SpeechOutputReadiness?>(null)
@@ -116,6 +119,7 @@ class ConversationViewModel(
         if (disposed || !foreground || !hasCurrentOwner || preparationJob?.isActive == true || state.value.sessionActive) return
         mutableReady.value = false
         mutablePreparation.value = ConversationPreparation.INSTALLING
+        mutablePreparationFailure.value = null
         preparationJob = viewModelScope.launch {
             readinessJob.cancelAndJoin()
             try {
@@ -138,8 +142,9 @@ class ConversationViewModel(
                 mutablePreparation.value = if (mutableReady.value) ConversationPreparation.IDLE else ConversationPreparation.ERROR
             } catch (cancelled: CancellationException) {
                 throw cancelled
-            } catch (_: Exception) {
+            } catch (failure: Exception) {
                 mutableReady.value = false
+                mutablePreparationFailure.value = failure as? TranslationFailure
                 mutablePreparation.value = ConversationPreparation.ERROR
             }
         }

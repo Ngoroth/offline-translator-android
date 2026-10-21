@@ -683,6 +683,7 @@ class ConversationPipelineTest {
     }
 
     private class Translation : TranslationEngine {
+        override val preparation = kotlinx.coroutines.flow.MutableStateFlow(TranslationPreparationState(TranslationPreparationPhase.READY))
         var calls = 0
         var preparationGate: CompletableDeferred<Unit>? = null
         override suspend fun modelAvailability() = ModelAvailability.READY

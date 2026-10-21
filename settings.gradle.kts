@@ -21,9 +21,19 @@ dependencyResolutionManagement {
             }
             filter { includeGroup("local.verified.sherpa") }
         }
+        exclusiveContent {
+            forRepository {
+                flatDir {
+                    name = "verifiedTencentNative"
+                    dirs(rootDir.resolve("engine-tencent/libs"))
+                }
+            }
+            filter { includeGroup("com.example.offlinetranslator.native") }
+        }
     }
 }
 
 rootProject.name = "OfflineTranslator"
 include(":app", ":core", ":engine-mlkit", ":engine-sherpa", ":engine-sherpa-model-smoke")
 include(":translator-test-kit")
+include(":engine-tencent")

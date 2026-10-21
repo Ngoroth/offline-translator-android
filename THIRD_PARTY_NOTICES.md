@@ -25,6 +25,27 @@ Redistributing the AAR or an APK containing it requires the applicable notices,
 Corresponding Source and compatible combined-work terms; see
 [native distribution conditions](engine-sherpa/THIRD_PARTY.md#conditions-before-redistributing-this-aar-or-an-apk-containing-it).
 
+## Tencent local translation
+
+The optional selectable Tencent provider embeds CPU **llama.cpp** at commit
+[`d8d92973c8c21bb4dd5d592f0fec26fe2cd1e654`](https://github.com/ggml-org/llama.cpp/tree/d8d92973c8c21bb4dd5d592f0fec26fe2cd1e654)
+under MIT. It is explicitly built into a verified local JNI AAR, not downloaded
+as executable application content. Exact source/toolchain/ABI and license
+inventory is in [Tencent native provenance](engine-tencent/THIRD_PARTY.md); its
+notice is packaged in APK license assets and the native distribution.
+
+**Hy-MT2-1.8B-GGUF**, copyright 2026 Tencent, is separately downloaded model
+data under the exact repository Apache-2.0 grant. Pinned revision:
+`a0c709d9fac510f2c807aa3af52872340dc37a4a`; file:
+`Hy-MT2-1.8B-Q4_K_M.gguf`, 1,133,080,448 bytes, SHA-256
+`dc5f44fcf1fa496ee7ad725982c0c8c553a4de00259b53af84c4b89fb0c06699`.
+The [full exact license](LICENSES/Tencent-Hy-MT2-Apache-2.0.txt) is preserved
+and packaged; source [license](https://huggingface.co/tencent/Hy-MT2-1.8B-GGUF/blob/a0c709d9fac510f2c807aa3af52872340dc37a4a/LICENSE.txt)
+SHA-256 is `a1d52d448f81c584a47c583e19dfab2d3851c7c84431b07baee093c1113ed114`.
+No NOTICE file was present in the captured pinned upstream inventory. Weights
+are not bundled in Git, the JNI AAR or the APK. Tencent and Hy-MT2 names remain
+their owners’ marks; attribution is not endorsement or quality certification.
+
 ## Libraries resolved at build time
 
 Gradle resolves Maven libraries and transitive dependencies; versions and

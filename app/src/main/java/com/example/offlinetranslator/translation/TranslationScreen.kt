@@ -91,8 +91,8 @@ fun TranslationScreen(
                 ) {
                 LanguagePairControls(
                     pair = state.direction, enabled = languageSelectionEnabled && !languageChanging &&
-                        state.modelStatus != ModelUiStatus.DOWNLOADING && state.modelStatus != ModelUiStatus.CHECKING &&
-                        languageChangeError != TranslationLanguageChangeError.TEARDOWN && languageChangeError != TranslationLanguageChangeError.OPEN,
+                        !state.operationInProgress && languageChangeError != TranslationLanguageChangeError.TEARDOWN &&
+                        languageChangeError != TranslationLanguageChangeError.OPEN,
                     firstLabel = stringResource(R.string.language_source), secondLabel = stringResource(R.string.language_target),
                     firstTag = TranslationTestTags.LANGUAGE_FIRST, secondTag = TranslationTestTags.LANGUAGE_SECOND,
                     swapTag = TranslationTestTags.SWAP, onPairSelected = onPairSelected,
@@ -141,7 +141,7 @@ fun TranslationScreen(
                             modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).testTag(TranslationTestTags.RETRY),
                         ) { Text(stringResource(R.string.retry_action)) }
                     }
-                    if (provider?.id == "mlkit") ProviderAttribution(provider)
+                    ProviderAttribution(provider)
                     TranslationActions(state, onPrepare, onTranslate, configurationProblem, blocked)
                 }
             }
@@ -174,7 +174,7 @@ private fun ResultPanel(state: TranslationUiState) {
 
 @Composable
 private fun StatusPanel(state: TranslationUiState) {
-    if (state.operationInProgress) {
+    if (state.operationInProgress && !state.isPreparing) {
         Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
             CircularProgressIndicator(
                 modifier = Modifier.height(24.dp).testTag(TranslationTestTags.PROGRESS),
@@ -184,15 +184,22 @@ private fun StatusPanel(state: TranslationUiState) {
                 when {
                     state.modelStatus == ModelUiStatus.CHECKING -> stringResource(R.string.status_checking)
                     state.modelStatus == ModelUiStatus.DOWNLOADING -> stringResource(R.string.status_downloading)
+                    state.modelStatus == ModelUiStatus.VERIFYING -> stringResource(R.string.translation_verifying)
+                    state.modelStatus == ModelUiStatus.LOADING -> stringResource(R.string.translation_loading)
                     else -> stringResource(R.string.status_translating)
                 },
             )
         }
     }
 
-    state.error?.let { Text(errorMessage(it), color = MaterialTheme.colorScheme.error) }
+    if (state.isPreparing && state.preparation != null) {
+        com.example.offlinetranslator.ui.TranslationPreparation(state.preparation)
+    }
+    if (state.failure != null) {
+        Text(stringResource(com.example.offlinetranslator.ui.translationFailureLabel(state.failure)), color = MaterialTheme.colorScheme.error)
+    } else state.error?.let { Text(errorMessage(it), color = MaterialTheme.colorScheme.error) }
     if (state.modelStatus == ModelUiStatus.MISSING && state.error == null) {
-        Text(stringResource(R.string.model_missing_explanation))
+        Text(stringResource(if (state.provider?.id == "tencent") R.string.tencent_model_explanation else R.string.model_missing_explanation))
     }
 }
 

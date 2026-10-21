@@ -146,8 +146,11 @@ fun SettingsSheet(
                         Text(stringResource(R.string.settings_about_translation), style = MaterialTheme.typography.titleMedium)
                         for (provider in providers) {
                             if (provider.id == draft.textEngineId || provider.id == draft.conversationEngineId) {
-                                Text(if (provider.id == "mlkit" && providers.size == 1) stringResource(R.string.settings_mlkit_summary)
-                                    else stringResource(R.string.settings_provider_summary, provider.displayName))
+                                Text(when (provider.id) {
+                                    "mlkit" -> stringResource(R.string.settings_mlkit_summary)
+                                    "tencent" -> stringResource(R.string.tencent_model_explanation)
+                                    else -> stringResource(R.string.settings_provider_summary, provider.displayName)
+                                })
                             }
                         }
                         Text(stringResource(R.string.settings_advanced_reset_explanation), style = MaterialTheme.typography.bodySmall)
