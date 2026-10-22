@@ -5,7 +5,7 @@ plugins {
     alias(libs.plugins.android.library)
 }
 
-val sherpaOnnxVersion = libs.versions.sherpa.onnx.get()
+val sherpaOnnxVersion = libs.versions.sherpa.onnx.asProvider().get()
 val sherpaArchive = layout.projectDirectory.file("libs/sherpa-onnx-$sherpaOnnxVersion.aar")
 val expectedSherpaSha256 = "633c24321e06b1fe79feafa03ea16cbc0f8a286641e2da3559bac91bdb13bd96"
 val expectedSherpaBytes = 50_129_134L
@@ -27,29 +27,33 @@ tasks.register("prepareSherpaArchive") {
         logger.lifecycle("Verified Sherpa archive: $archive ($bytes bytes, SHA-256 $hash)")
     }
 }
-val verifySherpaArchive = tasks.register("verifySherpaArchive") {
-    val receipt = layout.buildDirectory.file("verified/sherpa-onnx-$sherpaOnnxVersion.sha256")
-    val archiveFile = sherpaArchive.asFile
-    // Missing input must reach our actionable failure, not Gradle's generic missing-file validation.
-    inputs.files(provider { listOfNotNull(archiveFile.takeIf { it.exists() }) })
-    inputs.property("archivePath", archiveFile.absolutePath)
-    inputs.property("expectedBytes", expectedSherpaBytes)
-    inputs.property("expectedSha256", expectedSherpaSha256)
-    inputs.property("runtimeVersion", sherpaOnnxVersion)
-    inputs.property("archiveUrl", sherpaArchiveUrl)
-    outputs.file(receipt)
-    doLast {
-        val receiptFile = outputs.files.singleFile
-        val archive = File(inputs.properties.getValue("archivePath") as String)
-        val url = inputs.properties.getValue("archiveUrl") as String
-        val bytes = inputs.properties.getValue("expectedBytes") as Long
-        val hash = inputs.properties.getValue("expectedSha256") as String
-        val actual = SherpaArchivePreparation(URI(url), bytes, hash).verify(archive)
-        receiptFile.apply {
-            parentFile.mkdirs()
-            writeText(actual)
-        }
+val nativeOutput = layout.projectDirectory.dir(".native-cache/android")
+val nativePython = providers.gradleProperty("sherpaPython").orElse(
+    if (System.getProperty("os.name").startsWith("Windows")) "python" else "python3"
+)
+val nativeVerification = providers.exec {
+    workingDir(rootProject.projectDir)
+    commandLine(nativePython.get(), "tools/android/prepare-sherpa-native.py", "--verify",
+        "--output", nativeOutput.asFile.absolutePath, "--abis", "arm64-v8a", "x86_64")
+    isIgnoreExitValue = true
+}
+val verifiedNative = nativeVerification.result.map { result ->
+    if (result.exitValue != 0) {
+        throw GradleException(nativeVerification.standardError.asText.get())
     }
+    true
+}
+// Dependency resolution may precede preBuild; never resolve an unverified/missing AAR.
+configurations.configureEach {
+    incoming.beforeResolve { verifiedNative.get() }
+}
+val verifySherpaArchive = tasks.register<Exec>("verifySherpaArchive") {
+    group = "verification"
+    description = "Read-only verification of the prepared paired Sherpa AAR, provenance and both ABI closures."
+    workingDir(rootProject.projectDir)
+    commandLine(nativePython.get(), "tools/android/prepare-sherpa-native.py", "--verify",
+        "--output", nativeOutput.asFile.absolutePath, "--abis", "arm64-v8a", "x86_64")
+    outputs.upToDateWhen { false }
 }
 
 android {
@@ -69,7 +73,7 @@ android {
 
 dependencies {
     implementation(project(":core"))
-    implementation(libs.commons.compress)
+    implementation(project(":speech-models"))
     // Resolve only from the root's local flat directory; explicit preparation supplies verified bytes.
     implementation(libs.sherpa.onnx.runtime) {
         artifact { type = "aar" }

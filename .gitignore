@@ -11,6 +11,7 @@ captures/
 /.agents/
 .cache/translator-evaluation/
 /engine-sherpa/libs/*.aar
+/engine-sherpa/.native-cache/
 
 # Local environment and credentials
 /.omp/
@@ -21,7 +22,7 @@ keystore.properties
 *.jks
 *.keystore
 *.p12
-!/engine-sherpa/src/test/resources/model-fixture.p12
+!/speech-models/src/test/resources/model-fixture.p12
 *.pem
 *.key
 *.pfx

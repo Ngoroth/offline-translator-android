@@ -2,14 +2,14 @@ package com.example.offlinetranslator.modelsmoke
 
 import androidx.test.platform.app.InstrumentationRegistry
 import com.example.offlinetranslator.testkit.*
-import com.example.offlinetranslator.sherpa.SpeechModelStore
-import com.example.offlinetranslator.sherpa.SpeechModelCatalog
+import com.example.offlinetranslator.speechmodels.SpeechModelStore
+import com.example.offlinetranslator.sherpa.SherpaSpeechModelCatalog
 import com.example.offlinetranslator.core.LanguageId
 import com.example.offlinetranslator.core.LanguagePair
 import com.example.offlinetranslator.core.SpeechModelRole
 import com.example.offlinetranslator.mlkit.MlKitPreparationCoordinator
 import com.example.offlinetranslator.mlkit.MlKitTranslationEngine
-import com.example.offlinetranslator.sherpa.SelectedSpeechResources
+import com.example.offlinetranslator.speechmodels.SelectedSpeechResources
 import com.example.offlinetranslator.sherpa.SherpaSpeechRecognitionEngine
 import com.example.offlinetranslator.sherpa.SherpaSpeechSegmenter
 import org.json.JSONArray
@@ -68,7 +68,7 @@ object EvaluationSession {
         }
     }
     suspend fun store(useCandidate: Boolean = true): SpeechModelStore {
-        if (!active) return SpeechModelStore(context)
+        if (!active) return SpeechModelStore(context, SherpaSpeechModelCatalog.fromAssets(context))
         val catalog=Integrity.json(File(root,"speech-models.json"))
         val candidate=if(useCandidate) args.getString("candidate")?.takeIf(String::isNotBlank)?.let { selected() } else null
         if(candidate!=null && candidate.role!=EvaluationModelRole.TTS) {
@@ -89,7 +89,7 @@ object EvaluationSession {
             packages.put(packageIndex, ModelManifest.speechPackage(projected))
             definitions.put(index, replacement.json())
         }
-        return SpeechModelStore.fromVerifiedEvaluationFiles(context,SpeechModelCatalog.parse(catalog.toString().byteInputStream()),File(root,"models"))
+        return SpeechModelStore.fromVerifiedEvaluationFiles(context,SherpaSpeechModelCatalog.parse(catalog.toString().byteInputStream()),File(root,"models"))
     }
     fun writeResult(result: JSONObject) {
         writeAtomic("result",result,16*1024*1024)

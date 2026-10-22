@@ -2,12 +2,14 @@ package com.example.offlinetranslator.sherpa
 
 import com.example.offlinetranslator.core.LanguageId
 import com.example.offlinetranslator.core.SpeechModelRole
+import com.example.offlinetranslator.speechmodels.SpeechModelDefinition
+import com.example.offlinetranslator.speechmodels.SpeechModelRef
 import org.junit.Assert.*
 import org.junit.Test
 import java.io.File
 
 class SherpaModelFactoriesTest {
-    private fun catalog() = File("src/main/assets/speech-models.json").inputStream().use(SpeechModelCatalog::parse)
+    private fun catalog() = File("src/main/assets/speech-models.json").inputStream().use(SherpaSpeechModelCatalog::parse)
     private fun path(ref: SpeechModelRef) = "/verified/${ref.packageId}/${ref.path}"
 
     @Test fun alternateWhisperBuildsItsOwnDecodeWithExactLidWeightsAndMatchingVocabulary() {
@@ -41,7 +43,7 @@ class SherpaModelFactoriesTest {
         val model = SpeechModelRef("tone", "model.onnx")
         val tokens = SpeechModelRef("tone", "tokens.txt")
         val tone = SpeechModelDefinition("tone", "Tone", SpeechModelRole.ASR, setOf(LanguageId("ru")), 8_000,
-            SpeechModelAdapter.ToneCtcOnline(model, tokens, 2, 80), listOf(model, tokens))
+            SherpaSpeechModelAdapter.ToneCtcOnline(model, tokens, 2, 80), listOf(model, tokens))
         val toneConfig = SherpaModelFactories.onlineConfig(tone, ::path)
         assertEquals(path(model), toneConfig.modelConfig.toneCtc.model)
         assertEquals(8_000, toneConfig.featConfig.sampleRate)
@@ -52,7 +54,7 @@ class SherpaModelFactoriesTest {
         val joiner = SpeechModelRef("zipformer", "joiner.onnx")
         val zipTokens = SpeechModelRef("zipformer", "tokens.txt")
         val zip = SpeechModelDefinition("zipformer", "Zipformer", SpeechModelRole.ASR, setOf(LanguageId("en")), 16_000,
-            SpeechModelAdapter.Zipformer2Online(encoder, decoder, joiner, zipTokens, 2, 80), listOf(encoder, decoder, joiner, zipTokens))
+            SherpaSpeechModelAdapter.Zipformer2Online(encoder, decoder, joiner, zipTokens, 2, 80), listOf(encoder, decoder, joiner, zipTokens))
         val zipConfig = SherpaModelFactories.onlineConfig(zip, ::path)
         assertEquals(path(encoder), zipConfig.modelConfig.transducer.encoder)
         assertEquals(path(decoder), zipConfig.modelConfig.transducer.decoder)
@@ -83,7 +85,7 @@ class SherpaModelFactoriesTest {
     @Test fun selectedPiperVoicesPreserveSynthesisAndOutputBoundsWithNormalizedSpeed() {
         for (id in listOf("tts-ru-piper-irina-medium", "tts-en-piper-lessac-medium")) {
             val definition = catalog().model(id)
-            val adapter = definition.adapter as SpeechModelAdapter.PiperVits
+            val adapter = definition.adapter as SherpaSpeechModelAdapter.PiperVits
             val config = SherpaModelFactories.ttsConfig(definition, ::path)
             assertEquals(path(adapter.model), config.model.vits.model)
             assertEquals(path(adapter.tokens), config.model.vits.tokens)

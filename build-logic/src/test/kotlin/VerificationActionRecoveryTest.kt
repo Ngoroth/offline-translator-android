@@ -52,8 +52,9 @@ class VerificationActionRecoveryTest {
         File(repo,"test-data/corpus/v1").copyRecursively(File(root,"test-data/corpus/v1"))
         File(root,"test-data/model-sets").mkdirs()
         File(repo,"test-data/model-sets/baseline.json").copyTo(File(root,"test-data/model-sets/baseline.json"))
-        val aar=File(root,"engine-sherpa/libs/sherpa-onnx-1.13.8.aar")
-        aar.parentFile.mkdirs();File(repo,"engine-sherpa/libs/sherpa-onnx-1.13.8.aar").copyTo(aar)
+        val aar=File(root,"engine-sherpa/.native-cache/android/sherpa-onnx-1.13.8-pair-v1.aar")
+        aar.parentFile.mkdirs()
+        File(repo,"engine-sherpa/.native-cache/android/sherpa-onnx-1.13.8-pair-v1.aar").copyTo(aar)
         // Read-only git commands in the action use the existing repository's object database.
         File(root,".git").writeText("gitdir: ${File(repo,".git").invariantSeparatorsPath}\n")
         for(module in listOf("core","engine-mlkit","engine-sherpa","app","translator-test-kit","build-logic")) {

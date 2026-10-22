@@ -1,0 +1,170 @@
+{
+  "schema": 1,
+  "artifact": "sherpa-onnx-1.13.8-pair-v1",
+  "feature": "whisper-language-pair-v1",
+  "source": {
+    "commit": "11afbd009a7f8c08f4bcf2fc1b265d0df4670fbf",
+    "url": "https://github.com/k2-fsa/sherpa-onnx/archive/refs/tags/v1.13.8.zip",
+    "archive": "sherpa-source.zip",
+    "directory": "sherpa-onnx-1.13.8",
+    "bytes": 15384893,
+    "sha256": "b63b7613812346f2d1396a3a7f94accd47539e3dadc3ea385ba6474c70ab9897"
+  },
+  "officialAar": {
+    "url": "https://github.com/k2-fsa/sherpa-onnx/releases/download/v1.13.8/sherpa-onnx-1.13.8.aar",
+    "archive": "sherpa-onnx-1.13.8.aar",
+    "bytes": 50129134,
+    "sha256": "633c24321e06b1fe79feafa03ea16cbc0f8a286641e2da3559bac91bdb13bd96"
+  },
+  "ortHeaders": {
+    "url": "https://github.com/csukuangfj/onnxruntime-libs/releases/download/v1.28.2/onnxruntime-android-1.28.2.zip",
+    "archive": "onnxruntime-android-1.28.2.zip",
+    "directory": ".",
+    "bytes": 33765715,
+    "sha256": "01518867f78241138b6aa25925802e843a4fa9085af8d303d49e35bbb52aff4d"
+  },
+  "dependencies": {
+    "kaldi_native_fbank": {
+      "url": "https://github.com/csukuangfj/kaldi-native-fbank/archive/refs/tags/v1.22.3.tar.gz",
+      "archive": "kaldi_native_fbank.tar.gz",
+      "sha256": "9176cc66fc7ce1edf85cf355b06e320c57db6297df74277f575183468893cf61",
+      "bytes": 71144,
+      "directory": "kaldi-native-fbank-1.22.3",
+      "cmake": "kaldi_native_fbank"
+    },
+    "kaldi_decoder": {
+      "url": "https://github.com/k2-fsa/kaldi-decoder/archive/refs/tags/v0.3.0.tar.gz",
+      "archive": "kaldi_decoder.tar.gz",
+      "sha256": "b9f34cfb4fd3b1344100eead79ef4d37aa15962274b9e3056de345021f76a1b0",
+      "bytes": 51199,
+      "directory": "kaldi-decoder-0.3.0",
+      "cmake": "kaldi_decoder"
+    },
+    "simple-sentencepiece": {
+      "url": "https://github.com/pkufool/simple-sentencepiece/archive/refs/tags/v0.7.tar.gz",
+      "archive": "simple-sentencepiece.tar.gz",
+      "sha256": "1748a822060a35baa9f6609f84efc8eb54dc0e74b9ece3d82367b7119fdc75af",
+      "bytes": 355335,
+      "directory": "simple-sentencepiece-0.7",
+      "cmake": "simple-sentencepiece"
+    },
+    "json": {
+      "url": "https://github.com/nlohmann/json/archive/refs/tags/v3.12.0.tar.gz",
+      "archive": "json.tar.gz",
+      "sha256": "4b92eb0c06d10683f7447ce9406cb97cd4b453be18d7279320f7b2f025c10187",
+      "bytes": 9678593,
+      "directory": "json-3.12.0",
+      "cmake": "json"
+    },
+    "hclust_cpp": {
+      "url": "https://github.com/csukuangfj/hclust-cpp/archive/refs/tags/2026-02-25.tar.gz",
+      "archive": "hclust_cpp.tar.gz",
+      "sha256": "8f14e024c709d73afb40ae69cb22de4b73dba67cbce40f2e518813da8139ab56",
+      "bytes": 22523,
+      "directory": "hclust-cpp-2026-02-25",
+      "cmake": "hclust_cpp"
+    },
+    "espeak_ng": {
+      "url": "https://github.com/csukuangfj/espeak-ng/archive/ed530aa113046142eb5115cf2fc9157854d0ffe1.zip",
+      "archive": "espeak_ng.zip",
+      "sha256": "e4e262cbe34f7fe21f91f1ba3397f2728e1f30eafbae7853f2b753a9ed13f0dd",
+      "bytes": 18011501,
+      "directory": "espeak-ng-ed530aa113046142eb5115cf2fc9157854d0ffe1",
+      "cmake": "espeak_ng"
+    },
+    "piper_phonemize": {
+      "url": "https://github.com/csukuangfj/piper-phonemize/archive/f3ff95afc03640bc1399e113e83361192a2fafb4.zip",
+      "archive": "piper_phonemize.zip",
+      "sha256": "d9cca4e2bdc7d6dd8dffb96a4668283dbd3f77a9c194a3e530c1e8eba9406a5d",
+      "bytes": 9805962,
+      "directory": "piper-phonemize-f3ff95afc03640bc1399e113e83361192a2fafb4",
+      "cmake": "piper_phonemize"
+    },
+    "kissfft": {
+      "url": "https://github.com/mborgerding/kissfft/archive/febd4caeed32e33ad8b2e0bb5ea77542c40f18ec.zip",
+      "archive": "kissfft.zip",
+      "sha256": "497103e664168ebe39580b757adbe616f6cf85a16572af581ca7bc42d0ab13fd",
+      "bytes": 74252,
+      "directory": "kissfft-febd4caeed32e33ad8b2e0bb5ea77542c40f18ec",
+      "cmake": "kissfft"
+    },
+    "kaldifst": {
+      "url": "https://github.com/k2-fsa/kaldifst/archive/refs/tags/v1.8.0.tar.gz",
+      "archive": "kaldifst.tar.gz",
+      "sha256": "3f247b7e5a2409071202f5e2bc6200060f66728c0a3443c03923ad2723e040b3",
+      "bytes": 172147,
+      "directory": "kaldifst-1.8.0",
+      "cmake": "kaldifst"
+    },
+    "eigen": {
+      "url": "https://gitlab.com/libeigen/eigen/-/archive/5.0.1/eigen-5.0.1.tar.gz?download=1",
+      "cmakeUrl": "https://gitlab.com/libeigen/eigen/-/archive/5.0.1/eigen-5.0.1.tar.gz",
+      "bytes": 2967272,
+      "archive": "eigen.tar.gz",
+      "sha256": "e9c326dc8c05cd1e044c71f30f1b2e34a6161a3b6ecf445d56b53ff1669e3dec",
+      "directory": "eigen-5.0.1",
+      "cmake": "eigen"
+    },
+    "openfst": {
+      "url": "https://github.com/csukuangfj/openfst/archive/refs/tags/v1.8.5-2026-07-09.tar.gz",
+      "archive": "openfst.tar.gz",
+      "sha256": "2ff712a32952fcb01d351121a6bc8ccf4fdc6b2aa06ce8df2b3095dedd518c0e",
+      "directory": "openfst-1.8.5-2026-07-09",
+      "cmake": "openfst",
+      "bytes": 1501685
+    }
+  },
+  "tools": {
+    "ndk": {
+      "version": "29.0.13113456-beta1",
+      "directory": "android-ndk-r29-beta1",
+      "url": "https://dl.google.com/android/repository/android-ndk-r29-beta1-linux.zip",
+      "archiveSha256": "0bbaf4d0632152dcdcf3d0a5d385c760949898c88488375b18971dd669094388",
+      "treeSha256": "31afe9830b7e5659a69ba9304189e0bbf8734545749a047931865d210c64b03f"
+    },
+    "cmake": {
+      "version": "4.2.3",
+      "directory": "cmake-4.2.3-linux-x86_64",
+      "url": "https://cmake.org/files/v4.2/cmake-4.2.3-linux-x86_64.tar.gz",
+      "archiveSha256": "5bb505d5e0cca0480a330f7f27ccf52c2b8b5214c5bba97df08899f5ef650c23",
+      "treeSha256": "5d7cf380e45863b367ce998cd46fbd9250685f2bbc41c8d9e3deaf132db7a1fb"
+    },
+    "ninja": {
+      "version": "1.13.2",
+      "directory": "ninja-1.13.2",
+      "url": "https://github.com/ninja-build/ninja/releases/download/v1.13.2/ninja-linux.zip",
+      "archiveSha256": "5749cbc4e668273514150a80e387a957f933c6ed3f5f11e03fb30955e2bbead6",
+      "treeSha256": "9739ecb306b9d4b22f786dd355508737f7096f7114a94c89817b722c8721aaa3"
+    }
+  },
+  "patchPreimages": {
+    "sherpa-onnx/csrc/offline-recognizer-whisper-impl.h": "2391cbdc95e2a129a71c68646a1086d05eb0a641ac9e668d6a7f0a62158bdb8b",
+    "sherpa-onnx/csrc/offline-whisper-decoder.h": "0e7e4c88c0552e1c103535431a3e212a12c9b10b609f70c1653a1da32f1b51d4",
+    "sherpa-onnx/csrc/offline-whisper-greedy-search-decoder.h": "bb0d24877834cdf20a6516ebc7166009d029c99ac169d407a221b20cdf48bc06",
+    "sherpa-onnx/csrc/offline-whisper-greedy-search-decoder.cc": "f08abdca6e5677356b00709a2f10f8dff6fb707a2f4eea6650c5fe851cb199ab",
+    "sherpa-onnx/csrc/offline-whisper-model.h": "2030e36570aba28e6ee1098553551b23e4a2de2990f0d38810777392d7d5ff06",
+    "sherpa-onnx/csrc/offline-whisper-model.cc": "d12bf365141f72906959793a6a0a72d1814f3a29731c9f7e49a1d9e326469131"
+  },
+  "settings": {
+    "abis": [
+      "arm64-v8a",
+      "x86_64"
+    ],
+    "platform": "android-26",
+    "stl": "c++_static",
+    "jobs": 1,
+    "elfAlignment": 16384,
+    "libraries": [
+      "libonnxruntime.so",
+      "libsherpa-onnx-c-api.so",
+      "libsherpa-onnx-cxx-api.so",
+      "libsherpa-onnx-jni.so"
+    ],
+    "rebuiltLibraries": [
+      "libsherpa-onnx-c-api.so",
+      "libsherpa-onnx-cxx-api.so",
+      "libsherpa-onnx-jni.so"
+    ],
+    "clangMajor": 20
+  }
+}

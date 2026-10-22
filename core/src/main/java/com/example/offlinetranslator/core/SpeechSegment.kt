@@ -1,5 +1,7 @@
 package com.example.offlinetranslator.core
 
+import java.nio.FloatBuffer
+
 /** A bounded, mono 16 kHz PCM utterance emitted by VAD. */
 class SpeechSegment private constructor(
     pcm: ShortArray,
@@ -14,6 +16,18 @@ class SpeechSegment private constructor(
 
     /** Returns a copy so a recognizer cannot mutate data retained by another stage. */
     fun copyPcm(): ShortArray = samples.copyOf()
+
+    /** Copies immutable PCM directly into caller-owned storage without an intermediate array. */
+    fun copyNormalizedTo(destination: FloatBuffer) {
+        require(destination.remaining() >= samples.size) { "Insufficient remaining PCM buffer capacity" }
+        for (sample in samples) destination.put(sample / 32_768f)
+    }
+
+    /** Copies immutable PCM directly into caller-owned native input storage. */
+    fun copyNormalizedTo(destination: FloatArray) {
+        require(destination.size >= samples.size) { "Insufficient PCM array capacity" }
+        for (index in samples.indices) destination[index] = samples[index] / 32_768f
+    }
 
     companion object {
         const val SAMPLE_RATE_HZ = 16_000

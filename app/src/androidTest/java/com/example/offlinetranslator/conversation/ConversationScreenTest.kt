@@ -135,7 +135,7 @@ class ConversationScreenTest {
         var opens = 0
         compose.setContent { MaterialTheme {
             ConversationScreen(ConversationState(), emptyList(), ConversationPreparation.IDLE, true, false, {}, {},
-                systemRecognition = true, recognitionReadiness = readiness.value, canChooseSherpa = eligible.value,
+                systemRecognition = true, recognitionReadiness = readiness.value, canChooseLocalRecognition = eligible.value,
                 onRecheck = { checks++ }, onOpenAdvancedSettings = { opens++ })
         } }
         for (value in SpeechRecognitionReadiness.entries.filter { it != SpeechRecognitionReadiness.READY }) {

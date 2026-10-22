@@ -7,10 +7,11 @@ import com.example.offlinetranslator.MainActivity
 import com.example.offlinetranslator.core.*
 import com.example.offlinetranslator.mlkit.MlKitPreparationCoordinator
 import com.example.offlinetranslator.mlkit.MlKitTranslationEngine
-import com.example.offlinetranslator.sherpa.SelectedSpeechResources
+import com.example.offlinetranslator.speechmodels.SelectedSpeechResources
 import com.example.offlinetranslator.sherpa.SherpaConversationRecognitionEngine
 import com.example.offlinetranslator.sherpa.SherpaConversationSpeechOutput
-import com.example.offlinetranslator.sherpa.SpeechModelStore
+import com.example.offlinetranslator.speechmodels.SpeechModelStore
+import com.example.offlinetranslator.sherpa.SherpaSpeechModelCatalog
 import com.example.offlinetranslator.runtime.appendReleaseFailure
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.first
@@ -39,10 +40,11 @@ class ConversationProductionIntegrationTest {
     @Test fun prepareLanguagesThroughProductionInstaller() = runBlocking<Unit> {
         requireOptIn()
         val context = InstrumentationRegistry.getInstrumentation().targetContext
-        val store = SpeechModelStore(context)
+        val store = SpeechModelStore(context, SherpaSpeechModelCatalog.fromAssets(context))
         val coordinator = MlKitPreparationCoordinator(context)
         val translation = MlKitTranslationEngine(context, defaultConfig.pairs, coordinator)
-        val models = SelectedSpeechResources.forConversation(store, defaultConfig)
+        val models = SelectedSpeechResources.forConversation(store, defaultConfig,
+            defaultConfig.asrModelIds.values.toSet() + defaultConfig.languageIdModelId)
         val recognition = SherpaConversationRecognitionEngine(store, defaultConfig)
         try {
             withTimeout(1_200_000) {
@@ -82,12 +84,13 @@ class ConversationProductionIntegrationTest {
             .filter { it.getString("cohort") == "smoke" && it.getString("id") in ConversationProofFixtures.CASE_ORDER }
             .associateBy { it.getString("id") }
         assertEquals(ConversationProofFixtures.CASE_ORDER.toSet(), cases.keys)
-        val store = SpeechModelStore(context)
+        val store = SpeechModelStore(context, SherpaSpeechModelCatalog.fromAssets(context))
         val coordinator = MlKitPreparationCoordinator(context)
         val translation = MlKitTranslationEngine(context, defaultConfig.pairs, coordinator)
         val recognition = SherpaConversationRecognitionEngine(store, defaultConfig)
         val output = SherpaConversationSpeechOutput(context, store, defaultConfig)
-        val models = SelectedSpeechResources.forConversation(store, defaultConfig)
+        val models = SelectedSpeechResources.forConversation(store, defaultConfig,
+            defaultConfig.asrModelIds.values.toSet() + defaultConfig.languageIdModelId)
         val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
         val capture = ConversationProofFixtures.PacedCapture(scope, store)
         val timing = ConversationProofFixtures.TurnTiming()

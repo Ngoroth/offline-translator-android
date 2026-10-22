@@ -1,0 +1,222 @@
+--- a/sherpa-onnx/csrc/offline-recognizer-whisper-impl.h
++++ b/sherpa-onnx/csrc/offline-recognizer-whisper-impl.h
+@@ -6,8 +6,10 @@
+ #define SHERPA_ONNX_CSRC_OFFLINE_RECOGNIZER_WHISPER_IMPL_H_
+ 
+ #include <algorithm>
++#include <array>
+ #include <cmath>
+ #include <memory>
++#include <stdexcept>
+ #include <string>
+ #include <utility>
+ #include <vector>
+@@ -82,6 +84,50 @@
+ 
+  private:
+   void DecodeStream(OfflineStream *s) const {
++    [[gnu::used, gnu::retain]] static const char kWhisperLanguagePairFeature[] =
++        "whisper-language-pair-v1";
++
++    const bool paired = s->HasOption("whisper-language-pair");
++    if (!paired) {
++      DecodeStreamWithLanguagePair(s, nullptr);
++      return;
++    }
++
++    // Never leave a previous result/status observable after a failed decode.
++    s->SetResult(OfflineRecognitionResult{});
++    s->SetOption("whisper-language-pair-status", "invalid-config");
++    try {
++      const std::string pair = s->GetOption("whisper-language-pair");
++      const auto comma = pair.find(',');
++      if (comma == std::string::npos || comma == 0 ||
++          comma + 1 == pair.size() || pair.find(',', comma + 1) != std::string::npos ||
++          !model_->IsMultiLingual() ||
++          !config_.model_config.whisper.language.empty()) {
++        return;
++      }
++      const auto &languages = model_->GetLang2ID();
++      const auto first = languages.find(pair.substr(0, comma));
++      const auto second = languages.find(pair.substr(comma + 1));
++      if (first == languages.end() || second == languages.end() ||
++          first->second == second->second || first->second < 0 ||
++          second->second < 0 || first->second >= model_->VocabSize() ||
++          second->second >= model_->VocabSize()) {
++        return;
++      }
++      const std::array<int32_t, 2> ids{first->second, second->second};
++      s->SetOption("whisper-language-pair-status", "decode-error");
++      DecodeStreamWithLanguagePair(s, &ids);
++    } catch (const std::exception &ex) {
++      s->SetResult(OfflineRecognitionResult{});
++      SHERPA_ONNX_LOGE("Paired Whisper decode failed: %s", ex.what());
++    } catch (...) {
++      s->SetResult(OfflineRecognitionResult{});
++      SHERPA_ONNX_LOGE("Paired Whisper decode failed");
++    }
++  }
++
++  void DecodeStreamWithLanguagePair(
++      OfflineStream *s, const std::array<int32_t, 2> *language_pair) const {
+     decoder_->SetConfig(config_.model_config.whisper);
+ 
+     int32_t max_num_frames = 3000;
+@@ -133,10 +179,23 @@
+       auto cross_kv = model_->ForwardEncoder(std::move(mel));
+ 
+       auto results = decoder_->Decode(std::move(cross_kv.first),
+-                                      std::move(cross_kv.second), num_frames);
+-
++                                      std::move(cross_kv.second), num_frames,
++                                      language_pair);
++
++      if (language_pair && results.size() != 1) {
++        throw std::runtime_error("Invalid paired Whisper result count");
++      }
+       auto r = Convert(results[0], symbol_table_);
+       s->SetResult(r);
++      if (language_pair) {
++        const auto &languages = model_->GetID2Lang();
++        if (r.lang != languages.at((*language_pair)[0]) &&
++            r.lang != languages.at((*language_pair)[1])) {
++          s->SetResult(OfflineRecognitionResult{});
++          return;
++        }
++        s->SetOption("whisper-language-pair-status", "ok");
++      }
+     } catch (const Ort::Exception &ex) {
+       SHERPA_ONNX_LOGE(
+           "\n\nCaught exception:\n\n%s\n\nReturn an empty result. Number of "
+--- a/sherpa-onnx/csrc/offline-whisper-decoder.h
++++ b/sherpa-onnx/csrc/offline-whisper-decoder.h
+@@ -5,6 +5,7 @@
+ #ifndef SHERPA_ONNX_CSRC_OFFLINE_WHISPER_DECODER_H_
+ #define SHERPA_ONNX_CSRC_OFFLINE_WHISPER_DECODER_H_
+ 
++#include <array>
+ #include <string>
+ #include <vector>
+ 
+@@ -28,7 +29,8 @@
+    */
+   virtual std::vector<OfflineWhisperDecoderResult> Decode(
+       Ort::Value n_layer_cross_k, Ort::Value n_layer_cross_v,
+-      int32_t num_feature_frames) = 0;
++      int32_t num_feature_frames,
++      const std::array<int32_t, 2> *language_pair = nullptr) = 0;
+ 
+   virtual void SetConfig(const OfflineWhisperModelConfig &config) = 0;
+ };
+--- a/sherpa-onnx/csrc/offline-whisper-greedy-search-decoder.h
++++ b/sherpa-onnx/csrc/offline-whisper-greedy-search-decoder.h
+@@ -20,7 +20,8 @@
+ 
+   std::vector<OfflineWhisperDecoderResult> Decode(
+       Ort::Value cross_k, Ort::Value cross_v,
+-      int32_t num_feature_frames) override;
++      int32_t num_feature_frames,
++      const std::array<int32_t, 2> *language_pair = nullptr) override;
+ 
+   void SetConfig(const OfflineWhisperModelConfig &config) override;
+ 
+--- a/sherpa-onnx/csrc/offline-whisper-greedy-search-decoder.cc
++++ b/sherpa-onnx/csrc/offline-whisper-greedy-search-decoder.cc
+@@ -23,7 +23,8 @@
+ std::vector<OfflineWhisperDecoderResult>
+ OfflineWhisperGreedySearchDecoder::Decode(Ort::Value cross_k,
+                                           Ort::Value cross_v,
+-                                          int32_t num_feature_frames) {
++                                          int32_t num_feature_frames,
++                                          const std::array<int32_t, 2> *language_pair) {
+   auto memory_info =
+       Ort::MemoryInfo::CreateCpu(OrtDeviceAllocator, OrtMemTypeDefault);
+ 
+@@ -64,7 +65,7 @@
+       // 0: sot, 1: lang_id, 2: task, 3: no_timestamps
+       initial_tokens[1] = lang_id;
+     } else {
+-      int32_t lang_id = model_->DetectLanguage(cross_k, cross_v);
++      int32_t lang_id = model_->DetectLanguage(cross_k, cross_v, language_pair);
+ 
+       // 0: sot, 1: lang_id, 2: task, 3: no_timestamps
+       initial_tokens[1] = lang_id;
+--- a/sherpa-onnx/csrc/offline-whisper-model.h
++++ b/sherpa-onnx/csrc/offline-whisper-model.h
+@@ -4,6 +4,7 @@
+ #ifndef SHERPA_ONNX_CSRC_OFFLINE_WHISPER_MODEL_H_
+ #define SHERPA_ONNX_CSRC_OFFLINE_WHISPER_MODEL_H_
+ 
++#include <array>
+ #include <memory>
+ #include <string>
+ #include <tuple>
+@@ -77,8 +78,8 @@
+                  Ort::Value n_layer_self_v_cache, Ort::Value n_layer_cross_k,
+                  Ort::Value n_layer_cross_v, Ort::Value offset) const;
+ 
+-  int32_t DetectLanguage(Ort::Value &cross_k,   // NOLINT
+-                         Ort::Value &cross_v);  // NOLINT
++  int32_t DetectLanguage(Ort::Value &cross_k, Ort::Value &cross_v,
++                         const std::array<int32_t, 2> *language_pair = nullptr);
+ 
+   /** Return the initial self kv cache in a pair
+    *  - n_layer_self_k_cache A 4-D tensor of shape
+--- a/sherpa-onnx/csrc/offline-whisper-model.cc
++++ b/sherpa-onnx/csrc/offline-whisper-model.cc
+@@ -7,6 +7,7 @@
+ #include <algorithm>
+ #include <cmath>
+ #include <memory>
++#include <stdexcept>
+ #include <string>
+ #include <tuple>
+ #include <unordered_map>
+@@ -208,8 +209,8 @@
+ 
+   int32_t NumAlignmentHeads() const { return n_alignment_heads_; }
+ 
+-  int32_t DetectLanguage(Ort::Value &cross_k,    // NOLINT
+-                         Ort::Value &cross_v) {  // NOLINT
++  int32_t DetectLanguage(Ort::Value &cross_k, Ort::Value &cross_v,
++                         const std::array<int32_t, 2> *language_pair) {
+     int64_t token_val = SOT();
+     std::array<int64_t, 2> token_shape{1, 1};
+ 
+@@ -235,6 +236,22 @@
+     cross_v = std::move(std::get<4>(decoder_out));
+ 
+     const float *p_logits = std::get<0>(decoder_out).GetTensorData<float>();
++    if (language_pair) {
++      const auto info = std::get<0>(decoder_out).GetTensorTypeAndShapeInfo();
++      if (info.GetDimensionsCount() != 3) {
++        throw std::runtime_error("Invalid paired language logit rank");
++      }
++      std::array<int64_t, 3> shape;
++      info.GetDimensions(shape.data(), shape.size());
++      const int32_t first = (*language_pair)[0], second = (*language_pair)[1];
++      if (shape[0] != 1 || shape[1] != 1 ||
++          first < 0 || second < 0 || first >= shape[2] || second >= shape[2] ||
++          !std::isfinite(p_logits[first]) || !std::isfinite(p_logits[second])) {
++        throw std::runtime_error("Invalid paired language logits");
++      }
++      // Compare only selected logits; preserve pair order on an exact tie.
++      return p_logits[second] > p_logits[first] ? second : first;
++    }
+     const auto &all_language_ids = GetAllLanguageIDs();
+ 
+     int32_t lang_id = all_language_ids[0];
+@@ -535,9 +552,10 @@
+       std::move(n_layer_cross_v), std::move(offset));
+ }
+ 
+-int32_t OfflineWhisperModel::DetectLanguage(Ort::Value &cross_k,    // NOLINT
+-                                            Ort::Value &cross_v) {  // NOLINT
+-  return impl_->DetectLanguage(cross_k, cross_v);
++int32_t OfflineWhisperModel::DetectLanguage(
++    Ort::Value &cross_k, Ort::Value &cross_v,
++    const std::array<int32_t, 2> *language_pair) {
++  return impl_->DetectLanguage(cross_k, cross_v, language_pair);
+ }
+ 
+ std::pair<Ort::Value, Ort::Value> OfflineWhisperModel::GetInitialSelfKVCache()

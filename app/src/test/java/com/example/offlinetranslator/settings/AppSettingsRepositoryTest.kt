@@ -132,6 +132,38 @@ class AppSettingsRepositoryTest {
     }
 
     @Test
+    fun explicitWhisperSurvivesRestartWithHiddenPreferencesAndCanReturnToEverySavedBackend() = runBlocking {
+        val file = File(temp.root, "whisper-settings.json")
+        val previous = AppSettingsTestFixtures.migrated.copy(
+            speechRecognitionService = "missing.provider/.RecognitionService",
+            languageIdModelId = "saved-lid",
+            vadMinSilenceMs = 1200,
+            ttsSpeedPercent = 115,
+        )
+        for (backend in listOf(SpeechRecognitionBackend.SYSTEM_OFFLINE, SpeechRecognitionBackend.SHERPA,
+            SpeechRecognitionBackend.NEMO)) {
+            val saved = previous.copy(speechRecognitionBackend = backend)
+            val selected = saved.copy(speechRecognitionBackend = SpeechRecognitionBackend.WHISPER)
+            val first = AppSettingsRepository(file)
+            try {
+                first.save(saved)
+                assertEquals(selected, first.save(selected))
+            } finally { first.closeAndJoin() }
+            val document = JSONObject(file.readText(Charsets.UTF_8))
+            assertEquals(6, document.getInt("schemaVersion"))
+            assertEquals("whisper", document.getString("speechRecognitionBackend"))
+            val reopened = AppSettingsRepository(file)
+            try {
+                assertEquals(selected, reopened.current())
+                assertFalse(reopened.corruptionNotice.value)
+                assertEquals(saved, reopened.save(reopened.current().copy(speechRecognitionBackend = backend)))
+            } finally { reopened.closeAndJoin() }
+            val restored = AppSettingsRepository(file)
+            try { assertEquals(saved, restored.current()) } finally { restored.closeAndJoin() }
+        }
+    }
+
+    @Test
     fun corruptedFileTriggersNoticeAndFallsBackToDefaults() = runBlocking {
         val file = File(temp.root, "settings.json")
         file.parentFile?.mkdirs()

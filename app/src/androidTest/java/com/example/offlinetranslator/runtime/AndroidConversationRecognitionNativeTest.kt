@@ -10,8 +10,9 @@ import com.example.offlinetranslator.conversation.ConversationProofFixtures
 import com.example.offlinetranslator.core.*
 import com.example.offlinetranslator.mlkit.MlKitPreparationCoordinator
 import com.example.offlinetranslator.mlkit.MlKitTranslationEngine
-import com.example.offlinetranslator.sherpa.SelectedSpeechResources
-import com.example.offlinetranslator.sherpa.SpeechModelStore
+import com.example.offlinetranslator.speechmodels.SelectedSpeechResources
+import com.example.offlinetranslator.speechmodels.SpeechModelStore
+import com.example.offlinetranslator.sherpa.SherpaSpeechModelCatalog
 import com.example.offlinetranslator.speech.*
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.first
@@ -118,7 +119,7 @@ class AndroidConversationRecognitionNativeTest {
                     }
                 }
             }
-        } finally { reportTotals("human", attempted, completed, failedRows, failures.size) }
+        } finally { reportTotals("human", 32, attempted, completed, failedRows, failures.size) }
         assertOffline()
         assertEquals(32, completed)
         assertTrue("All original human32 rows must qualify; failures=${failures.joinToString("; ")}", failures.isEmpty())
@@ -128,10 +129,11 @@ class AndroidConversationRecognitionNativeTest {
         assertOffline()
         val seen = mutableSetOf<LanguageId>()
         val failures = mutableListOf<String>()
+        val expected = inventoryPairs.size * 2
         var attempted = 0
         var completed = 0
         var failedRows = 0
-        // The other fourteen inputs are synthetic reference audio from an ACTUAL installed LOCAL voice.
+        // Synthetic reference audio comes from an ACTUAL installed LOCAL voice for each selected language.
         try {
             for ((pairIndex, pair) in inventoryPairs.withIndex()) withProductionConversation(pair) { proof ->
                 for ((directionIndex, language) in listOf(pair.source, pair.target).withIndex()) {
@@ -167,10 +169,10 @@ class AndroidConversationRecognitionNativeTest {
                     seen += language
                 }
             }
-        } finally { reportTotals("synthetic-local-TTS:functional-only", attempted, completed, failedRows, failures.size) }
-        assertEquals("Real installed exact-pair recognition and local output inventory16", LanguageCatalog.entries.map { it.id }.toSet(), seen)
+        } finally { reportTotals("synthetic-local-TTS:functional-only", expected, attempted, completed, failedRows, failures.size) }
+        assertEquals("Real installed exact-pair recognition and local output catalog coverage", LanguageCatalog.entries.map { it.id }.toSet(), seen)
         assertOffline()
-        assertEquals(32, completed)
+        assertEquals(expected, completed)
         assertTrue("Synthetic proof retained failures: ${failures.joinToString("; ")}", failures.isEmpty())
     }
 
@@ -181,10 +183,10 @@ class AndroidConversationRecognitionNativeTest {
 
     private suspend fun withProductionConversation(pair: LanguagePair, service: String? = null, block: suspend (Proof) -> Unit) {
         val config = selected(pair, service).conversationConfig()
-        val store = SpeechModelStore(context)
+        val store = SpeechModelStore(context, SherpaSpeechModelCatalog.fromAssets(context))
         val recognition = AndroidConversationRecognitionEngine(context, config)
         val translation = MlKitTranslationEngine(context, config.pairs, MlKitPreparationCoordinator(context))
-        val models = SelectedSpeechResources.forConversation(store, config)
+        val models = SelectedSpeechResources.forConversation(store, config, emptySet())
         val output = ObservedOutput(config)
         val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
         val capture = SegmentCapture()
@@ -404,16 +406,16 @@ class AndroidConversationRecognitionNativeTest {
         assertFalse("Translation must preserve positive polarity: $text",
             ConversationProofFixtures.hasNegation(text))
     }
-    private fun reportTotals(cohort: String, attempted: Int, completed: Int, failedRows: Int, assertions: Int) {
+    private fun reportTotals(cohort: String, expected: Int, attempted: Int, completed: Int, failedRows: Int, assertions: Int) {
         instrumentation.sendStatus(2, Bundle().apply {
             putString("proof_kind", "conversation_totals")
             putString("cohort", cohort)
-            putInt("rows_expected", 32)
+            putInt("rows_expected", expected)
             putInt("rows_attempted", attempted)
             putInt("rows_completed", completed)
             putInt("rows_failed", failedRows)
             putInt("rows_fatal", attempted - completed)
-            putInt("rows_unreached", 32 - attempted)
+            putInt("rows_unreached", expected - attempted)
             putInt("assertions_failed", assertions)
         })
     }
@@ -436,6 +438,7 @@ class AndroidConversationRecognitionNativeTest {
             "pt" to "Preciso de dois bilhetes.", "th" to "ฉันต้องการตั๋วสองใบ",
             "tr" to "İki bilete ihtiyacım var.", "fr" to "J'ai besoin de deux billets.",
             "hi" to "मुझे दो टिकट चाहिए।", "ja" to "切符が二枚必要です。",
+            "nl" to "Ik heb twee kaartjes nodig.",
         )
     }
 }

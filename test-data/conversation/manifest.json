@@ -1,0 +1,59 @@
+{
+  "version": 1,
+  "purpose": "Bounded human offline integration fixtures; not conversational/accent-balanced ASR acceptance. Existing test-data/corpus/v1 is unchanged.",
+  "cases": [
+    {
+      "id": "fleurs-nl-test-0",
+      "language": "nl",
+      "reference": "volgens angel 2006 kunnen organisaties beter presteren met een aanpak op basis van het continuümmodel",
+      "sha256": "53cb19844ff097b3a603ba73e817173e9dbedf5e8522cec387e8c4f5dff56790",
+      "sourceSha256": "4cfe25af0596ee2c709a9a375e1ac456d9821d91a067f7bfbf63ab07ba89e9cf",
+      "source": {
+        "dataset": "google/fleurs",
+        "revision": "70bb2e84b976b7e960aa89f1c648e09c59f894dd",
+        "config": "nl_nl",
+        "split": "test",
+        "row": 0,
+        "id": 1927,
+        "gender": 0
+      },
+      "durationMs": 6480.0,
+      "license": "CC-BY-4.0",
+      "path": "nl-fleurs-test-0.wav",
+      "bytes": 207438
+    },
+    {
+      "id": "fleurs-nl-test-1",
+      "language": "nl",
+      "reference": "varkens dragen de ziekte bij zich en dragen het via muggen over op mensen",
+      "sha256": "99ff8d08d87654dcefa2c52b8e2d5b3b6337624b606aa66874b747a9be88b0c1",
+      "sourceSha256": "e6de7da42b63e1f341752053f63dee45be5f1d64402b57b831dfc92c3b1e0f9d",
+      "source": {
+        "dataset": "google/fleurs",
+        "revision": "70bb2e84b976b7e960aa89f1c648e09c59f894dd",
+        "config": "nl_nl",
+        "split": "test",
+        "row": 1,
+        "id": 1762,
+        "gender": 0
+      },
+      "durationMs": 4380.0,
+      "license": "CC-BY-4.0",
+      "path": "nl-fleurs-test-1.wav",
+      "bytes": 140238
+    }
+  ],
+  "attribution": {
+    "name": "Google FLEURS contributors",
+    "url": "https://huggingface.co/datasets/google/fleurs/tree/70bb2e84b976b7e960aa89f1c648e09c59f894dd",
+    "license": "CC-BY-4.0",
+    "changes": "Downloaded source WAV converted to mono 16 kHz signed PCM16; original and converted SHA-256 identities retained per case."
+  },
+  "limitations": [
+    "Two human utterances per language only",
+    "Dutch rows are male and read speech; no accent/conversational representativeness",
+    "NL FLEURS versus EN/RU Common Voice confounds language with dataset/domain",
+    "FLEURS en_us optional metadata endpoint returned HTTP500; existing pinned human EN/RU inputs used instead",
+    "No uncertainty threshold fit or release-quality assertion from this cohort"
+  ]
+}

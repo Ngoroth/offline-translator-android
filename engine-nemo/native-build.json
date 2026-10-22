@@ -1,0 +1,62 @@
+{
+  "schema": 1,
+  "artifact": "nemo-speech-0.2.0-android-cpu-v1",
+  "sources": {
+    "nemo": {
+      "commit": "6a3ca369370782acee0dd155e34394ba60b920c4",
+      "archive": "nemo-source.tar.gz",
+      "directory": "NeMo-Speech.cpp-6a3ca369370782acee0dd155e34394ba60b920c4",
+      "url": "https://codeload.github.com/NVIDIA/NeMo-Speech.cpp/tar.gz/6a3ca369370782acee0dd155e34394ba60b920c4",
+      "bytes": 2380381,
+      "sha256": "2db94a47ad61a16e6ff3da1786fc4097747233dedf2f12671201782af640165c"
+    },
+    "llama": {
+      "commit": "bd4f514db14d87fded667787a7a963bfbaa98e89",
+      "archive": "llama-source.tar.gz",
+      "directory": "llama.cpp-bd4f514db14d87fded667787a7a963bfbaa98e89",
+      "url": "https://codeload.github.com/ggml-org/llama.cpp/tar.gz/bd4f514db14d87fded667787a7a963bfbaa98e89",
+      "bytes": 37568242,
+      "sha256": "b02af830447d56db65f6579414dee3c06d9d116cc1765d2539417ee8a7ff1dfa"
+    },
+    "sentencepiece": {
+      "commit": "31646a467d2051eb904e0b45de3a73e91fe1c1e3",
+      "archive": "sentencepiece-source.tar.gz",
+      "directory": "sentencepiece-31646a467d2051eb904e0b45de3a73e91fe1c1e3",
+      "url": "https://codeload.github.com/google/sentencepiece/tar.gz/31646a467d2051eb904e0b45de3a73e91fe1c1e3",
+      "bytes": 13487581,
+      "sha256": "b4eb17e6bea5c9380ddd79d04d01d6aa5e280be8f3e3cef1f745a80e6d9451ce"
+    }
+  },
+  "tools": {
+    "ndk": {
+      "version": "29.0.13113456-beta1",
+      "directory": "android-ndk-r29-beta1",
+      "url": "https://dl.google.com/android/repository/android-ndk-r29-beta1-linux.zip",
+      "archiveSha256": "0bbaf4d0632152dcdcf3d0a5d385c760949898c88488375b18971dd669094388",
+      "treeSha256": "31afe9830b7e5659a69ba9304189e0bbf8734545749a047931865d210c64b03f"
+    },
+    "cmake": {
+      "version": "4.2.3",
+      "directory": "cmake-4.2.3-linux-x86_64",
+      "url": "https://cmake.org/files/v4.2/cmake-4.2.3-linux-x86_64.tar.gz",
+      "archiveSha256": "5bb505d5e0cca0480a330f7f27ccf52c2b8b5214c5bba97df08899f5ef650c23",
+      "treeSha256": "5d7cf380e45863b367ce998cd46fbd9250685f2bbc41c8d9e3deaf132db7a1fb"
+    },
+    "ninja": {
+      "version": "1.13.2",
+      "directory": "ninja-1.13.2",
+      "url": "https://github.com/ninja-build/ninja/releases/download/v1.13.2/ninja-linux.zip",
+      "archiveSha256": "5749cbc4e668273514150a80e387a957f933c6ed3f5f11e03fb30955e2bbead6",
+      "treeSha256": "9739ecb306b9d4b22f786dd355508737f7096f7114a94c89817b722c8721aaa3"
+    }
+  },
+  "settings": {
+    "abis": ["arm64-v8a", "x86_64"],
+    "platform": "android-26",
+    "stl": "c++_static",
+    "jobs": 1,
+    "elfAlignment": 16384,
+    "cpuOnly": true,
+    "libraries": ["libggml-base.so", "libggml-cpu.so", "libggml.so", "libnemo_speech_asr.so", "libnemo_speech_asr_c.so", "libnemo_speech_jni.so"]
+  }
+}

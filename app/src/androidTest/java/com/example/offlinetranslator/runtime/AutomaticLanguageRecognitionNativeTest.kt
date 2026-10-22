@@ -9,7 +9,7 @@ import com.example.offlinetranslator.core.LanguagePair
 import com.example.offlinetranslator.core.SpeechSegment
 import com.example.offlinetranslator.core.SpeechOutputBackend
 import com.example.offlinetranslator.core.SpeechRecognitionBackend
-import com.example.offlinetranslator.sherpa.SelectedSpeechResources
+import com.example.offlinetranslator.speechmodels.SelectedSpeechResources
 import com.example.offlinetranslator.sherpa.SherpaConversationRecognitionEngine
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeout
@@ -38,7 +38,8 @@ class AutomaticLanguageRecognitionNativeTest {
             assertEquals(setOf(LanguageCatalog.RUSSIAN, LanguageCatalog.ENGLISH), config.languages.toSet())
             assertEquals("asr-ru-gigaam-v1", config.asrModelIds[LanguageCatalog.RUSSIAN])
             assertEquals("asr-en-whisper-tiny.en", config.asrModelIds[LanguageCatalog.ENGLISH])
-            val resources = SelectedSpeechResources.forConversation(runtime.speechModels, config)
+            val resources = SelectedSpeechResources.forConversation(runtime.speechModels, config,
+                config.asrModelIds.values.toSet() + config.languageIdModelId)
             try {
                 assertTrue("Selected conversation resources must already be ready", resources.isConversationReady())
                 val engine = SherpaConversationRecognitionEngine(runtime.speechModels, config)

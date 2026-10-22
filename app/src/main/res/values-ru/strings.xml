@@ -71,6 +71,7 @@
     <string name="conversation_failure_microphone">Микрофон недоступен. Закройте другие приложения с записью звука и начните снова.</string>
     <string name="conversation_failure_capture">Запись не удалась. Проверьте доступ к микрофону и начните снова.</string>
     <string name="conversation_failure_language">Этот язык не выбран для разговора. Повторите на выбранном языке.</string>
+    <string name="conversation_failure_undetermined_language">Не удалось определить язык. Повторите фразу.</string>
     <string name="conversation_failure_recognition">Не удалось распознать речь. Повторите чётче.</string>
     <string name="conversation_failure_translation">Перевод не удался. Распознанные слова сохранены; повторите фразу.</string>
     <string name="conversation_failure_playback">Не удалось произнести перевод. Его текст сохранён. Проверьте вывод звука и повторите.</string>
@@ -128,6 +129,8 @@
     <string name="settings_recognition_backend">Распознавание речи</string>
     <string name="settings_recognition_system">Распознавание Android на устройстве</string>
     <string name="settings_recognition_sherpa">Локальное распознавание Sherpa · русский/английский</string>
+    <string name="settings_recognition_nemo">Parakeet · многоязычное офлайн-распознавание</string>
+    <string name="settings_recognition_whisper">Whisper · офлайн-распознавание</string>
     <string name="conversation_recognition_ready">Выбранные офлайн-модели распознавания готовы.</string>
     <string name="conversation_recognition_missing_model">Нет офлайн-модели распознавания. Подготовьте выбранные языки.</string>
     <string name="conversation_recognition_unsupported">Офлайн-распознавание Android не поддерживает эту пару. Другой движок не выбирается автоматически.</string>
@@ -136,7 +139,7 @@
     <string name="conversation_recognition_downloading">Android загружает модели распознавания. Подождите и проверьте снова.</string>
     <string name="conversation_recognition_download_failed">Загрузка распознавания не удалась. Проверьте сеть и повторите подготовку.</string>
     <string name="conversation_recognition_check_failed">Проверка распознавания не удалась. Проверьте снова перед началом.</string>
-    <string name="conversation_recognition_sherpa_action">Открыть расширенные настройки</string>
+    <string name="conversation_recognition_settings_action">Открыть расширенные настройки</string>
     <string name="conversation_recheck_recognition">Проверить офлайн-распознавание</string>
     <string name="settings_interface_language">Язык интерфейса</string>
     <string name="settings_interface_language_immediate">Применяется сразу</string>
@@ -162,11 +165,13 @@
     <string name="language_name_fr">Французский</string>
     <string name="language_name_hi">Хинди</string>
     <string name="language_name_ja">Японский</string>
+    <string name="language_name_nl">Нидерландский</string>
     <string name="model_vad_silero">Silero VAD 6.2.2</string>
     <string name="model_lid_whisper">Whisper tiny · определение языка</string>
     <string name="model_asr_gigaam">GigaAM v1 CTC · русский · офлайн</string>
     <string name="model_asr_whisper_en">Whisper tiny.en · английский · офлайн</string>
     <string name="model_asr_whisper_multilingual">Whisper tiny multilingual · английский · офлайн</string>
+    <string name="model_asr_whisper_small_multilingual">Whisper Small INT8 · многоязычная · офлайн</string>
     <string name="model_tts_irina">Piper Irina medium · русский</string>
     <string name="model_tts_lessac">Piper Lessac medium · английский</string>
     <string name="settings_recognition_service">Служба распознавания речи</string>

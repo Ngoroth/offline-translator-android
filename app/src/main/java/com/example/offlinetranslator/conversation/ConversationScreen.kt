@@ -112,7 +112,7 @@ fun ConversationScreen(
     ownerAvailable: Boolean = true,
     systemRecognition: Boolean = false,
     recognitionReadiness: SpeechRecognitionReadiness? = null,
-    canChooseSherpa: Boolean = false,
+    canChooseLocalRecognition: Boolean = false,
     onOpenAdvancedSettings: () -> Unit = {},
     canInstallRecognitionData: Boolean = false,
     recognitionInstallError: Boolean = false,
@@ -186,12 +186,12 @@ fun ConversationScreen(
                             modifier = Modifier.heightIn(min = 48.dp).testTag(ConversationTestTags.RECHECK_RECOGNITION)) {
                             Text(stringResource(R.string.conversation_recheck_recognition))
                         }
-                        if (canChooseSherpa || recognitionReadiness == SpeechRecognitionReadiness.INCOMPATIBLE_SERVICE ||
+                        if (canChooseLocalRecognition || recognitionReadiness == SpeechRecognitionReadiness.INCOMPATIBLE_SERVICE ||
                             recognitionReadiness == SpeechRecognitionReadiness.ENGINE_UNAVAILABLE) {
                             TextButton(onOpenAdvancedSettings,
                                 enabled = !preparing && !languageChanging && !languageBlocked && !state.sessionActive,
                                 modifier = Modifier.heightIn(min = 48.dp).testTag(ConversationTestTags.OPEN_ADVANCED_SETTINGS)) {
-                                Text(stringResource(R.string.conversation_recognition_sherpa_action))
+                                Text(stringResource(R.string.conversation_recognition_settings_action))
                             }
                         }
                     }
@@ -425,6 +425,7 @@ private fun failureLabel(value: ConversationFailure) = when (value) {
     ConversationFailure.MICROPHONE_UNAVAILABLE -> R.string.conversation_failure_microphone
     ConversationFailure.CAPTURE_FAILED -> R.string.conversation_failure_capture
     ConversationFailure.UNSUPPORTED_LANGUAGE -> R.string.conversation_failure_language
+    ConversationFailure.UNDETERMINED_LANGUAGE -> R.string.conversation_failure_undetermined_language
     ConversationFailure.RECOGNITION_FAILED -> R.string.conversation_failure_recognition
     ConversationFailure.TRANSLATION_FAILED -> R.string.conversation_failure_translation
     ConversationFailure.PLAYBACK_FAILED -> R.string.conversation_failure_playback

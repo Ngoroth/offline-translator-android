@@ -2,7 +2,7 @@ package com.example.offlinetranslator.conversation
 
 import com.example.offlinetranslator.core.*
 import com.example.offlinetranslator.sherpa.SherpaSpeechSegmenter
-import com.example.offlinetranslator.sherpa.SpeechModelStore
+import com.example.offlinetranslator.speechmodels.SpeechModelStore
 import kotlinx.coroutines.*
 import org.json.JSONArray
 import org.json.JSONObject
@@ -303,6 +303,7 @@ object ConversationProofFixtures {
         }
 
         suspend fun replay(pcm: ShortArray) {
+            require(pcm.isNotEmpty()) { "A replay must contain PCM samples" }
             check(running && replay?.isActive != true)
             val observer = requireNotNull(listener)
             replay = scope.launch(Dispatchers.Default) {
@@ -310,12 +311,12 @@ object ConversationProofFixtures {
                 val frames = ShortArray(lead + pcm.size + 24_000)
                 pcm.copyInto(frames, lead)
                 val speechEndSample = lead + pcm.indexOfLast { it.toInt() != 0 } + 1
-                check(speechEndSample > lead)
                 val cadence = FramePacing((frames.size + 511) / 512)
                 pacing = cadence
                 SherpaSpeechSegmenter.create(store, vadModelId, vadMinSilenceMs).use { vad ->
                     val started = System.nanoTime()
-                    val speechEnd = started + speechEndSample * 1_000_000_000L / 16_000
+                    val speechEnd = if (speechEndSample > lead)
+                        started + speechEndSample * 1_000_000_000L / 16_000 else null
                     var offset = 0
                     while (offset < frames.size && running) {
                         ensureActive()
@@ -327,13 +328,17 @@ object ConversationProofFixtures {
                         cadence.record(deadline - started, System.nanoTime() - started, catchUp = wait <= 0)
                         vad.accept(frames, offset, count) { segment ->
                             observer.onSegment(
-                                SpeechSegment.fromPcm(segment.copyPcm(), speechEndNanos = speechEnd, speechEndMeasured = true),
+                                SpeechSegment.fromPcm(segment.copyPcm(), speechEndNanos = speechEnd, speechEndMeasured = speechEnd != null),
                             )
                         }
                         offset += count
                     }
                 }
             }
+        }
+
+        suspend fun awaitReplay() {
+            replay?.join()
         }
 
         override fun interruptCurrent() {

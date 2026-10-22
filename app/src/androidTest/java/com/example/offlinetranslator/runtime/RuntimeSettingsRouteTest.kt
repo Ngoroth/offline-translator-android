@@ -20,7 +20,7 @@ import com.example.offlinetranslator.settings.SettingsTestTags
 import com.example.offlinetranslator.translation.TranslationTestTags
 import com.example.offlinetranslator.conversation.ConversationProofFixtures
 import com.example.offlinetranslator.conversation.ConversationTestTags
-import com.example.offlinetranslator.sherpa.SpeechModelStore
+import com.example.offlinetranslator.speechmodels.SpeechModelStore
 import kotlinx.coroutines.CoroutineScope
 import com.example.offlinetranslator.settings.SettingsViewModel
 import kotlinx.coroutines.CompletableDeferred

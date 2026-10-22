@@ -71,6 +71,7 @@
     <string name="conversation_failure_microphone">マイクを使用できません。他の録音アプリを閉じて、もう一度開始してください。</string>
     <string name="conversation_failure_capture">録音に失敗しました。マイクへのアクセスを確認して、もう一度開始してください。</string>
     <string name="conversation_failure_language">この言語は会話用に選択されていません。選択した言語でもう一度話してください。</string>
+    <string name="conversation_failure_undetermined_language">言語を判別できませんでした。もう一度話してください。</string>
     <string name="conversation_failure_recognition">音声を認識できませんでした。はっきりともう一度話してください。</string>
     <string name="conversation_failure_translation">翻訳に失敗しました。認識した言葉は保持されています。もう一度話してください。</string>
     <string name="conversation_failure_playback">翻訳を再生できませんでした。テキストは保持されています。音声出力を確認して再試行してください。</string>
@@ -128,6 +129,8 @@
     <string name="settings_recognition_backend">音声認識</string>
     <string name="settings_recognition_system">Androidの端末内音声認識</string>
     <string name="settings_recognition_sherpa">Sherpaのローカル認識 · ロシア語/英語</string>
+    <string name="settings_recognition_nemo">Parakeet · 多言語オフライン認識</string>
+    <string name="settings_recognition_whisper">Whisper · オフライン認識</string>
     <string name="conversation_recognition_ready">選択したオフライン認識モデルの準備ができています。</string>
     <string name="conversation_recognition_missing_model">オフライン認識モデルがありません。選択した言語データを準備してください。</string>
     <string name="conversation_recognition_unsupported">Androidのオフライン認識はこの組み合わせに対応していません。他のエンジンは自動で選択されません。</string>
@@ -136,7 +139,7 @@
     <string name="conversation_recognition_downloading">Androidが認識モデルをダウンロードしています。完了を待って再確認してください。</string>
     <string name="conversation_recognition_download_failed">認識モデルのダウンロードに失敗しました。接続を確認して準備を再試行してください。</string>
     <string name="conversation_recognition_check_failed">音声認識の確認に失敗しました。開始する前に再確認してください。</string>
-    <string name="conversation_recognition_sherpa_action">詳細設定を開く</string>
+    <string name="conversation_recognition_settings_action">詳細設定を開く</string>
     <string name="conversation_recheck_recognition">オフライン認識を再確認</string>
     <string name="settings_interface_language">表示言語</string>
     <string name="settings_interface_language_immediate">すぐに適用されます</string>
@@ -162,11 +165,13 @@
     <string name="language_name_fr">フランス語</string>
     <string name="language_name_hi">ヒンディー語</string>
     <string name="language_name_ja">日本語</string>
+    <string name="language_name_nl">オランダ語</string>
     <string name="model_vad_silero">Silero VAD 6.2.2</string>
     <string name="model_lid_whisper">Whisper tiny · 言語検出</string>
     <string name="model_asr_gigaam">GigaAM v1 CTC · ロシア語 · オフライン</string>
     <string name="model_asr_whisper_en">Whisper tiny.en · 英語 · オフライン</string>
     <string name="model_asr_whisper_multilingual">Whisper tiny multilingual · 英語 · オフライン</string>
+    <string name="model_asr_whisper_small_multilingual">Whisper Small INT8 · 多言語 · オフライン</string>
     <string name="model_tts_irina">Piper Irina medium · ロシア語</string>
     <string name="model_tts_lessac">Piper Lessac medium · 英語</string>
     <string name="settings_recognition_service">音声認識サービス</string>

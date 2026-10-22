@@ -71,6 +71,7 @@
     <string name="conversation_failure_microphone">麦克风不可用。请关闭其他录音应用后重新开始。</string>
     <string name="conversation_failure_capture">录音失败。请检查麦克风访问权限后重新开始。</string>
     <string name="conversation_failure_language">此语言未被选用于对话。请使用所选语言重复一遍。</string>
+    <string name="conversation_failure_undetermined_language">无法确定语言。请重复一遍。</string>
     <string name="conversation_failure_recognition">无法识别语音。请清晰地重复一遍。</string>
     <string name="conversation_failure_translation">翻译失败。已保留识别出的文字，请重复一遍。</string>
     <string name="conversation_failure_playback">无法播放译文。已保留文字。请检查音频输出后重试。</string>
@@ -128,6 +129,8 @@
     <string name="settings_recognition_backend">语音识别</string>
     <string name="settings_recognition_system">Android 设备端识别</string>
     <string name="settings_recognition_sherpa">Sherpa 本地识别 · 俄语/英语</string>
+    <string name="settings_recognition_nemo">Parakeet · 多语言离线识别</string>
+    <string name="settings_recognition_whisper">Whisper · 离线识别</string>
     <string name="conversation_recognition_ready">所选离线识别模型已就绪。</string>
     <string name="conversation_recognition_missing_model">缺少离线识别模型。请准备所选语言资源。</string>
     <string name="conversation_recognition_unsupported">Android 离线识别不支持此语言对。不会自动选择其他引擎。</string>
@@ -136,7 +139,7 @@
     <string name="conversation_recognition_downloading">Android 正在下载识别模型。请等待后重新检查。</string>
     <string name="conversation_recognition_download_failed">识别模型下载失败。请检查网络连接后重试准备。</string>
     <string name="conversation_recognition_check_failed">识别检查失败。请重新检查后再开始。</string>
-    <string name="conversation_recognition_sherpa_action">打开高级设置</string>
+    <string name="conversation_recognition_settings_action">打开高级设置</string>
     <string name="conversation_recheck_recognition">重新检查离线识别</string>
     <string name="settings_interface_language">界面语言</string>
     <string name="settings_interface_language_immediate">立即生效</string>
@@ -162,11 +165,13 @@
     <string name="language_name_fr">法语</string>
     <string name="language_name_hi">印地语</string>
     <string name="language_name_ja">日语</string>
+    <string name="language_name_nl">荷兰语</string>
     <string name="model_vad_silero">Silero VAD 6.2.2</string>
     <string name="model_lid_whisper">Whisper tiny · 语言检测</string>
     <string name="model_asr_gigaam">GigaAM v1 CTC · 俄语 · 离线</string>
     <string name="model_asr_whisper_en">Whisper tiny.en · 英语 · 离线</string>
     <string name="model_asr_whisper_multilingual">Whisper tiny multilingual · 英语 · 离线</string>
+    <string name="model_asr_whisper_small_multilingual">Whisper Small INT8 · 多语言 · 离线</string>
     <string name="model_tts_irina">Piper Irina medium · 俄语</string>
     <string name="model_tts_lessac">Piper Lessac medium · 英语</string>
     <string name="settings_recognition_service">语音识别服务</string>

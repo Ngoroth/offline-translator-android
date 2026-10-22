@@ -8,6 +8,7 @@ import com.example.offlinetranslator.core.ConversationSessionConfig
 import com.example.offlinetranslator.core.SpeechPlaybackStart
 import com.example.offlinetranslator.core.SpeechOutputBackend
 import com.example.offlinetranslator.core.SpeechOutputReadiness
+import com.example.offlinetranslator.speechmodels.SpeechModelStore
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job

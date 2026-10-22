@@ -1,0 +1,42 @@
+{
+  "schemaVersion": 2,
+  "runtime": "nemo-speech.cpp-0.2.0",
+  "packages": [
+    {
+      "id": "nvidia-parakeet-tdt-0.6b-v3-q8",
+      "displayName": "NVIDIA Parakeet TDT 0.6B v3 Q8",
+      "source": "https://huggingface.co/nvidia/parakeet-tdt-0.6b-v3/tree/541d1f99c6b0c3cd0b11a95167540bb8edefd82b",
+      "license": "CC-BY-4.0; NVIDIA; official GGUF Q8_0 conversion",
+      "url": "https://huggingface.co/nvidia/parakeet-tdt-0.6b-v3/resolve/541d1f99c6b0c3cd0b11a95167540bb8edefd82b/parakeet-tdt-0.6b-v3.q8_0.gguf",
+      "allowedRedirectHosts": ["huggingface.co", "us.aws.cdn.hf.co"],
+      "format": "raw",
+      "archiveBytes": 713975456,
+      "archiveSha256": "e3880d0aaaaf2c308ea2c35016b2b895c423eb3fda924c1b463d1c19b7f4d32e",
+      "maxUnpackedBytes": 713975456,
+      "maxEntries": 1,
+      "files": [
+        {
+          "path": "parakeet-tdt-0.6b-v3.q8_0.gguf",
+          "bytes": 713975456,
+          "sha256": "e3880d0aaaaf2c308ea2c35016b2b895c423eb3fda924c1b463d1c19b7f4d32e"
+        }
+      ]
+    }
+  ],
+  "models": [
+    {
+      "id": "nemo-parakeet-tdt-v3-q8",
+      "displayName": "Parakeet TDT v3 (NeMo, multilingual)",
+      "role": "ASR",
+      "languages": ["bg", "cs", "da", "de", "el", "en", "es", "et", "fi", "fr", "hr", "hu", "it", "lt", "lv", "mt", "nl", "pl", "pt", "ro", "ru", "sk", "sl", "sv", "uk"],
+      "sampleRateHz": 16000,
+      "adapter": {
+        "family": "parakeetTdtGguf",
+        "model": {
+          "packageId": "nvidia-parakeet-tdt-0.6b-v3-q8",
+          "path": "parakeet-tdt-0.6b-v3.q8_0.gguf"
+        }
+      }
+    }
+  ]
+}

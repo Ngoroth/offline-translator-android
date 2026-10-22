@@ -10,6 +10,7 @@ internal object AndroidSpeechLocales {
         "it" to "it-IT", "zh" to "cmn-Hans-CN", "ko" to "ko-KR", "de" to "de-DE",
         "pl" to "pl-PL", "pt" to "pt-BR", "ru" to "ru-RU", "th" to "th-TH",
         "tr" to "tr-TR", "fr" to "fr-FR", "hi" to "hi-IN", "ja" to "ja-JP",
+        "nl" to "nl-NL",
     )
     fun recognition(language: LanguageId): String = recognitionTags.getValue(language.value)
     fun output(language: LanguageId): Locale = Locale.forLanguageTag(

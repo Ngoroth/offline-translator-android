@@ -24,6 +24,7 @@ enum class ConversationPhase { READY, PREPARING, LISTENING, UNDERSTANDING, TRANS
 enum class ConversationFailure {
     MODELS_MISSING, PREPARATION_FAILED, PERMISSION_DENIED, MICROPHONE_UNAVAILABLE,
     CAPTURE_FAILED, UNSUPPORTED_LANGUAGE, RECOGNITION_FAILED, TRANSLATION_FAILED, PLAYBACK_FAILED,
+    UNDETERMINED_LANGUAGE,
 }
 enum class ConversationTranscriptStatus { UNDERSTANDING, TRANSLATING, SPEAKING, COMPLETE, ERROR, INTERRUPTED }
 
@@ -230,6 +231,16 @@ class ConversationPipeline(
             val utterance = recognition.recognize(segment)
             coroutineContext.ensureActive()
             if (!isCurrent(session)) return
+            if (utterance is UndeterminedLanguage) {
+                updateRow(session, id) { it.copy(
+                    original = utterance.text.take(MAX_TEXT_CHARACTERS),
+                    status = ConversationTranscriptStatus.ERROR,
+                    failure = ConversationFailure.UNDETERMINED_LANGUAGE,
+                ) }
+                update(session) { it.copy(failure = ConversationFailure.UNDETERMINED_LANGUAGE) }
+                return
+            }
+            check(utterance is RecognizedUtterance)
             require(utterance.text.isNotBlank() && utterance.text.length <= MAX_TEXT_CHARACTERS)
             updateRow(session, id) { it.copy(
                 direction = utterance.direction,

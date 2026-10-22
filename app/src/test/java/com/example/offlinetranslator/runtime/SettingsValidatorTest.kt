@@ -2,7 +2,10 @@ package com.example.offlinetranslator.runtime
 
 import com.example.offlinetranslator.core.*
 import com.example.offlinetranslator.mlkit.MlKitTranslationEngine
-import com.example.offlinetranslator.sherpa.SpeechModelCatalog
+import com.example.offlinetranslator.sherpa.SherpaSpeechModelCatalog
+import com.example.offlinetranslator.sherpa.WhisperConversationRecognitionEngine
+import com.example.offlinetranslator.nemo.NemoSpeechModelCatalog
+import com.example.offlinetranslator.speechmodels.SpeechModelCatalog
 import org.json.JSONObject
 import org.junit.Assert.*
 import org.junit.Test
@@ -10,8 +13,12 @@ import java.io.File
 
 class SettingsValidatorTest {
     private fun catalogDocument() = JSONObject(File("../engine-sherpa/src/main/assets/speech-models.json").readText())
-    private fun validator(document: JSONObject = catalogDocument()) = SettingsValidator(
-        SpeechModelCatalog.parse(document.toString().byteInputStream()),
+    private fun nemoCatalogDocument() = JSONObject(File("../engine-nemo/src/main/assets/nemo-speech-models.json").readText())
+    private fun validator(document: JSONObject = catalogDocument(), nemo: JSONObject = nemoCatalogDocument()) = SettingsValidator(
+        SpeechModelCatalog.merge(
+            SherpaSpeechModelCatalog.parse(document.toString().byteInputStream()),
+            NemoSpeechModelCatalog.parse(nemo.toString().byteInputStream()),
+        ),
         setOf("mlkit"),
         { _, pair -> MlKitTranslationEngine.capability(pair) },
     )
@@ -83,5 +90,133 @@ class SettingsValidatorTest {
         assertTrue(validation.conversationProblems(system).isEmpty())
         assertEquals(LanguageCatalog.entries.map { it.id }.toSet(), validation.conversationLanguageCoverage(system))
         assertTrue(validation.conversationProblems(system.copy(speechRecognitionBackend = SpeechRecognitionBackend.SHERPA)).isNotEmpty())
+    }
+
+    @Test fun parakeetDutchPairsDoNotRequireLegacyRecognitionDefinitions() {
+        val document = catalogDocument()
+        val models = document.getJSONArray("models")
+        for (index in models.length() - 1 downTo 0) {
+            if (models.getJSONObject(index).getString("role") in listOf("ASR", "LANGUAGE_ID")) models.remove(index)
+        }
+        val validation = validator(document)
+        for (other in listOf(LanguageCatalog.ENGLISH, LanguageCatalog.RUSSIAN)) {
+            val settings = AppSettings(
+                languagePair = LanguagePair(LanguageCatalog.DUTCH, other),
+                speechRecognitionBackend = SpeechRecognitionBackend.NEMO,
+                speechOutputBackend = SpeechOutputBackend.SYSTEM_OFFLINE,
+            )
+            assertEquals(emptyList<ConfigurationProblem>(), validation.conversationProblems(settings))
+            assertTrue(ConfigurationProblem.UNKNOWN_MODEL in
+                validation.conversationProblems(settings.copy(speechRecognitionBackend = SpeechRecognitionBackend.SHERPA)))
+        }
+    }
+
+    @Test fun missingOneParakeetParticipantBlocksVoiceWithoutBlockingTextOrSavingSettings() {
+        val document = nemoCatalogDocument()
+        val models = document.getJSONArray("models")
+        for (index in 0 until models.length()) {
+            val model = models.getJSONObject(index)
+            if (model.getString("id") == NemoSpeechModelCatalog.MODEL_ID) {
+                val languages = model.getJSONArray("languages")
+                for (language in languages.length() - 1 downTo 0) {
+                    if (languages.getString(language) == LanguageCatalog.DUTCH.value) languages.remove(language)
+                }
+            }
+        }
+        val validation = validator(nemo = document)
+        val settings = AppSettings(
+            languagePair = LanguagePair(LanguageCatalog.DUTCH, LanguageCatalog.ENGLISH),
+            speechRecognitionBackend = SpeechRecognitionBackend.NEMO,
+            speechOutputBackend = SpeechOutputBackend.SYSTEM_OFFLINE,
+        )
+        assertEquals(emptyList<ConfigurationProblem>(), validation.textProblems(settings))
+        assertEquals(emptyList<ConfigurationProblem>(), validation.problems(settings))
+        assertTrue(ConfigurationProblem.INCOMPATIBLE_MODEL in validation.conversationProblems(settings))
+        assertTrue(LanguageCatalog.ENGLISH in validation.conversationLanguageCoverage(settings))
+        assertFalse(LanguageCatalog.DUTCH in validation.conversationLanguageCoverage(settings))
+    }
+
+    @Test fun whisperDutchPairsUseOnlyTheSharedRecognitionDefinitionAndKeepOutputIndependent() {
+        val document = catalogDocument()
+        val models = document.getJSONArray("models")
+        for (index in models.length() - 1 downTo 0) {
+            val model = models.getJSONObject(index)
+            if (model.getString("role") in listOf("ASR", "LANGUAGE_ID") &&
+                model.getString("id") != WhisperConversationRecognitionEngine.MODEL_ID) models.remove(index)
+        }
+        val validation = validator(document)
+        for (pair in listOf(
+            LanguagePair(LanguageCatalog.DUTCH, LanguageCatalog.ENGLISH),
+            LanguagePair(LanguageCatalog.DUTCH, LanguageCatalog.RUSSIAN),
+            LanguagePair(LanguageCatalog.RUSSIAN, LanguageCatalog.ENGLISH),
+        ).flatMap { listOf(it, it.reverse()) }) {
+            val settings = AppSettings(languagePair = pair,
+                speechRecognitionBackend = SpeechRecognitionBackend.WHISPER,
+                languageIdModelId = "removed-lid",
+                speechRecognitionService = "missing.provider/.RecognitionService")
+            assertEquals(emptyList<ConfigurationProblem>(), validation.problems(settings))
+            assertEquals(emptyList<ConfigurationProblem>(), validation.conversationProblems(settings))
+        }
+        val dutch = AppSettings(languagePair = LanguagePair(LanguageCatalog.DUTCH, LanguageCatalog.ENGLISH),
+            speechRecognitionBackend = SpeechRecognitionBackend.WHISPER)
+        assertEquals(LanguageCatalog.entries.map { it.id }.toSet(), validation.conversationLanguageCoverage(dutch))
+        val piper = dutch.copy(speechOutputBackend = SpeechOutputBackend.PIPER)
+        assertTrue(ConfigurationProblem.UNSUPPORTED_VOICE in validation.conversationProblems(piper))
+        assertEquals(setOf(LanguageCatalog.RUSSIAN, LanguageCatalog.ENGLISH), validation.conversationLanguageCoverage(piper))
+    }
+
+    @Test fun missingOrWrongRoleWhisperMetadataBlocksRecognitionButNotIndependentText() {
+        val settings = AppSettings(languagePair = LanguagePair(LanguageCatalog.DUTCH, LanguageCatalog.ENGLISH),
+            speechRecognitionBackend = SpeechRecognitionBackend.WHISPER)
+        for (wrongRole in listOf(false, true)) {
+            val document = catalogDocument()
+            val models = document.getJSONArray("models")
+            for (index in models.length() - 1 downTo 0) {
+                if (models.getJSONObject(index).getString("id") == WhisperConversationRecognitionEngine.MODEL_ID) {
+                    models.remove(index)
+                }
+            }
+            if (wrongRole) {
+                for (index in 0 until models.length()) {
+                    val model = models.getJSONObject(index)
+                    if (model.getString("id") == "lid-whisper-tiny") {
+                        model.put("id", WhisperConversationRecognitionEngine.MODEL_ID)
+                    }
+                }
+            }
+            val validation = validator(document)
+            val expected = if (wrongRole) ConfigurationProblem.INCOMPATIBLE_MODEL else ConfigurationProblem.UNKNOWN_MODEL
+            assertEquals(emptyList<ConfigurationProblem>(), validation.textProblems(settings))
+            assertTrue(expected in validation.problems(settings))
+            assertTrue(expected in validation.conversationProblems(settings))
+            assertEquals(emptySet<LanguageId>(), validation.conversationLanguageCoverage(settings))
+            assertEquals(emptyList<ConfigurationProblem>(),
+                validation.conversationProblems(settings.copy(speechRecognitionBackend = SpeechRecognitionBackend.SYSTEM_OFFLINE)))
+        }
+    }
+
+    @Test fun incompleteWhisperPairBlocksConversationWithoutBlockingTextOrSavingSettings() {
+        val document = catalogDocument()
+        val models = document.getJSONArray("models")
+        for (index in 0 until models.length()) {
+            val model = models.getJSONObject(index)
+            if (model.getString("id") == WhisperConversationRecognitionEngine.MODEL_ID) {
+                val languages = model.getJSONArray("languages")
+                for (language in languages.length() - 1 downTo 0) {
+                    if (languages.getString(language) == LanguageCatalog.DUTCH.value) languages.remove(language)
+                }
+            }
+        }
+        val validation = validator(document)
+        val settings = AppSettings(languagePair = LanguagePair(LanguageCatalog.DUTCH, LanguageCatalog.ENGLISH),
+            speechRecognitionBackend = SpeechRecognitionBackend.WHISPER)
+        assertEquals(emptyList<ConfigurationProblem>(), validation.textProblems(settings))
+        assertEquals(emptyList<ConfigurationProblem>(), validation.problems(settings))
+        for (pair in listOf(settings.languagePair, settings.languagePair.reverse())) {
+            assertTrue(ConfigurationProblem.INCOMPATIBLE_MODEL in
+                validation.conversationProblems(settings.copy(languagePair = pair)))
+        }
+        assertTrue(LanguageCatalog.ENGLISH in validation.conversationLanguageCoverage(settings))
+        assertFalse(LanguageCatalog.DUTCH in validation.conversationLanguageCoverage(settings))
     }
 }

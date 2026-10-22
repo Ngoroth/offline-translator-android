@@ -96,10 +96,12 @@ fun SettingsSheet(
                         Choice(stringResource(R.string.settings_recognition_backend), draft.speechRecognitionBackend.persistedId, listOf(
                             SpeechRecognitionBackend.SYSTEM_OFFLINE.persistedId to stringResource(R.string.settings_recognition_system),
                             SpeechRecognitionBackend.SHERPA.persistedId to stringResource(R.string.settings_recognition_sherpa),
+                            SpeechRecognitionBackend.NEMO.persistedId to stringResource(R.string.settings_recognition_nemo),
+                            SpeechRecognitionBackend.WHISPER.persistedId to stringResource(R.string.settings_recognition_whisper),
                         ), enabled, SettingsTestTags.RECOGNITION_BACKEND) { selected ->
                             onDraftChanged(draft.copy(speechRecognitionBackend = SpeechRecognitionBackend.entries.first { it.persistedId == selected }))
                         }
-                        if (!state.usesSherpaRecognition) {
+                        if (state.usesSystemRecognition) {
                             val defaultLabel = stringResource(R.string.recognition_service_on_device)
                             val services = listOf(DEFAULT_RECOGNITION_SERVICE to defaultLabel) +
                                 state.recognitionServices.mapNotNull { (component, label) -> component?.let { it to label } }

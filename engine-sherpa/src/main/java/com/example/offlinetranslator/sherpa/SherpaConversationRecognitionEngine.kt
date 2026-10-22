@@ -10,6 +10,8 @@ import com.example.offlinetranslator.core.SpeechRecognitionBackend
 import com.example.offlinetranslator.core.SpeechRecognitionReadiness
 import com.example.offlinetranslator.core.SpeechSegment
 import com.example.offlinetranslator.core.UnsupportedSpeechLanguageException
+import com.example.offlinetranslator.speechmodels.SpeechModelDefinition
+import com.example.offlinetranslator.speechmodels.SpeechModelStore
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.NonCancellable

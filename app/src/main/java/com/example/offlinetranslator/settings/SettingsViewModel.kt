@@ -50,7 +50,8 @@ class SettingsViewModel(
     }
 
     fun refreshRecognitionServices() {
-        mutableState.value = mutableState.value.copy(recognitionServices = recognitionServices())
+        val services = if (state.value.usesSystemRecognition) recognitionServices() else emptyList()
+        mutableState.value = mutableState.value.copy(recognitionServices = services)
     }
 
     fun updateDraft(value: AppSettings) {
@@ -58,6 +59,7 @@ class SettingsViewModel(
         if (!current.editable || current.loading || current.saving || current.loadError) return
         val frozen = value.copy(languagePair = committed?.languagePair ?: current.draft.languagePair)
         mutableState.value = current.copy(draft = frozen, saveError = false, problems = validate(frozen))
+        if (current.draft.speechRecognitionBackend != frozen.speechRecognitionBackend) refreshRecognitionServices()
     }
 
     fun apply() {
@@ -97,7 +99,9 @@ class SettingsViewModel(
                 if (saved) {
                     val actual = repository.current()
                     committed = actual
-                    mutableState.value = state.value.copy(draft = actual, problems = validate(actual), corruptionNotice = false)
+                    val current = state.value
+                    mutableState.value = current.copy(draft = actual, problems = validate(actual), corruptionNotice = false)
+                    if (current.draft.speechRecognitionBackend != actual.speechRecognitionBackend) refreshRecognitionServices()
                 }
             } catch (cancelled: CancellationException) {
                 throw cancelled

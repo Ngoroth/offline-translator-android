@@ -9,7 +9,7 @@ module-specific notices or establish redistribution clearance.
 
 - Version: `1.13.8`
 - Source: <https://github.com/k2-fsa/sherpa-onnx/releases/tag/v1.13.8>
-- Local prepared artifact (not vendored in the current source tree): `libs/sherpa-onnx-1.13.8.aar`
+- Official upstream preparation input (not the packaged selected-pair distribution): `libs/sherpa-onnx-1.13.8.aar`
 - SHA-256: `633c24321e06b1fe79feafa03ea16cbc0f8a286641e2da3559bac91bdb13bd96`
 - sherpa-onnx source license: Apache License 2.0,
   <https://github.com/k2-fsa/sherpa-onnx/blob/v1.13.8/LICENSE>.
@@ -17,15 +17,34 @@ module-specific notices or establish redistribution clearance.
 - ONNX Runtime: MIT; preserved version-specific license and notices are linked in
   the root inventory. Native eSpeak NG and Piper evidence is recorded below.
 
-The AAR is the official release asset, obtained explicitly with
+The official input AAR is obtained explicitly with
 `./gradlew.bat :engine-sherpa:prepareSherpaArchive --console=plain` (Windows) or
 `bash ./gradlew :engine-sherpa:prepareSherpaArchive --console=plain` (POSIX).
-Preparation verifies size and SHA-256 before atomic placement; valid local bytes are reused
-offline, and corrupt existing files fail unchanged. Ordinary builds only verify the local
-file, never download it. Its Java and native interfaces are isolated in `:engine-sherpa`;
-neither `:core` nor `:app` receives sherpa types through its public API. Gradle retains the
-same local coordinate and official runtime bytes for ASR/VAD/Piper. Historical Git blobs
-are not removed by this source-tree delivery change, and their publication decision remains open.
+Acquisition verifies size/SHA-256 before atomic placement and reuses valid local
+bytes. Corrupt input fails unchanged. The app instead resolves the locally
+rebuilt selected-pair distribution described below. SDK types remain inside
+`:engine-sherpa`; neither `:core` nor `:app` receives them through public APIs.
+Historical official-AAR Git blobs are not removed by this change.
+
+### Locally modified selected-pair distribution
+
+`tools/android/prepare-sherpa-native.py` builds
+`.native-cache/android/sherpa-onnx-1.13.8-pair-v1.aar` explicitly on Linux/WSL.
+`native-build.json` pins source, the complete selected dependency closure,
+ORT headers and the exact NDK/CMake/Ninja identities. The six-file
+`native/whisper-language-pair.patch` adds a metadata-backed two-language SOT
+comparison while preserving one encoder, one transcription and old no-option
+behavior. It does not change public C/JNI/Kotlin layouts.
+
+Only ARM64/x86_64 are packaged. All three Sherpa libraries are rebuilt for each;
+official non-native AAR entries and per-ABI ORT1.28.2 bytes are retained exactly.
+The generated receipt binds source/patch/recipe/tool identities, actual archive
+and ELF hashes, public exports, dependency closure,16KiB alignment and an
+explicit retained `whisper-language-pair-v1` feature marker. Source-supplied
+license/notice material is bundled under `assets/sherpa-native/licenses/`.
+Ordinary Gradle verification is read-only: no stock fallback, repair, download
+or implicit compilation. The upstream-input composition below remains provenance
+for that input, not a claim that its unmodified native libraries are shipped.
 
 ### Exact artifact and native composition
 
@@ -75,8 +94,8 @@ links Piper into the static core, and the
 [`JNI target`](https://github.com/k2-fsa/sherpa-onnx/blob/v1.13.8/sherpa-onnx/jni/CMakeLists.txt)
 links that core.
 
-The following source archives were retrieved for inspection only, not committed.
-The eSpeak and Piper digests match their CMake recipe pins:
+The following exact upstream archives are among the pinned inputs of the local
+build; the manifest records the remaining dependencies and tool/header pins:
 
 | Candidate source input | SHA-256 |
 | --- | --- |
@@ -127,13 +146,15 @@ different route tied to physical-product distribution. Installation Information
 is required only when section 6's User Product/transfer conditions apply, not
 automatically for every APK download.
 
-The archives and recipe above are concrete candidate inputs, **not a verified
-complete Corresponding Source package for this asset**. The remaining prerequisite
-is confirmation of the actual native source revisions/patches and sufficient build
-and installation scripts for the shipped combined work, followed by making that
-material available with the binary under the applicable terms. This does not
-require a formal exhaustive SBOM or byte-for-byte reproducible builds. No request
-for the project owner to grant rights belonging to third parties is implied.
+For the official upstream input, its recipe and candidate archives alone do not
+attest a complete Corresponding Source package for that historical binary.
+The local modified distribution records its actual source/dependency/tool pins,
+modification patch, build helper and byte receipt. Supply that source material
+and the scripts needed for the shipped combined work with any binary handoff;
+public hosting/redistribution still requires the applicable compatible terms
+and source availability. No formal exhaustive SBOM or byte-for-byte identical
+rebuild guarantee is asserted, and no third-party rights can be granted by the
+project owner.
 
 ## Apache Commons Compress
 
@@ -144,10 +165,10 @@ for the project owner to grant rights belonging to third parties is implied.
 
 ## Production conversation speech models
 
-Model weights are separate downloads and are not included in the AAR or APK. The seven
-production packages have pinned archive/file hashes, byte counts, redirect hosts and
-installation quotas in `src/main/assets/speech-models.json`. Conversation recognition
-uses one Whisper tiny language identifier and two resident offline recognizers:
+Model weights are separate downloads and are not included in the AAR or APK.
+Production packages pin archive/file hashes, byte counts, redirect hosts and
+installation quotas in `src/main/assets/speech-models.json`. Legacy Sherpa
+recognition uses one Whisper tiny identifier and two offline recognizers:
 
 - Russian GigaAM v1 NeMo CTC int8:
   <https://github.com/salute-developers/GigaAM>.
@@ -175,6 +196,28 @@ uses one Whisper tiny language identifier and two resident offline recognizers:
 These model licenses are distinct from the Apache-2.0 sherpa-onnx conversion/runtime
 license. Host native controls informed the model selection; they do not establish
 Android latency acceptance or a pass of the historical corpus quality gates.
+
+### Shared multilingual Whisper Small
+
+The explicit Whisper recognition choice uses one Small INT8 definition across
+the current17 app codes and three raw packages, not one model per language.
+Source: [Sherpa's OpenAI Whisper ONNX export documentation](https://k2-fsa.github.io/sherpa/onnx/pretrained_models/whisper/export-onnx.html),
+which identifies `csukuangfj/sherpa-onnx-whisper-small`.
+Immutable revision: `8f3c18b358db4d1f2fc1eae49d75cd20989e4309`.
+
+| File | Bytes | SHA-256 |
+| --- | ---: | --- |
+| `small-encoder.int8.onnx` | 112442483 | `4cbe7b22fa9026b843b60a68640c747de05bafb1a11b57edc0e66c232d9f33a9` |
+| `small-decoder.int8.onnx` | 262226114 | `acad50b5c782696e91b55914cc5ab4f756f1532f76e22aa6fc615f39fb69a8ee` |
+| `small-tokens.txt` | 816730 | `b34b360dbb493e781e479794586d661700670d65564001f23024971d1f2fa126` |
+
+[OpenAI states that Whisper code and model weights are MIT](https://github.com/openai/whisper#license);
+the complete [copyright/license text](../LICENSES/whisper-MIT.txt) is preserved
+and packaged with app notices. The selected HF revision contains no README or
+license sibling; this record does not invent one or claim additional training
+or model conversion by this project. The app downloads these exact exported
+bytes. Vocabulary coverage is not all-language quality or voice qualification.
+
 
 ## Retained fixed-direction evaluator candidates
 

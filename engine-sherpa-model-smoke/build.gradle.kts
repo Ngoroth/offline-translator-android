@@ -89,6 +89,7 @@ android {
 
 dependencies {
     implementation(project(":core"))
+    implementation(project(":speech-models"))
     implementation(project(":engine-sherpa"))
     implementation(project(":engine-mlkit"))
     implementation(platform(libs.androidx.compose.bom))

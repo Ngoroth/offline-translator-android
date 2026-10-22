@@ -4,6 +4,37 @@ Notable capability, behavior and developer-facing compatibility changes. Entries
 
 ## Unreleased
 
+### Joint selected-pair Whisper recognition — 2026-10-22
+
+- Added an explicit Whisper recognition choice using one shared Small INT8 model for the current17 language codes. Fresh-install defaults, Reset, schemas1–6 and saved System/Sherpa/NeMo/output/advanced choices remain unchanged.
+- Restricted Whisper's source selection to the two participants within the same encoder/transcription path. This backend adds no independent classifier, confidence-based repeat request, second transcript or hidden provider fallback.
+- Added source/patch/tool-pinned ARM64/x86_64 native preparation with explicit capability metadata, actual-byte receipts, unchanged stock wrapper/ORT input and existing public API/16KiB checks. Ordinary Gradle verifies only; no native download/rebuild fallback.
+- Kept one serialized resident owner with actual-return cancellation/release barriers and direct normalized PCM input. Added the recognition option and shared-model name translations without adding model selectors; irrelevant System-service/LID controls hide without clearing saved values.
+- Preserved independent translation/output readiness and old quality evidence. Raw Whisper silence can hallucinate text; the production VAD boundary remains required. These development changes do not establish universal language quality, physical-phone performance or the full two-second output goal.
+- Bounded emulator verification completed all six NL/EN/RU directions and actual JNI-overlap lifecycle/Piper checks, but the semantic gate remains failed: one Dutch fixture recognizes `varkens` as `Valkers`. System output timing is still phase-only, not full two-second qualification; see the Whisper checks in `docs/testing/verify-translator.md`.
+
+### Text-first multilingual conversation recognition — 2026-10-21
+
+- Added selectable, persisted NeMo/Parakeet recognition without changing the System default or removing Sherpa/Piper. One pinned 714 MB multilingual GGUF covers the app's current English, Spanish, French, German, Italian, Russian, Dutch, Polish and Portuguese subset; unsupported speech pairs remain explicit rather than triggering fallback.
+- Added optional unconditioned transcription and bundled ML Kit text-language identification behind the existing pair-level recognition contract. Insufficient/foreign text-language evidence retains the transcript, asks for repetition and skips translation/output while listening continues. Native/SDK errors are not converted into abstention.
+- Extracted shared catalog/download/installation/storage into `speech-models`, preserving installed paths, strict verification and Sherpa evaluator contracts. Only the per-model metadata language ceiling changed from 16 to 32. Recognition owns its model installation; the capture/output projection receives explicit recognition model IDs.
+- Added pinned Linux/WSL CPU native preparation for ARM64 and x86_64 with fail-closed ordinary-build verification, generated receipts, 16 KiB ELF/ZIP alignment checks and bundled upstream licenses. Builds do not implicitly fetch tools, sources or weights.
+- Added backend-specific settings/preparation/coverage and repeat feedback across all 17 interface packs. Valid text translation remains available when the selected speech backend does not cover the pair.
+- The final scoped host gate has 407 zero-failure/error/skipped test results: the 174-test app suite executed after the Reset correction, while five unchanged modules' results were reused. Lint completed with 21 warnings and no errors; both app APKs and the isolated model-smoke APK assembled. Final packaged JNI processed the unchanged six-human-plus-silence controls offline; the frozen 68-text policy gate accepted 67 correctly, abstained once and accepted no wrong/foreign source. These bounded checks do not certify general ASR or translation quality.
+- Actual offline UI conversations completed in both directions for NL/EN, NL/RU and RU/EN on an 8 GiB-configured emulator, including unknown-language repeat feedback, subsequent recovery and idle restart. Separate genuine System TTS checks proved non-silent local PCM, completion and interruption for English, Russian and Dutch. Their existing full-catalog gate keeps its default fixtures/assertions; optional `systemTtsLanguageIds` explicitly selects a bounded run and rejects missing fixture IDs.
+- Preserve the first 4 GiB failure: Android killed Google TTS for low memory before output. The later capacity-specific pass is not a minimum-RAM or phone guarantee. Dutch `varkens` → `vakers` recognition loss, a nonsensical Dutch→Russian translation and Russian `Иди сюда` → English `Go here` remain real observed meaning problems. Previous latency failures and ML Kit content-log privacy also remain unresolved.
+- Independent review caught and the implementation corrected a settings regression: Reset from NeMo/Sherpa now refreshes installed System recognition-service choices in the still-open sheet. The focused state-transition test failed before the correction and passed afterward; both saved-backend transitions and real provider selection were exercised on the emulator without reopening the sheet.
+
+
+### Dutch catalog integration — 2026-10-20
+
+- Added Dutch (`nl`) to the shared 17-language catalog, with system recognition/output locale `nl-NL`, localized language names and interface-locale registration.
+- Kept ML Kit method evidence unchanged: English↔Dutch remains executable `Unknown`, Russian↔Dutch uses SDK-managed `Pivot(en)`. No Dutch Sherpa/Piper models or automatic backend substitution were added.
+- Extended existing synthetic speech/voice inventories with Dutch fixtures and cohort-derived totals (34 synthetic turns); the original human32 cohort and assertions remain unchanged.
+- Added the complete Dutch interface pack (177 translatable strings); independent source/localization review found no blocking issues. Actual Conversation, Text, Settings and Help surfaces were inspected in portrait and landscape at 130% font scale; Conversation and Text were also inspected at 100%.
+- The bounded host gate passed: 373 tests executed, 19 test-kit results reused, lint completed with 20 warnings and no errors, and both debug APKs assembled. Actual app-UI preparation and network-disconnected English↔Dutch and Russian↔Dutch text checks preserved the fixed name, negation, yesterday/tomorrow, ticket-count and departure-time controls.
+- Dutch conversation remains device-dependent: the API 37 x86_64 verification setup reported unsupported selected-pair recognition and a missing local voice, with Start disabled. Provider language installation was not authorized in that shared-device window, so Dutch ASR/source-routing/audio completion remains unqualified; no general translation-quality, GrapheneOS or real-phone claim is made.
+
 ### 0.1.1 development prerelease — 2026-10-20
 
 - Published explicit Google recognition-service selection and signer-based admission for the GrapheneOS compatibility fix. VersionCode is now2 so release updates are distinguishable from0.1.0.

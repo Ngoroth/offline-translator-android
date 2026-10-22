@@ -3,9 +3,14 @@ package com.example.offlinetranslator.runtime
 import android.content.Context
 import com.example.offlinetranslator.core.*
 import com.example.offlinetranslator.mlkit.MlKitPreparationCoordinator
+import com.example.offlinetranslator.mlkit.MlKitTextLanguageIdentifier
+import com.example.offlinetranslator.nemo.NemoSpeechModelCatalog
 import com.example.offlinetranslator.settings.AppSettingsRepository
 import com.example.offlinetranslator.settings.SpeechModelChoice
 import com.example.offlinetranslator.sherpa.*
+import com.example.offlinetranslator.speechmodels.SelectedSpeechResources
+import com.example.offlinetranslator.speechmodels.SpeechModelCatalog
+import com.example.offlinetranslator.speechmodels.SpeechModelStore
 import com.example.offlinetranslator.speech.AndroidConversationRecognitionEngine
 import com.example.offlinetranslator.speech.SystemConversationSpeechOutput
 import kotlinx.coroutines.CancellationException
@@ -33,7 +38,10 @@ class AppRuntime private constructor(context: Context) {
     private val job = SupervisorJob()
     val scope = CoroutineScope(job + Dispatchers.Main.immediate)
     val settings = AppSettingsRepository(File(this.context.noBackupFilesDir, "settings/app-settings.json"))
-    val speechModels = SpeechModelStore(this.context)
+    val speechModels = SpeechModelStore(this.context, SpeechModelCatalog.merge(
+        SherpaSpeechModelCatalog.fromAssets(this.context),
+        NemoSpeechModelCatalog.fromAssets(this.context),
+    ))
     val catalog: SpeechModelCatalog get() = speechModels.catalog
     val coordinator = MlKitPreparationCoordinator(this.context)
     val registry = TranslationEngineRegistry(this.context, coordinator)
@@ -156,12 +164,27 @@ class AppRuntime private constructor(context: Context) {
         var recognition: ConversationRecognitionEngine? = null
         var output: ConversationSpeechOutput? = null
         try {
-            models = SelectedSpeechResources.forConversation(speechModels, config)
+            val recognitionModelIds = recognitionModelIds(config)
+            models = SelectedSpeechResources.forConversation(speechModels, config, recognitionModelIds)
             translation = registry.create(config.engineId, config.pairs)
             capture = captureFactory(speechModels, config)
             recognition = when (config.speechRecognitionBackend) {
                 SpeechRecognitionBackend.SYSTEM_OFFLINE -> AndroidConversationRecognitionEngine(context, config)
                 SpeechRecognitionBackend.SHERPA -> SherpaConversationRecognitionEngine(speechModels, config)
+                SpeechRecognitionBackend.WHISPER -> WhisperConversationRecognitionEngine(speechModels, config)
+                SpeechRecognitionBackend.NEMO -> {
+                    val packages = catalog.requiredPackages(recognitionModelIds)
+                    TextFirstConversationRecognitionEngine(
+                        pairs = config.pairs,
+                        ready = {
+                            if (speechModels.availability(packages)) SpeechRecognitionReadiness.READY
+                            else SpeechRecognitionReadiness.MISSING_LOCAL_MODEL
+                        },
+                        installSelected = { speechModels.install(packages) },
+                        createTranscriber = { NemoSpeechModelCatalog.createTranscriber(speechModels) },
+                        createIdentifier = { MlKitTextLanguageIdentifier() },
+                    )
+                }
             }
             output = when (config.speechOutputBackend) {
                 SpeechOutputBackend.SYSTEM_OFFLINE -> SystemConversationSpeechOutput(context, config)
@@ -190,6 +213,16 @@ class AppRuntime private constructor(context: Context) {
             throw failure
         }
     }
+    private fun recognitionModelIds(config: ConversationSessionConfig): Set<String> = when (config.speechRecognitionBackend) {
+        SpeechRecognitionBackend.SYSTEM_OFFLINE -> emptySet()
+        SpeechRecognitionBackend.SHERPA -> buildSet {
+            add(config.languageIdModelId)
+            addAll(config.asrModelIds.values)
+        }
+        SpeechRecognitionBackend.NEMO -> setOf(NemoSpeechModelCatalog.MODEL_ID)
+        SpeechRecognitionBackend.WHISPER -> setOf(WhisperConversationRecognitionEngine.MODEL_ID)
+    }
+
 
     suspend fun conversationReady(owner: ConversationRuntimeOwner): Boolean = owners.use(owner) {
         owner.output.readiness() == SpeechOutputReadiness.READY &&
@@ -288,6 +321,12 @@ class SettingsValidator(
         if (settings.speechRecognitionBackend == SpeechRecognitionBackend.SHERPA) {
             modelProblem(settings.languageIdModelId, SpeechModelRole.LANGUAGE_ID, emptySet())?.let(result::add)
         }
+        if (settings.speechRecognitionBackend == SpeechRecognitionBackend.NEMO) {
+            modelProblem(NemoSpeechModelCatalog.MODEL_ID, SpeechModelRole.ASR, emptySet())?.let(result::add)
+        }
+        if (settings.speechRecognitionBackend == SpeechRecognitionBackend.WHISPER) {
+            modelProblem(WhisperConversationRecognitionEngine.MODEL_ID, SpeechModelRole.ASR, emptySet())?.let(result::add)
+        }
         if (settings.vadMinSilenceMs !in 300..1500) result += ConfigurationProblem.INVALID_SILENCE
         if (settings.ttsSpeedPercent !in 75..125) result += ConfigurationProblem.INVALID_SPEED
         return result.toList()
@@ -301,10 +340,17 @@ class SettingsValidator(
         if (settings.speechRecognitionBackend == SpeechRecognitionBackend.SHERPA) {
             modelProblem(settings.languageIdModelId, SpeechModelRole.LANGUAGE_ID, languages)?.let(result::add)
         }
+        if (settings.speechRecognitionBackend == SpeechRecognitionBackend.NEMO) {
+            modelProblem(NemoSpeechModelCatalog.MODEL_ID, SpeechModelRole.ASR, languages)?.let(result::add)
+        }
+        if (settings.speechRecognitionBackend == SpeechRecognitionBackend.WHISPER) {
+            modelProblem(WhisperConversationRecognitionEngine.MODEL_ID, SpeechModelRole.ASR, languages)?.let(result::add)
+        }
         languages.forEach { language ->
             if (settings.speechRecognitionBackend == SpeechRecognitionBackend.SHERPA) {
                 modelProblem(RecommendedConversationRecognition.modelId(language), SpeechModelRole.ASR, setOf(language))?.let(result::add)
-            } else if (LanguageCatalog.find(language) == null) {
+            } else if (settings.speechRecognitionBackend == SpeechRecognitionBackend.SYSTEM_OFFLINE &&
+                LanguageCatalog.find(language) == null) {
                 result += ConfigurationProblem.UNKNOWN_LANGUAGE
             }
             if (settings.speechOutputBackend == SpeechOutputBackend.PIPER) {
@@ -319,9 +365,16 @@ class SettingsValidator(
     /** Coverage labels are metadata, not an assertion that models/voice data have been installed. */
     fun conversationLanguageCoverage(settings: AppSettings): Set<LanguageId> =
         LanguageCatalog.entries.asSequence().map { it.id }.filter { language ->
-            val recognitionSupported = settings.speechRecognitionBackend == SpeechRecognitionBackend.SYSTEM_OFFLINE ||
-                (modelProblem(RecommendedConversationRecognition.modelId(language), SpeechModelRole.ASR, setOf(language)) == null &&
-                    modelProblem(settings.languageIdModelId, SpeechModelRole.LANGUAGE_ID, setOf(language)) == null)
+            val recognitionSupported = when (settings.speechRecognitionBackend) {
+                SpeechRecognitionBackend.SYSTEM_OFFLINE -> true
+                SpeechRecognitionBackend.SHERPA ->
+                    modelProblem(RecommendedConversationRecognition.modelId(language), SpeechModelRole.ASR, setOf(language)) == null &&
+                        modelProblem(settings.languageIdModelId, SpeechModelRole.LANGUAGE_ID, setOf(language)) == null
+                SpeechRecognitionBackend.NEMO ->
+                    modelProblem(NemoSpeechModelCatalog.MODEL_ID, SpeechModelRole.ASR, setOf(language)) == null
+                SpeechRecognitionBackend.WHISPER ->
+                    modelProblem(WhisperConversationRecognitionEngine.MODEL_ID, SpeechModelRole.ASR, setOf(language)) == null
+            }
             recognitionSupported && if (settings.speechOutputBackend == SpeechOutputBackend.PIPER) {
                 modelProblem(RecommendedConversationVoices.modelId(language), SpeechModelRole.TTS, setOf(language)) == null
             } else true

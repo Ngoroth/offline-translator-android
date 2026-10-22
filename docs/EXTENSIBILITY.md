@@ -9,8 +9,10 @@ Prepare selected resources explicitly, then run inference offline. Conversation 
 | --- | --- |
 | `app` | Compose screens, settings and selected resource ownership: `runtime/AppRuntime.kt`, `runtime/RuntimeOwner.kt`. |
 | `core` | Contracts and bounded session state: `ConversationPipeline.kt`, `TranslationEngine.kt`. `SpeechToTextPipeline.kt` is a separate evaluation/library consumer, not the Text screen. |
-| `engine-mlkit` | Translation clients and actual Google Task lifetimes, including work that outlives coroutine cancellation. |
-| `engine-sherpa` | Native capture/VAD, selected ASR/LID/Piper adapters, verified model files and native handles. |
+| `engine-mlkit` | Explicit-direction translation clients, independent bundled text-language identification, and actual Google Task lifetimes. |
+| `speech-models` | Shared strict catalog parsing, verified model storage, download/extraction and selected capture/output projection. |
+| `engine-nemo` | Pinned CPU JNI and one shared multilingual Parakeet GGUF, without an acoustic language-ID stage. |
+| `engine-sherpa` | Native capture/VAD and selected Sherpa ASR/LID/Piper profiles and handles. |
 
 Pipelines own mutable session queues; runtime owners serialize configuration changes and await teardown before replacement; adapters own actual SDK/JNI work. Cancelling a coroutine is not resource-release evidence. Only configuration and installed resources persist—not conversation history. Native content logging remains an unresolved privacy limitation.
 
@@ -21,11 +23,11 @@ For a focused change, start with the recipes below: [text language](#1-add-a-tex
 ## Current Implementation
 
 
-- `core` supplies language/configuration types and speech/translation contracts. `app` owns settings, UI, runtime construction, and lifecycle coordination. `engine-mlkit` supplies the only registered translation provider; `engine-sherpa` supplies the wired speech implementations and model store.
-- `ConversationRuntimeOwner` constructs `ConversationPipeline`. The current contracts process completed `SpeechSegment`/utterance inputs: `ConversationRecognitionEngine.recognize(segment)`, `TranslationEngine.translate(pair, text)`, and `ConversationSpeechOutput.speak(language, text, onPlaybackStarted)`. Online ASR adapter families do not by themselves establish an incremental end-to-end conversation API.
-- `AppRuntime` constructs common production Sherpa capture/VAD, exactly one selected Android/Sherpa recognizer and exactly one Android/Piper output. Both speech stages require real readiness and awaitable release. Start requires selected native resources plus current recognition/MT/output readiness.
-- `LanguageCatalog` contains `en,vi,es,id,it,zh,ko,de,pl,pt,ru,th,tr,fr,hi,ja`. `AndroidSpeechLocales` is the single ASR/TTS platform mapping; Chinese is `cmn-Hans-CN` recognition and `zh-Hans-CN` output, with Mainland CN/Hans-or-unspecified-script voice eligibility and no Hant/TW/HK/MO substitution. ML Kit still uses base IDs. Catalog support and actual installed service resources are separate.
-- Immutable `AppSettings.languagePair` is the only ordered pair on both main screens. Independent recognition/output selectors live only in advanced Settings. `ConversationSessionConfig` derives both directions, native ASR IDs only for Sherpa and TTS IDs only for Piper. Sherpa/Piper require their genuine RU/EN coverage; System resources cannot be represented by fictional native model-store rows.
+- `core` supplies language/configuration types and speech/translation contracts. `app` owns settings, UI, runtime construction and lifecycle coordination. ML Kit remains the only registered translation provider; NeMo and Sherpa own their compiled native profiles, while `speech-models` owns the shared verified store.
+- `ConversationRuntimeOwner` constructs `ConversationPipeline`. The current contracts process completed `SpeechSegment`/utterance inputs: `ConversationRecognitionEngine.recognize(segment)`, `TranslationEngine.translate(pair, text)`, and `ConversationSpeechOutput.speak(language, text, onPlaybackStarted)`. The recognition result is either a directed `RecognizedUtterance` or retained text in `UndeterminedLanguage`; the pair-level contract does not mandate a detector before ASR. Online ASR adapter families do not by themselves establish an incremental end-to-end conversation API.
+- `AppRuntime` constructs common production Sherpa capture/VAD, exactly one selected Android/Whisper/legacy Sherpa/NeMo recognizer and exactly one Android/Piper output. Both speech stages require real readiness and awaitable release. Start requires selected native resources plus current recognition/MT/output readiness.
+- `LanguageCatalog` contains 17 languages: `en,vi,es,id,it,zh,ko,de,pl,pt,ru,th,tr,fr,hi,ja,nl`. `AndroidSpeechLocales` is the single ASR/TTS platform mapping; Dutch uses `nl-NL`, while ML Kit uses `nl`. Chinese is `cmn-Hans-CN` recognition and `zh-Hans-CN` output, with Mainland CN/Hans-or-unspecified-script voice eligibility and no Hant/TW/HK/MO substitution. ML Kit still uses base IDs. Catalog support and actual installed service resources are separate.
+- Immutable `AppSettings.languagePair` is the only ordered pair on both main screens. Independent recognition/output selectors live only in advanced Settings. `ConversationSessionConfig` derives both directions; legacy Sherpa selects configured LID/ASR IDs, Whisper and NeMo each select their own single shared ASR ID, and System selects no native recognition IDs. Piper alone selects native TTS IDs. Legacy Sherpa/Piper retain their genuine RU/EN coverage; wider Whisper ASR does not install voices. System resources cannot be represented by fictional native model-store rows. An uncovered voice pair may remain a valid text-only selection.
 
 ### Translation Method Is Not Translation Quality
 
@@ -41,6 +43,8 @@ For a focused change, start with the recipes below: [text language](#1-add-a-tex
 `Direct` and `Pivot` describe method, not a quality verdict. `Unknown` is neither SDK-unsupported nor evidence of poor translation. SDK support, directness evidence, semantic quality, offline operation, speech coverage, and device qualification must remain separate facts.
 
 ML Kit's [translation documentation](https://developers.google.com/ml-kit/language/translation) describes English as the intermediary for non-English pairs; its [supported language codes](https://developers.google.com/ml-kit/language/translation/translation-language-support) are a separate SDK-support boundary. `MlKitTranslationEngine.capability(pair)` first checks `supportedLanguages`, reports non-English pairs as `Pivot(en)`, and reports English partners as `Direct` only when they appear in `verifiedEnglishPartners`; other SDK-supported English partners report `Unknown`.
+
+Dutch is already in the SDK-supported codes: English↔Dutch remains executable `Unknown` without verified directness evidence, while Russian↔Dutch is SDK-managed `Pivot(en)`. The catalog addition does not change `verifiedEnglishPartners`, certify translation quality or add Sherpa/Piper resources. NeMo adds genuine Dutch transcription coverage independently of Android recognition-language packs, but System output still requires installed offline voices for both selected languages. The selected three-pair functional pipeline passed on an 8 GiB-configured emulator; a prior 4 GiB run lost Google TTS to Android's low-memory killer. Neither result qualifies general memory or semantic quality.
 
 **Executable support is coordinated across every boundary.** Core `requireSupported()`, `SettingsValidator`, `TranslationEngineRegistry.create()`, and ML Kit selected/prepare/translate accept `Direct`, `Pivot`, and SDK-supported `Unknown`, rejecting genuine `Unsupported`. `Unknown` remains unknown directness, not unsupported or manufactured `Direct`.
 
@@ -61,7 +65,54 @@ The application calls ML Kit once with the original source/target pair. It neith
 
 ### Selected Recognition and Request-local Routing
 
-`SpeechRecognitionBackend` persists `system-offline` or `sherpa`. `ConversationRecognitionEngine` requires `readinessState`, `readiness()`, explicit `install()`, local-only `prepare()`, `recognize()` and awaited release. Typed states are READY, MISSING_LOCAL_MODEL, UNSUPPORTED, ENGINE_UNAVAILABLE, INCOMPATIBLE_SERVICE, SCHEDULED, DOWNLOADING, DOWNLOAD_FAILED and CHECK_FAILED; scheduled is not installed. The owner's existing model repository combines genuine native projection with its exact recognition instance. Screen/helper/pipeline preparation and readiness use that shared boundary; checks and inference never download.
+`SpeechRecognitionBackend` persists `system-offline`, `whisper`, `sherpa` or `nemo`, with System still the fresh-install and Reset default. Schema6 already persists enum IDs; Whisper adds no schema or model preference and does not reinterpret old saved values. `ConversationRecognitionEngine` requires `readinessState`, `readiness()`, explicit `install()`, local-only `prepare()`, `recognize()` and awaited release. Typed states are READY, MISSING_LOCAL_MODEL, UNSUPPORTED, ENGINE_UNAVAILABLE, INCOMPATIBLE_SERVICE, SCHEDULED, DOWNLOADING, DOWNLOAD_FAILED and CHECK_FAILED; scheduled is not installed. The owner's model repository combines genuine native projection with its exact recognition instance. Checks and inference never download.
+
+`SelectedSpeechResources.forConversation` receives explicit recognition model IDs:
+empty for System, configured LID/ASR IDs for legacy Sherpa, and one shared ASR ID
+for either Whisper or NeMo. The projection may display these rows but installs capture/output packages
+only; the selected recognition engine owns its installation and readiness.
+
+Whisper uses `WhisperConversationRecognitionEngine` and
+`asr-whisper-small-multilingual-int8`. Its distinct `whisperMultilingual` adapter
+does not relax the old monolingual `whisperOffline` contract. Three raw packages
+share one definition across the current17 codes. One serialized resident owner
+warms before publication and retains the native lease through actual return,
+including cancelled/closed operations. The SDK cannot interrupt ORT; replacement
+waits for stream disposal and close/join. One exact FloatArray is normalized
+directly from immutable PCM without an intermediate ShortArray copy.
+
+The native patch reads `whisper-language-pair` once, validates two distinct
+metadata-backed codes before the encoder, compares only their SOT logits, and
+reuses encoder cross-KV for one transcription. Equal scores choose the first
+participant; no confidence threshold, separate classifier or second transcript
+is used. Only native completion writes `whisper-language-pair-status=ok`.
+Missing status, malformed candidates, wrong result language, native failure,
+blank/oversize text and stale ownership cannot authorize direction/MT/output.
+Generic stock stream-option roundtrip is not capability evidence: ordinary
+builds require the source/patch/tool-bound custom AAR and retained native feature
+marker. System-service/LID controls are hidden, not cleared, for this choice.
+Raw silence can produce a Whisper hallucination; production VAD is a required
+input boundary rather than treating any low-level text as speech evidence.
+
+NeMo uses `TextFirstConversationRecognitionEngine`: a prepared `SpeechTranscriber`
+produces unconditioned text, then an independent `TextLanguageIdentifier` resolves
+one source within the selected pair. One mutex covers construction, ASR, actual
+SDK Task settlement and reverse-order disposal. Cancellation revokes the result
+between stages and before publication; close/join waits for actual work. One
+reused bounded direct PCM buffer avoids per-turn normalized array copies.
+
+The bundled text classifier requires readable letters, an exact selected global
+winner with raw score at least 0.50, and a global first/second gap at least 0.20.
+It never renormalizes the pair or forces a winner. Ambiguity, another language or
+no readable text produces `UndeterminedLanguage`: bounded original text, null
+direction, repeat-request error and continued listening without MT/TTS. SDK or
+native failures remain failures, not classifier abstention. These are text-model
+scores, not calibrated acoustic confidence.
+
+This is one implementation strategy, not a requirement on all future engines.
+A separately proven pair-level engine may use another recognition strategy when
+one multilingual model does not cover the pair; none is fabricated or selected
+automatically. The Android-only protocols below do not apply to NeMo/Sherpa.
 
 Android requests are fresh per segment: PCM16 mono16k FD source, AUDIO_SOURCE segmented session, free-form, QUICK_RESPONSE, audio detection and both allowlists exactly the snapshot's two locales. Support uses the same shape with an operation-owned valid FD; online-only languages are not ready. Explicit installation requests only selected languages. Public re-entry/recheck obtains current support without polling or hidden retries.
 
@@ -84,7 +135,7 @@ One immutable PCM boundary copy feeds chunked unpaced FD writes; there is no app
 
 `SpeechOutputBackend` persists `system-offline` or `piper`; one backend implements `ConversationSpeechOutput.readiness(): SpeechOutputReadiness` (`READY`, `MISSING_LOCAL_VOICE`, `ENGINE_UNAVAILABLE`, `INITIALIZATION_FAILED`). System selected preparation excludes Piper TTS package download/digest/JNI load; Piper keeps its existing selected models, synthesis, AudioTrack and licensing obligations. System voice data is external engine-owned preparation, not a fabricated model-store package.
 
-`AndroidTtsClient` checks current local inventory/data, excludes network and `KEY_FEATURE_NOT_INSTALLED` voices, and requires exact `setVoice` success/current-voice equality. The shared16 locale mapping selects eligible voices; Mainland Simplified Chinese has the stricter country/script guard described above. There is no `setLanguage` network/default selection. Transaction-local native inventory avoids repeated lookup, not a cached readiness promise.
+`AndroidTtsClient` checks current local inventory/data, excludes network and `KEY_FEATURE_NOT_INSTALLED` voices, and requires exact `setVoice` success/current-voice equality. The shared catalog locale mapping selects eligible voices; Mainland Simplified Chinese has the stricter country/script guard described above. There is no `setLanguage` network/default selection. Transaction-local native inventory avoids repeated lookup, not a cached readiness promise.
 
 After all voice RPCs, one unique public `playSilentUtterance(0L, QUEUE_FLUSH, id)` attests the actual engine: capture `Binder.getCallingUid()` inline in matching Start/Done, resolve outside that callback to one installed registered TTS service package/application UID, and compare OS default/request as nomination only. Self/system-relay/shared/ambiguous/unexpected/missing identity fails closed. Android37 metadata RPCs may reconnect on error but do not replay the failed call: after attestation there are no more voice metadata RPCs before user speak, and user text errors are not retried across connections. There is no hidden SDK identity API/reflection or guessed-package compatibility fallback.
 
@@ -107,16 +158,16 @@ Paths abbreviated with `...` below retain the module's existing `src/main/java/c
 
 ### 2. Add a Speech Model or Adapter
 
-The actual catalog is `engine-sherpa/src/main/assets/speech-models.json`, schema version 2, currently pinned to runtime `sherpa-onnx-1.13.8`. Consult `SpeechModelCatalog.kt` and `SpeechModelDefinition.kt` in `engine-sherpa/.../sherpa/` before editing: the parser rejects unknown fields and enforces role/family compatibility.
+Backend assets retain schema version2: Sherpa owns `engine-sherpa/src/main/assets/speech-models.json` and runtime `sherpa-onnx-1.13.8`; NeMo owns `engine-nemo/src/main/assets/nemo-speech-models.json` and its pinned runtime. Read common `SpeechModelCatalog.kt`, `SpeechModelDefinition.kt` and `SpeechModelAdapterReader.kt` in `speech-models/.../speechmodels/`, plus the relevant backend loader/profile, before editing. Common parsing rejects unknown fields; the explicit compiled decoder enforces backend role/family compatibility. `AppRuntime` merges the two catalogs with duplicate-ID rejection.
 
 1. Add or reuse a `packages` entry. Existing fields are `id`, `displayName`, `source`, `license`, `url`, `allowedRedirectHosts`, `format`, `archiveBytes`, `archiveSha256`, `maxUnpackedBytes`, `files`, and optional `maxEntries`. IDs follow `[a-z0-9][a-z0-9.-]{0,79}`. URLs must be HTTPS with allowed redirect hosts; accepted formats are `raw` and `tar.bz2`.
 2. Pin exact artifacts, archive sizes/SHA-256, extraction quotas, and a safe-path inventory of every expected file (`path`, `bytes`, `sha256`). Include license/attribution files where supplied. A license string or an upstream project's later relicensing announcement is not legal clearance for the pinned archive: check that exact code/weight package and its redistribution conditions. The current GigaAM archive metadata explicitly records its noncommercial-license caveat.
 3. Add a `models` entry with `id`, `displayName`, `role`, `languages`, `sampleRateHz`, and `adapter`. Sample rate is model metadata, not a package field. Roles are `VAD`, `ASR`, `LANGUAGE_ID`, and `TTS`. VAD has an empty language list; other roles must satisfy family-specific language rules.
-4. Reuse a compiled `adapter.family`: `silero`, `nemoCtcOffline`, `whisperOffline`, `whisperLanguageId`, `piperVits`, `toneCtcOnline`, or `zipformer2Online`. References use `{ "packageId": "...", "path": "..." }` and must resolve to declared inventory files or, for Piper `dataDir`, an inventoried directory. Match the family's exact parser fields and rate constraints rather than copying another family's JSON.
-5. For a new family, update the sealed `SpeechModelAdapter`, catalog parser, and `SherpaModelFactories.kt` together, including role/rate checks and native teardown. The factories validate typed definitions and create native configurations; metadata alone cannot implement a new engine. Wire any new provider through the existing runtime/pipeline ownership boundary.
+4. Reuse a compiled backend profile. Sherpa families remain `silero`, `nemoCtcOffline`, `whisperOffline`, `whisperLanguageId`, `piperVits`, `toneCtcOnline` and `zipformer2Online`; these are not NeMo GGUF profiles. References use `{ "packageId": "...", "path": "..." }` and must resolve to declared inventory files or, for Piper `dataDir`, an inventoried directory. Match the family's exact parser fields and rate constraints rather than copying another family's JSON.
+5. For a new Sherpa family, update sealed `SherpaSpeechModelAdapter`, `SherpaSpeechModelCatalog` and `SherpaModelFactories.kt` together, including role/rate checks and native teardown. A separate runtime owns a separate strict loader and compiled adapter implementing the shared marker; it must not relax the common parser or masquerade as a Sherpa profile. Factories create actual native configurations; metadata alone cannot implement a new engine. Wire a real provider through the existing runtime/pipeline ownership boundary.
 6. Maintain host/evaluator projections and model-manifest checks where affected (`translator-test-kit`, `build-logic`, and `engine-sherpa-model-smoke`). Add package/parser/integrity and actual native model coverage, then qualify the selected conversation combination in both directions. A native decode smoke does not prove automatic language identification, semantic translation, usable voice, or phone performance.
 
-Current parser bounds include a 256 KiB catalog, at most 64 packages and 64 models, at most 512 inventoried files per package, at most 1,024 extraction entries, and 1 GiB archive/unpacked limits. Role-specific rates are narrower than the general 8,000–48,000 Hz model range. Preserve these checks; increasing a bound requires an explicit justified implementation change, not an oversized metadata entry.
+Current parser bounds include a 256 KiB catalog, at most 64 packages and 64 models, at most 32 languages per model, at most 512 inventoried files per package, at most 1,024 extraction entries, and 1 GiB archive/unpacked limits. Only the per-model language ceiling changed from 16 to 32 for the 25-language model; unrelated settings/package/file limits are unchanged. Role-specific rates are narrower than the general 8,000–48,000 Hz model range. Preserve these checks; increasing a bound requires an explicit justified implementation change, not an oversized metadata entry.
 
 ### 3. Add a Translation Provider
 

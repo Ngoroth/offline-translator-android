@@ -56,7 +56,7 @@ abstract class VerifyTranslatorTask : DefaultTask() {
             models.forEach { rows.put(JSONObject().put("id",it.id).put("slot",it.slot).put("identity",it.json).put("verdict","FAIL").put("reasons",JSONArray().put("notStarted")).put("metrics",JSONObject.NULL)) }
             report.put("candidateCount",models.size).put("baselineManifestSha256",Integrity.sha256(File(root,"test-data/model-sets/baseline.json")))
                 .put("customManifestSha256",Integrity.sha256(customFile)).put("runtime",ModelManifest.RUNTIME)
-                .put("aarSha256",Integrity.sha256(File(root,"engine-sherpa/libs/sherpa-onnx-1.13.8.aar")))
+                .put("aarSha256",Integrity.sha256(File(root,"engine-sherpa/.native-cache/android/sherpa-onnx-1.13.8-pair-v1.aar")))
                 .put("host",JSONObject().put("java",System.getProperty("java.version")).put("os",System.getProperty("os.name")).put("gradle",gradleVersion.get()))
             val git=BoundedProcess.run(listOf("git","rev-parse","HEAD"),10,1024,root)
             require(git.exitCode==0);report.put("commit",git.text.trim())

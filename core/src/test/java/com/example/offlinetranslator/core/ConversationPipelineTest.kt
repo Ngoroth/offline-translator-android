@@ -18,6 +18,54 @@ import org.junit.Test
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class ConversationPipelineTest {
+    @Test fun undeterminedTextIsRetainedWithoutTranslationAndNextTurnCanSucceed() = runTest {
+        val fixture = Fixture(this)
+        fixture.recognition.result = UndeterminedLanguage("Сто сорок шесть куруш")
+        fixture.pipeline.start()
+        runCurrent()
+        fixture.capture.emit(segment())
+        runCurrent()
+        val uncertain = fixture.pipeline.state.value.transcripts.single()
+        assertEquals("Сто сорок шесть куруш", uncertain.original)
+        assertNull(uncertain.direction)
+        assertNull(uncertain.translation)
+        assertEquals(ConversationTranscriptStatus.ERROR, uncertain.status)
+        assertEquals(ConversationFailure.UNDETERMINED_LANGUAGE, uncertain.failure)
+        assertEquals(ConversationFailure.UNDETERMINED_LANGUAGE, fixture.pipeline.state.value.failure)
+        assertTrue(fixture.capture.running)
+        assertEquals(0, fixture.translation.calls)
+        assertEquals(0, fixture.output.started)
+        fixture.recognition.result = null
+        fixture.capture.emit(segment())
+        runCurrent()
+        assertEquals(uncertain, fixture.pipeline.state.value.transcripts.first())
+        assertEquals(ConversationTranscriptStatus.COMPLETE, fixture.pipeline.state.value.transcripts.last().status)
+        assertNull(fixture.pipeline.state.value.failure)
+        assertEquals(1, fixture.translation.calls)
+        assertEquals(1, fixture.output.started)
+        fixture.pipeline.clear().getOrThrow()
+    }
+
+    @Test fun blankAndOversizedUndeterminedTextNeverBecomeSuccessfulTurns() = runTest {
+        for (text in listOf("", " \t", "a".repeat(ConversationPipeline.MAX_TEXT_CHARACTERS + 1))) {
+            val fixture = Fixture(this)
+            fixture.recognition.result = UndeterminedLanguage(text)
+            fixture.pipeline.start()
+            runCurrent()
+            fixture.capture.emit(segment())
+            runCurrent()
+            val row = fixture.pipeline.state.value.transcripts.single()
+            assertEquals(text.take(ConversationPipeline.MAX_TEXT_CHARACTERS), row.original)
+            assertEquals(ConversationFailure.UNDETERMINED_LANGUAGE, row.failure)
+            assertNull(row.direction)
+            assertNull(row.translation)
+            assertEquals(0, fixture.translation.calls)
+            assertEquals(0, fixture.output.started)
+            assertTrue(fixture.pipeline.state.value.sessionActive)
+            fixture.pipeline.clear().getOrThrow()
+        }
+    }
+
     @Test fun microphoneIsSuspendedDuringOutputAndAutomaticallyResumesWithoutEcho() = runTest {
         val fixture = Fixture(this)
         val playback = CompletableDeferred<Unit>()
@@ -631,6 +679,7 @@ class ConversationPipelineTest {
         var unsupported = false
         var failNext = false
         var installations = 0
+        var result: ConversationRecognitionResult? = null
         override val readinessState = MutableStateFlow(SpeechRecognitionReadiness.READY)
         override suspend fun readiness() = readinessState.value
         override suspend fun install() {
@@ -638,13 +687,14 @@ class ConversationPipelineTest {
             readinessState.value = SpeechRecognitionReadiness.READY
         }
         override suspend fun prepare() { check(readiness() == SpeechRecognitionReadiness.READY) }
-        override suspend fun recognize(segment: SpeechSegment): RecognizedUtterance {
+        override suspend fun recognize(segment: SpeechSegment): ConversationRecognitionResult {
             val current = gate
             if (current != null) {
                 if (ignoreCancellation) withContext(NonCancellable) { current.await() } else current.await()
             }
             if (unsupported) throw UnsupportedSpeechLanguageException()
             if (failNext) { failNext = false; error("Phrase recognition failed") }
+            result?.let { return it }
             return RecognizedUtterance(LanguagePair(LanguageCatalog.RUSSIAN, LanguageCatalog.ENGLISH), "Сегодня без автобуса")
         }
         override fun close() = Unit

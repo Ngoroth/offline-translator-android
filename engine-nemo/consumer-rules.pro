@@ -1,0 +1,1 @@
+-keep class com.example.offlinetranslator.nemo.NemoNative { native <methods>; }

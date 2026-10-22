@@ -9,6 +9,7 @@ Small focused pull requests are welcome. Explain the problem, behavior changed, 
 - JDK **17**, configured through `JAVA_HOME`.
 - Android SDK, configured through `ANDROID_HOME`, with `platform-tools`, **`platforms;android-37.0`**, and **`build-tools;36.0.0`**.
 - Use current Android SDK command-line tools **23.0** or newer with repository schema 3 support for this platform package. The package name is `platforms;android-37.0`, not `platforms;android-37`; old schema 1/2 repository listings do not include it.
+- Python **3.12+** and the complete verified NeMo native distribution. Native preparation runs on Linux x86_64 (including WSL), using the pinned toolchains; see [README preparation](README.md#build-and-run). Windows/macOS Gradle commands consume the prepared distribution rather than compiling it locally.
 - The checked-in Gradle wrapper supplies Gradle. Run commands from the repository root. Windows, Linux and macOS host commands are below.
 
 The [host workflow](.github/workflows/host-checks.yml) provisions official Android command-line tools archive revision **16111833** (CLI 23.0), JDK 17, platform 37.0 and Build Tools 36.0.0 on Ubuntu 24.04. Locally, install the named packages with the official SDK Manager and review/accept its licenses; the project's Apache license does not grant SDK or third-party rights.
@@ -29,7 +30,7 @@ $env:ANDROID_HOME = "C:\Users\<user>\AppData\Local\Android\Sdk"
 
 .\gradlew.bat :engine-sherpa:prepareSherpaArchive --console=plain
 
-.\gradlew.bat :core:testDebugUnitTest :engine-mlkit:testDebugUnitTest :engine-sherpa:testDebugUnitTest :app:testDebugUnitTest :translator-test-kit:testDebugUnitTest :app:lintDebug :app:assembleDebug :app:assembleDebugAndroidTest
+.\gradlew.bat :core:testDebugUnitTest :engine-mlkit:testDebugUnitTest :engine-sherpa:testDebugUnitTest :speech-models:testDebugUnitTest :engine-nemo:testDebugUnitTest :app:testDebugUnitTest :translator-test-kit:testDebugUnitTest :app:lintDebug :app:assembleDebug :app:assembleDebugAndroidTest
 
 # The included build has a separate JVM test gate.
 .\gradlew.bat -p build-logic test --console=plain
@@ -43,7 +44,7 @@ export ANDROID_HOME="/path/to/android-sdk"
 
 bash ./gradlew :engine-sherpa:prepareSherpaArchive --console=plain
 
-bash ./gradlew :core:testDebugUnitTest :engine-mlkit:testDebugUnitTest :engine-sherpa:testDebugUnitTest :app:testDebugUnitTest :translator-test-kit:testDebugUnitTest :app:lintDebug :app:assembleDebug :app:assembleDebugAndroidTest
+bash ./gradlew :core:testDebugUnitTest :engine-mlkit:testDebugUnitTest :engine-sherpa:testDebugUnitTest :speech-models:testDebugUnitTest :engine-nemo:testDebugUnitTest :app:testDebugUnitTest :translator-test-kit:testDebugUnitTest :app:lintDebug :app:assembleDebug :app:assembleDebugAndroidTest
 
 # The included build has a separate JVM test gate.
 bash ./gradlew -p build-logic test --console=plain
@@ -51,7 +52,9 @@ bash ./gradlew -p build-logic test --console=plain
 
 Using `bash ./gradlew` works even when the wrapper is not executable. Run the separate build-logic tests from a real repository checkout with valid Git metadata: existing recovery fixtures use the repository's `.git`. An export without Git metadata is not an equivalent test environment.
 
-Run explicit preparation before either host gate: build-logic recovery tests copy the prepared AAR. Preparation downloads the pinned official Sherpa 1.13.8 runtime to ignored `engine-sherpa/libs/sherpa-onnx-1.13.8.aar` and verifies its size and SHA-256. Valid local bytes are reusable offline; corrupt existing files fail unchanged and must be inspected/removed explicitly. Ordinary builds only verify the file, never download it. See [native provenance](engine-sherpa/THIRD_PARTY.md) for artifact identity and distribution conditions.
+Prepare both native runtimes explicitly before the application host gate. The Sherpa command above downloads its pinned official 1.13.8 AAR to ignored `engine-sherpa/libs/sherpa-onnx-1.13.8.aar` and verifies its size and SHA-256. The separate build-logic recovery tests also require this AAR. Valid local bytes are reusable offline; corrupt existing files fail unchanged and must be inspected/removed explicitly. See [Sherpa provenance](engine-sherpa/THIRD_PARTY.md) for artifact identity and distribution conditions.
+
+For NeMo, follow the [explicit Linux/WSL preparation command](README.md#build-and-run) and the tool-archive layout in the [host workflow](.github/workflows/host-checks.yml). Its helper can explicitly download pinned source archives, but not tools or model weights. Ordinary Gradle builds run read-only native receipt/hash/ABI/alignment verification and never repair or download a missing distribution. Do not modify receipts or submit generated native caches. Exact source/tool pins and shipped licenses are in [NeMo provenance](engine-nemo/THIRD_PARTY.md).
 
 Inspect module `build/test-results/` and `build/reports/`, plus `app/build/reports/lint-results-debug.*`. APK outputs are under `app/build/outputs/apk/`. Assembling the instrumentation APK does not run its tests.
 
@@ -69,7 +72,7 @@ For a non-sensitive bug, provide a minimal synthetic reproduction, expected/actu
 
 **Do not submit secrets or real conversation data.** Exclude raw logcat, full bugreports, private recordings/transcripts, signing keys, credentials, local SDK configuration and model caches. Unresolved ML Kit native logging can expose content even offline; review/redact necessary excerpts locally. Follow the [security policy](SECURITY.md) for suspected vulnerabilities.
 
-Test fixtures must be minimal, deterministic and safe to publish. Record source, license and any modifications for third-party audio or data; do not assume upstream availability grants redistribution rights. Never use production credentials as fixtures. The existing self-signed localhost `engine-sherpa/src/test/resources/model-fixture.p12` and its disclosed `fixture-only` password are downloader-test inputs, not a pattern for submitting real private keys.
+Test fixtures must be minimal, deterministic and safe to publish. Record source, license and any modifications for third-party audio or data; do not assume upstream availability grants redistribution rights. Never use production credentials as fixtures. The existing self-signed localhost `speech-models/src/test/resources/model-fixture.p12` and its disclosed `fixture-only` password are downloader-test inputs, not a pattern for submitting real private keys.
 
 Keep generated reports, recordings, model downloads and machine-local configuration out of submissions. Keep pull requests focused and report failures as well as passes.
 

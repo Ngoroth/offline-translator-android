@@ -16,7 +16,7 @@ import com.example.offlinetranslator.R
 import com.example.offlinetranslator.TranslatorHome
 import com.example.offlinetranslator.conversation.ConversationProofFixtures
 import com.example.offlinetranslator.conversation.ConversationTestTags
-import com.example.offlinetranslator.sherpa.SpeechModelStore
+import com.example.offlinetranslator.speechmodels.SpeechModelStore
 import com.example.offlinetranslator.core.*
 import com.example.offlinetranslator.settings.SettingsTestTags
 import com.example.offlinetranslator.translation.TranslationTestTags
@@ -137,6 +137,156 @@ class SharedLanguagePairNativeTest {
             compose.onNodeWithTag(ConversationTestTags.CURRENT_TURN).assertDoesNotExist()
             assertEquals(backend, runBlocking { runtime.settings.current().speechOutputBackend })
         }
+    }
+
+    @Test fun parakeetUsesRealOfflineVoicesAndBothDirectionsForDutchEnglishRussian() {
+        val nlEn = LanguagePair(LanguageCatalog.DUTCH, LanguageCatalog.ENGLISH)
+        runBlocking { commitNativeSettings(runtime, original.copy(languagePair = nlEn,
+            speechRecognitionBackend = SpeechRecognitionBackend.NEMO,
+            speechOutputBackend = SpeechOutputBackend.SYSTEM_OFFLINE)) }
+        showHome()
+        val cases = listOf(
+            Triple(nlEn, "conversation/nl-fleurs-test-0.wav", "short-human-en-right.wav"),
+            Triple(LanguagePair(LanguageCatalog.DUTCH, LanguageCatalog.RUSSIAN),
+                "conversation/nl-fleurs-test-1.wav", "short-human-ru-timer.wav"),
+            Triple(ruEn, "short-human-ru-come.wav", "short-human-en-wait.wav"),
+        )
+        for ((pair, forward, reverse) in cases) {
+            val current = runBlocking { runtime.settings.current().languagePair }
+            if (current.target != pair.target) choose(ConversationTestTags.LANGUAGE_SECOND, pair.target)
+            if (current.source != pair.source) choose(ConversationTestTags.LANGUAGE_FIRST, pair.source)
+            awaitPair(pair)
+            awaitConversationReady()
+            startCapture()
+            for ((asset, direction) in listOf(forward to pair, reverse to pair.reverse())) {
+                replayAndAwaitComplete(asset, direction)
+                val tree = recordRecognitionSurface(SpeechRecognitionBackend.NEMO, "${direction.source.value}-${direction.target.value}")
+                Log.i(TAG, "recognition=nemo fixture=$asset direction=${direction.id} complete=true microphoneEvidence=false\n$tree")
+            }
+            compose.onNodeWithTag(ConversationTestTags.SESSION_ACTION).performClick()
+            compose.waitUntil(120_000) { capture?.running == false }
+        }
+        reopenHomeAndRuntime()
+        awaitConversationReady()
+        assertFalse("Reopen must remain idle", requireNotNull(capture).running)
+        assertEquals(SpeechRecognitionBackend.NEMO, runBlocking { runtime.settings.current().speechRecognitionBackend })
+    }
+
+    @Test fun whisperUsesSelectedPairAndRealOfflineVoicesInBothDirectionsForDutchEnglishRussian() {
+        val backend = SpeechRecognitionBackend.WHISPER
+        val nlEn = LanguagePair(LanguageCatalog.DUTCH, LanguageCatalog.ENGLISH)
+        runBlocking { commitNativeSettings(runtime, original.copy(languagePair = nlEn,
+            speechRecognitionBackend = backend,
+            speechOutputBackend = SpeechOutputBackend.SYSTEM_OFFLINE)) }
+        showHome()
+        val cases = listOf(
+            Triple(nlEn, "conversation/nl-fleurs-test-0.wav", "short-human-en-right.wav"),
+            Triple(LanguagePair(LanguageCatalog.DUTCH, LanguageCatalog.RUSSIAN),
+                "conversation/nl-fleurs-test-1.wav", "short-human-ru-timer.wav"),
+            Triple(ruEn, "short-human-ru-come.wav", "short-human-en-wait.wav"),
+        )
+        val sourceMeaning = mapOf(
+            "conversation/nl-fleurs-test-0.wav" to listOf("organisaties", "presteren", "aanpak"),
+            "conversation/nl-fleurs-test-1.wav" to listOf("varkens", "ziekte", "muggen", "mensen"),
+            "short-human-en-right.wav" to listOf("turn", "right"),
+            "short-human-ru-timer.wav" to listOf("останов", "таймер"),
+            "short-human-ru-come.wav" to listOf("иди", "сюда"),
+            "short-human-en-wait.wav" to listOf("wait", "minute"),
+        )
+        val failures = mutableListOf<String>()
+        for ((pair, forward, reverse) in cases) {
+            val current = runBlocking { runtime.settings.current().languagePair }
+            if (current.target != pair.target) choose(ConversationTestTags.LANGUAGE_SECOND, pair.target)
+            if (current.source != pair.source) choose(ConversationTestTags.LANGUAGE_FIRST, pair.source)
+            awaitPair(pair)
+            awaitConversationReady()
+            startCapture()
+            if (pair == nlEn) {
+                runBlocking {
+                    requireNotNull(capture).replay(ShortArray(32_000))
+                    requireNotNull(capture).awaitReplay()
+                }
+                compose.onNodeWithTag(ConversationTestTags.CURRENT_TURN).assertDoesNotExist()
+                assertTrue("Silence must not stop the selected capture", requireNotNull(capture).running)
+                Log.i(TAG, "recognition=whisper silenceSeconds=2 acceptedTurn=false microphoneEvidence=false")
+            }
+            for ((asset, direction) in listOf(forward to pair, reverse to pair.reverse())) {
+                replayAndAwaitComplete(asset, direction)
+                val tree = recordRecognitionSurface(backend, "${direction.source.value}-${direction.target.value}")
+                Log.i(TAG, "recognition=${backend.persistedId} fixture=$asset direction=${direction.id} " +
+                    "complete=true microphoneEvidence=false physicalPresentationEvidence=false\n$tree")
+                for (fragment in sourceMeaning.getValue(asset)) {
+                    if (compose.onAllNodes(hasTestTag(ConversationTestTags.CURRENT_TURN) and
+                            hasAnyDescendant(hasText(fragment, substring = true, ignoreCase = true)))
+                            .fetchSemanticsNodes().size != 1) {
+                        failures += "$asset (${direction.id}): missing source meaning '$fragment'"
+                    }
+                }
+                compose.onNode(hasTestTag(ConversationTestTags.CURRENT_TURN) and
+                    hasAnyDescendant(hasText(context.getString(R.string.conversation_failure_undetermined_language))))
+                    .assertDoesNotExist()
+            }
+            compose.onNodeWithTag(ConversationTestTags.SESSION_ACTION).performClick()
+            awaitFixtureState(120_000, "Whisper Stop must return to idle Start") {
+                capture?.running == false &&
+                    compose.onAllNodes(hasTestTag(ConversationTestTags.SESSION_ACTION) and
+                        hasText(context.getString(R.string.conversation_start)) and isEnabled())
+                        .fetchSemanticsNodes().isNotEmpty()
+            }
+        }
+        reopenHomeAndRuntime()
+        awaitConversationReady()
+        assertFalse("Whisper reopen must remain idle", requireNotNull(capture).running)
+        compose.onNodeWithTag(ConversationTestTags.CURRENT_TURN).assertDoesNotExist()
+        assertEquals(backend, runBlocking { runtime.settings.current().speechRecognitionBackend })
+        assertTrue("Whisper lost fixture meaning: ${failures.joinToString("; ")}", failures.isEmpty())
+    }
+
+    @Test fun parakeetUndeterminedHumanTurnRequestsRepeatThenResumesSelectedDirection() {
+        val pair = LanguagePair(LanguageCatalog.DUTCH, LanguageCatalog.ENGLISH)
+        runBlocking { commitNativeSettings(runtime, original.copy(languagePair = pair,
+            speechRecognitionBackend = SpeechRecognitionBackend.NEMO,
+            speechOutputBackend = SpeechOutputBackend.SYSTEM_OFFLINE)) }
+        showHome()
+        awaitConversationReady()
+        startCapture()
+        // This unchanged Russian control is deliberately outside the selected Dutch/English pair.
+        runBlocking { requireNotNull(capture).replay(loadPcm("short-human-ru-timer.wav")) }
+        val repeatRequest = hasTestTag(ConversationTestTags.CURRENT_TURN) and
+            hasAnyDescendant(hasText(context.getString(R.string.conversation_failure_undetermined_language)))
+        awaitFixtureState(120_000, "A real foreign human turn must request repetition without a guessed direction") {
+            compose.onAllNodes(repeatRequest).fetchSemanticsNodes().isNotEmpty()
+        }
+        compose.onNode(repeatRequest and hasAnyDescendant(hasText("таймер", substring = true, ignoreCase = true))).assertExists()
+        compose.onNode(hasTestTag(ConversationTestTags.CURRENT_TURN) and
+            hasAnyDescendant(hasText(context.getString(R.string.conversation_speaking)))).assertDoesNotExist()
+        assertTrue("Undetermined input must not stop capture", requireNotNull(capture).running)
+        Log.i(TAG, "realUndeterminedTurn=true microphoneEvidence=false\n${recordRecognitionSurface(SpeechRecognitionBackend.NEMO, "undetermined")}")
+        runBlocking { requireNotNull(capture).awaitReplay() }
+        replayAndAwaitComplete("short-human-en-right.wav", pair.reverse())
+        recordRecognitionSurface(SpeechRecognitionBackend.NEMO, "recovered-en-nl")
+        compose.onNodeWithTag(ConversationTestTags.SESSION_ACTION).performClick()
+        awaitFixtureState(120_000, "Stop must reach the idle ready action, not merely stop its capture source") {
+            capture?.running == false && compose.onAllNodes(hasTestTag(ConversationTestTags.SESSION_ACTION) and
+                hasText(context.getString(R.string.conversation_start)) and isEnabled()).fetchSemanticsNodes().isNotEmpty()
+        }
+        reopenHomeAndRuntime()
+        awaitConversationReady()
+        assertFalse("Reopen after recovery must remain idle", requireNotNull(capture).running)
+        compose.onNodeWithTag(ConversationTestTags.CURRENT_TURN).assertDoesNotExist()
+    }
+
+    private fun recordRecognitionSurface(backend: SpeechRecognitionBackend, name: String): String {
+        val evidence = File(context.filesDir, "${backend.persistedId}-recognition-proof").apply { mkdirs() }
+        val tree = compose.onRoot(useUnmergedTree = true).printToString()
+        File(evidence, "$name-ui.txt").writeText(tree)
+        val screenshot = requireNotNull(instrumentation.uiAutomation.takeScreenshot())
+        try {
+            File(evidence, "$name-ui.png").outputStream().use { output ->
+                assertTrue(screenshot.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, output))
+            }
+        } finally { screenshot.recycle() }
+        return tree
     }
 
     private fun showHome() {

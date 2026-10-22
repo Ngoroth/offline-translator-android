@@ -99,6 +99,23 @@ class AppSettingsSerializerTest {
     }
 
     @Test
+    fun schemaSixReadsEveryExplicitRecognitionChoiceWithoutChangingHiddenOrOutputPreferences() = runBlocking<Unit> {
+        for ((id, backend) in listOf(
+            "system-offline" to SpeechRecognitionBackend.SYSTEM_OFFLINE,
+            "sherpa" to SpeechRecognitionBackend.SHERPA,
+            "nemo" to SpeechRecognitionBackend.NEMO,
+            "whisper" to SpeechRecognitionBackend.WHISPER,
+        )) {
+            val source = document(6).put("speechRecognitionBackend", id)
+                .put("speechRecognitionService", "missing.provider/.RecognitionService")
+                .put("languageIdModelId", "saved-lid")
+            val expected = AppSettingsTestFixtures.migrated.copy(speechRecognitionBackend = backend,
+                speechRecognitionService = "missing.provider/.RecognitionService", languageIdModelId = "saved-lid")
+            assertEquals(expected, serializer.readFrom(source.toString().byteInputStream()))
+        }
+    }
+
+    @Test
     fun schemaSixRequiresNullOrBoundedComponentSyntaxButNotAnInstalledPackage() = runBlocking<Unit> {
         assertCorrupt(document(6).apply { remove("speechRecognitionService") })
         for (invalid in listOf("", "on-device", "provider/", "/Service", "provider//Service",

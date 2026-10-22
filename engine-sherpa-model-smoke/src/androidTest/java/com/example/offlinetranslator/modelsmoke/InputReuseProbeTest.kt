@@ -21,9 +21,9 @@ class InputReuseProbeTest {
         require(first.catalog.packages.size == 3 && first.catalog.models.size == 3)
         require(first.catalog.models.count { it.role == SpeechModelRole.VAD } == 1)
         require(first.catalog.models.count { it.role == SpeechModelRole.ASR } == 2)
-        require(first.catalog.models.single { it.role == SpeechModelRole.VAD }.adapter is SpeechModelAdapter.Silero)
-        require(first.catalog.models.single { LanguageId("ru") in it.languages }.adapter is SpeechModelAdapter.ToneCtcOnline)
-        require(first.catalog.models.single { LanguageId("en") in it.languages }.adapter is SpeechModelAdapter.Zipformer2Online)
+        require(first.catalog.models.single { it.role == SpeechModelRole.VAD }.adapter is SherpaSpeechModelAdapter.Silero)
+        require(first.catalog.models.single { LanguageId("ru") in it.languages }.adapter is SherpaSpeechModelAdapter.ToneCtcOnline)
+        require(first.catalog.models.single { LanguageId("en") in it.languages }.adapter is SherpaSpeechModelAdapter.Zipformer2Online)
         require(first.catalog.requiredPackages(first.catalog.models.mapTo(linkedSetOf()) { it.id }) ==
             first.catalog.packages.mapTo(linkedSetOf()) { it.id })
         require(copied>0);first.close()

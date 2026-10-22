@@ -9,9 +9,10 @@ import com.example.offlinetranslator.core.LanguagePair
 import com.example.offlinetranslator.core.SpeechOutputBackend
 import com.example.offlinetranslator.core.SpeechRecognitionBackend
 import com.example.offlinetranslator.settings.AppSettingsRepository
-import com.example.offlinetranslator.sherpa.SelectedSpeechResources
+import com.example.offlinetranslator.speechmodels.SelectedSpeechResources
 import com.example.offlinetranslator.sherpa.SherpaConversationSpeechOutput
-import com.example.offlinetranslator.sherpa.SpeechModelStore
+import com.example.offlinetranslator.speechmodels.SpeechModelStore
+import com.example.offlinetranslator.sherpa.SherpaSpeechModelCatalog
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeout
 import org.junit.Assert.assertArrayEquals
@@ -121,9 +122,10 @@ class AutomaticLanguageVoicesNativeTest {
                 speechRecognitionBackend = SpeechRecognitionBackend.SHERPA,
             ))
             val config = runtime.settings.current().conversationConfig()
-            val store = SpeechModelStore(context)
+            val store = SpeechModelStore(context, SherpaSpeechModelCatalog.fromAssets(context))
             try {
-                val resources = SelectedSpeechResources.forConversation(store, config)
+                val resources = SelectedSpeechResources.forConversation(store, config,
+                    config.asrModelIds.values.toSet() + config.languageIdModelId)
                 try {
                     assertTrue(resources.isConversationReady())
                     val output = SherpaConversationSpeechOutput(context, store, config)

@@ -8,7 +8,7 @@ import com.example.offlinetranslator.core.SpeechSegment
 import com.example.offlinetranslator.sherpa.PcmResampler
 import com.example.offlinetranslator.sherpa.SherpaSpeechRecognitionEngine
 import com.example.offlinetranslator.sherpa.SherpaSpeechSegmenter
-import com.example.offlinetranslator.sherpa.SpeechModelStore
+import com.example.offlinetranslator.speechmodels.SpeechModelStore
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals

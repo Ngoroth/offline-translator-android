@@ -29,10 +29,10 @@ For situations where speaking is inconvenient, **Text** uses the same language p
 - **On-device processing:** the conversation path uses local recognition, ML Kit translation and local speech output. Missing resources do not trigger a cloud fallback.
 - **Explicit preparation:** download the required resources before use. Missing, unavailable or failed preparation stays visible rather than being presented as ready.
 - **One shared language pair:** change or swap the pair in either Conversation or Text.
-- **Replaceable speech backends:** Android on-device recognition and speech output are the defaults; Sherpa recognition and Piper output remain selectable for the curated Russian/English setup.
-- **A multilingual interface:** app-owned interface text is localized for the same 16-language catalog.
+- **Replaceable speech backends:** Android on-device recognition and speech output remain the defaults. Explicitly select **Whisper · offline recognition** for one shared multilingual model that selects between the two participants within recognition. NeMo/Parakeet keeps its text-first strategy; legacy Sherpa recognition and Piper output remain available for the curated Russian/English setup.
+- **A multilingual interface:** app-owned interface text is localized for the same 17-language catalog.
 
-The catalog is `en`, `vi`, `es`, `id`, `it`, `zh`, `ko`, `de`, `pl`, `pt`, `ru`, `th`, `tr`, `fr`, `hi`, `ja`. Chinese means Mainland Simplified Mandarin. A catalog entry does **not** guarantee an installed local recognizer/voice or qualified translation quality for every pair.
+The catalog is `en`, `vi`, `es`, `id`, `it`, `zh`, `ko`, `de`, `pl`, `pt`, `ru`, `th`, `tr`, `fr`, `hi`, `ja`, `nl`. Chinese means Mainland Simplified Mandarin. Dutch uses `nl` for ML Kit and `nl-NL` for Android recognition/output. Whisper covers the current 17 recognition codes through one shared Small INT8 download; it does not expand Piper voices or install System voices. Parakeet covers `en`, `es`, `fr`, `de`, `it`, `ru`, `nl`, `pl`, `pt` through its own shared model. Coverage is not quality qualification or proof of installed Android resources. Earlier Parakeet NL↔EN, NL↔RU and RU↔EN functional conversations and uncertainty recovery passed on an 8 GiB-configured emulator; its earlier 4 GiB run lost Google TTS to low memory. Those observations do not qualify Whisper or erase known recognition and translation-meaning errors.
 
 ## Why this is an AI-agent showcase
 
@@ -59,14 +59,31 @@ flowchart LR
     D --> E[Local speech output]
 ```
 
-ML Kit can use English as an intermediary for non-English pairs. The app does not treat ambiguous recognition as a reliable source-language decision. Downloads are a separate, explicit preparation step—not part of inference.
+ML Kit can use English as an intermediary for non-English pairs. Source-language resolution follows the explicitly selected recognition backend's policy. Downloads are a separate, explicit preparation step—not part of inference.
+
+Parakeet does not need a separate acoustic language detector or a language hint.
+Its recognized text goes to bundled ML Kit Language Identification. Only a
+sufficiently confident global result matching one selected language determines
+the direction; otherwise the app retains the text, asks for repetition and does
+not translate or speak that turn. Unsupported pairs remain unavailable rather
+than silently using another provider.
+
+Whisper uses one multilingual Small INT8 model and one encoder per utterance.
+The same encoder output feeds a language-token comparison restricted to the two
+selected languages and one transcription. It does not run a separate language
+classifier or request repetition because the two language scores are close.
+Native failures, invalid results and blank text still fail without translation.
+Production VAD remains essential: a raw Whisper transcript, including one from
+silence, is not by itself proof that someone spoke.
 
 | Component | Responsibility |
 | --- | --- |
 | `app` | Compose UI, settings, Android speech adapters and runtime ownership |
 | `core` | Language/configuration types, engine contracts and conversation processing |
-| `engine-mlkit` | On-device text translation |
-| `engine-sherpa` | Native VAD, retained recognition/language identification, model storage and Piper synthesis |
+| `engine-mlkit` | On-device text translation and independent bundled text-language identification |
+| `speech-models` | Shared strict catalog, verified package storage, download and installation |
+| `engine-nemo` | Pinned CPU JNI/Parakeet unconditioned multilingual transcription |
+| `engine-sherpa` | Native VAD, joint selected-pair Whisper, retained legacy ASR/LID and Piper synthesis |
 | `translator-test-kit` | Shared evaluation inputs and utilities |
 | `engine-sherpa-model-smoke` | Isolated Android/JNI model-evaluation runner |
 | `build-logic` | Gradle verification tooling, with its own JVM tests |
@@ -80,6 +97,7 @@ See the [architecture and extension guide](docs/EXTENSIBILITY.md) for the actual
 - **JDK 17**, with `JAVA_HOME` configured.
 - **Android SDK platform 37.0** (`platforms;android-37.0`), Build Tools **36.0.0** and current SDK command-line tools; set `ANDROID_HOME`.
 - An Android **14 / API 34+** emulator or device. The app targets API 36 and packages `arm64-v8a` and `x86_64`.
+- **Python 3.12+** and explicitly prepared Sherpa and NeMo native distributions. Native compilation requires Linux x86_64 (including WSL) and the pinned toolchains below; ordinary Gradle builds only verify the prepared distributions.
 
 The checked-in Gradle wrapper supplies Gradle. Building requires network access for build dependencies, but does not download speech models.
 
@@ -87,19 +105,80 @@ The checked-in Gradle wrapper supplies Gradle. Building requires network access 
 
 ```powershell
 .\gradlew.bat :engine-sherpa:prepareSherpaArchive --console=plain
-.\gradlew.bat :app:assembleDebug
 ```
 
 **Linux / macOS**
 
 ```bash
 bash ./gradlew :engine-sherpa:prepareSherpaArchive --console=plain
-bash ./gradlew :app:assembleDebug
 ```
 
 The APK is written to `app/build/outputs/apk/debug/app-debug.apk`.
 
-The explicit preparation command downloads the official Sherpa 1.13.8 AAR (50,129,134 bytes) to ignored local path `engine-sherpa/libs/sherpa-onnx-1.13.8.aar`, verifies SHA-256 `633c24321e06b1fe79feafa03ea16cbc0f8a286641e2da3559bac91bdb13bd96`, and reuses valid local bytes without network access. Ordinary builds verify this file but never download it. A corrupt existing file fails unchanged: inspect/remove it explicitly before preparing again. This is the same ASR/VAD/Piper runtime, not a native rebuild or a model download. See the [native distribution record](engine-sherpa/THIRD_PARTY.md) for unchanged third-party conditions; removing the file from the current source tree does not remove historical Git blobs.
+The explicit stock-input command downloads the official Sherpa 1.13.8 AAR (50,129,134 bytes) to `engine-sherpa/libs/sherpa-onnx-1.13.8.aar`, verifies SHA-256 `633c24321e06b1fe79feafa03ea16cbc0f8a286641e2da3559bac91bdb13bd96`, and reuses valid bytes without network access. It is a preparation input, **not** the paired runtime shipped by the app. Corrupt existing input fails unchanged; inspect it explicitly rather than allowing an ordinary build to repair it.
+
+Prepare the selected-pair Sherpa distribution on Linux/WSL before assembly:
+
+```bash
+python3 tools/android/prepare-sherpa-native.py \
+  --tools-root /absolute/path/to/verified-native-tools \
+  --source-cache /absolute/path/to/pinned-native-sources/sherpa \
+  --output engine-sherpa/.native-cache/android \
+  --abis arm64-v8a x86_64 --download
+```
+
+Its [manifest](engine-sherpa/native-build.json) pins source, dependencies, headers
+and tools; its [six-file patch](engine-sherpa/native/whisper-language-pair.patch)
+adds selected-pair recognition without changing the stock Kotlin/JNI layouts.
+The generated `sherpa-onnx-1.13.8-pair-v1.aar` retains the official wrapper and
+per-ABI ORT bytes, rebuilds all three Sherpa libraries for both shipped ABIs, and
+preserves notices. Its receipt binds actual native bytes, public APIs, 16 KiB
+alignment and the explicit retained feature marker. Ordinary builds never fall
+back to the official AAR or invoke native compilation. Read-only verification:
+
+```powershell
+python tools/android/prepare-sherpa-native.py --verify --output engine-sherpa/.native-cache/android --abis arm64-v8a x86_64
+```
+
+Prepare NeMo separately on Linux x86_64, from the repository root, before app
+assembly:
+
+```bash
+python3 tools/android/prepare-nemo-native.py \
+  --tools-root /absolute/path/to/verified-nemo-tools \
+  --source-cache engine-nemo/.native-cache/sources \
+  --output engine-nemo/.native-cache/android \
+  --abis arm64-v8a x86_64 --download
+```
+
+The read-only tool root must contain the exact NDK r29 beta1, CMake 4.2.3 and
+Ninja 1.13.2 directories pinned in
+[`native-build.json`](engine-nemo/native-build.json). The
+[host workflow's native preparation step](.github/workflows/host-checks.yml)
+downloads the official tool archives, verifies their hashes and lays them out.
+The helper independently verifies tool-tree identities; `--download` permits
+only missing pinned SDK source archives, never tool or model installation.
+Windows can prepare through WSL; macOS/Windows Gradle builds need the complete
+verified Linux-prepared distribution at the path above. Copy its generated
+receipt and payload together without editing the receipt. Missing, stale,
+extra or corrupt artifacts fail closed. See
+[NeMo provenance and licenses](engine-nemo/THIRD_PARTY.md).
+
+After both distributions are prepared, assemble with `.\gradlew.bat :app:assembleDebug`
+on Windows or `bash ./gradlew :app:assembleDebug` on Linux/macOS.
+
+### Multilingual Whisper recognition
+
+For Dutch Conversation, open Settings, explicitly choose **Whisper · offline
+recognition**, Apply, and prepare the selected languages. The shared model has
+375,485,327 bytes across three verified raw packages; installation also requires
+temporary headroom. It needs neither Android recognition-language packs nor the
+legacy independent language-ID model. System output still needs genuine offline
+voices for both participants. No model menu or per-turn speaker action is added.
+
+Fresh-install defaults, Reset, settings schemas and previously saved recognition,
+output, service and language-ID choices remain unchanged. Selecting Whisper does
+not silently replace a saved System, Sherpa or NeMo selection.
 
 After installation:
 
@@ -107,6 +186,20 @@ After installation:
 2. Use **Prepare languages** while online and resolve any missing system recognition or voice resources.
 3. Wait for readiness, then start Conversation and grant microphone permission—or use Text.
 4. To verify offline use, disconnect networking after preparation. Build compatibility alone does not establish device speech-service support.
+
+### Multilingual Parakeet recognition
+
+Select NeMo/Parakeet in the recognition backend settings, apply, and explicitly
+prepare the selected pair. This installs one verified 714 MB GGUF for all covered
+pairs; it does not depend on Android recognition-language packs. System speech
+output is still a separate choice and requires genuinely installed offline
+voices in Android's default TTS engine for both selected languages. A usable
+text translator does not make an uncovered voice pair ready.
+
+The installed weights occupy about 714 MB. A fresh verified installation needs
+about **1.46 GB of free storage** for the download, staged file and safety reserve,
+plus the other selected VAD/translation/voice resources. This temporary disk
+headroom is separate from the combined inference RAM limit described below.
 
 ### Explicit Android recognition service
 
@@ -128,6 +221,7 @@ The [contributor guide](CONTRIBUTING.md) contains environment setup, the complet
 - **Speech and translation quality are not release-qualified.** Known recognition and meaning errors remain; successful fixtures do not establish all-language or all-direction quality.
 - **Conversation is turn-based.** Reliable speech-driven interruption and simultaneous spoken translation are not implemented.
 - **Phone performance is not qualified.** Emulator evidence does not establish real microphone/speaker acoustics, sustained-call behavior or the two-second latency target.
+- **Memory requirements are not generally qualified.** The same full-pipeline cohort passed on an 8 GiB-configured emulator after the 4 GiB setup killed Google TTS for low memory. This is neither a minimum-RAM guarantee nor phone/resource-pressure qualification; an ASR-only measurement does not budget all prepared components.
 - **Offline is not a complete privacy guarantee.** Historical checks found recognized/translated text in ML Kit native logs; this remains unresolved. Do not submit real conversation recordings or raw logs in public reports.
 - **Third-party distribution questions remain.** The project license does not automatically cover native binaries, audio fixtures, model/voice weights, datasets or provider branding.
 

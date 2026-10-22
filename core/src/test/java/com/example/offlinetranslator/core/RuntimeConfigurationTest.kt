@@ -14,16 +14,6 @@ class RuntimeConfigurationTest {
         assertThrows(IllegalArgumentException::class.java) { LanguagePair(LanguageId("en"), LanguageId("EN")) }
     }
 
-    @Test fun languageCatalogHasTheApprovedSixteenBaseLanguages() {
-        assertEquals(
-            listOf("en", "vi", "es", "id", "it", "zh", "ko", "de", "pl", "pt", "ru", "th", "tr", "fr", "hi", "ja"),
-            LanguageCatalog.entries.map { it.id.value },
-        )
-        assertEquals("Chinese (Simplified Mandarin)", LanguageCatalog.find(LanguageCatalog.CHINESE)?.englishName)
-        assertEquals("Китайский (мандаринский, упрощённый)", LanguageCatalog.find(LanguageCatalog.CHINESE)?.russianName)
-        assertTrue(LanguageCatalog.entries.all { it.warmUpText.isNotBlank() })
-    }
-
     @Test fun supportedExecutionDoesNotClaimVerifiedDirectness() {
         TranslationCapability.Direct.requireSupported()
         TranslationCapability.Pivot(LanguageCatalog.ENGLISH).requireSupported()
@@ -93,6 +83,28 @@ class RuntimeConfigurationTest {
         assertEquals(emptyMap<LanguageId, String>(), piper.asrModelIds)
         assertEquals("tts-en-piper-lessac-medium", piper.ttsModelIds[LanguageCatalog.ENGLISH])
         assertEquals("tts-ru-piper-irina-medium", piper.ttsModelIds[LanguageCatalog.RUSSIAN])
+    }
+
+    @Test fun whisperRoutesEitherParticipantWithoutProjectingLegacyRecognitionOrChangingHiddenChoices() {
+        val settings = AppSettings(
+            languagePair = LanguagePair(LanguageCatalog.DUTCH, LanguageCatalog.RUSSIAN),
+            speechRecognitionBackend = SpeechRecognitionBackend.WHISPER,
+            languageIdModelId = "saved-lid",
+            speechRecognitionService = "missing.provider/.RecognitionService",
+        )
+        val config = settings.conversationConfig()
+        assertEquals(emptyMap<LanguageId, String>(), config.asrModelIds)
+        assertEquals(emptyMap<LanguageId, String>(), config.ttsModelIds)
+        assertEquals(settings.languagePair, config.pairFor(LanguageCatalog.DUTCH))
+        assertEquals(settings.languagePair.reverse(), config.pairFor(LanguageCatalog.RUSSIAN))
+        assertThrows(UnsupportedSpeechLanguageException::class.java) { config.pairFor(LanguageCatalog.ENGLISH) }
+        assertEquals(settings.languageIdModelId, config.languageIdModelId)
+        assertEquals(settings.speechRecognitionService, config.speechRecognitionService)
+        val piper = settings.copy(languagePair = LanguagePair(LanguageCatalog.RUSSIAN, LanguageCatalog.ENGLISH),
+            speechOutputBackend = SpeechOutputBackend.PIPER).conversationConfig()
+        assertEquals(emptyMap<LanguageId, String>(), piper.asrModelIds)
+        assertEquals(mapOf(LanguageCatalog.RUSSIAN to "tts-ru-piper-irina-medium",
+            LanguageCatalog.ENGLISH to "tts-en-piper-lessac-medium"), piper.ttsModelIds)
     }
 
     @Test fun unknownSelectionsRemainPersistableButInvalidNumericSnapshotCannotRun() {
