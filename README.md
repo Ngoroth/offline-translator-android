@@ -23,10 +23,10 @@ Recorded on an emulator with networking disabled and languages prepared. Test au
 Choose two languages, prepare their resources, and start a conversation. Either person can speak a turn; the app recognizes, translates and reads it aloud. Listening resumes after playback. **Text** uses the same language pair without the microphone.
 
 - **Local processing:** ML Kit translation and Android on-device speech by default, with no automatic cloud or other-provider fallback.
-- **Optional engines:** Tencent Hy-MT2 translation, plus Sherpa recognition and Piper speech for the curated Russian/English setup.
-- **16 languages:** a shared language pair across Conversation and Text, with a localized interface.
+- **Optional engines:** Tencent Hy-MT2 translation; selected-pair multilingual Whisper recognition; legacy Sherpa recognition and Piper speech for the curated Russian/English setup.
+- **17 languages:** a shared language pair across Conversation and Text, with a localized interface.
 
-The catalog includes English, Vietnamese, Spanish, Indonesian, Italian, Mainland Simplified Mandarin, Korean, German, Polish, Portuguese, Russian, Thai, Turkish, French, Hindi and Japanese. Offline recognition and voices depend on the device; translation quality varies by pair.
+The catalog is `en`, `vi`, `es`, `id`, `it`, `zh`, `ko`, `de`, `pl`, `pt`, `ru`, `th`, `tr`, `fr`, `hi`, `ja`, `nl`. Chinese means Mainland Simplified Mandarin. Dutch uses `nl` for ML Kit and `nl-NL` for Android recognition/output. Whisper covers the current 17 recognition codes through one shared Small INT8 download; it does not expand Piper voices or install System voices. Coverage is not quality qualification or proof of installed Android resources.
 
 ## How it works
 
@@ -38,13 +38,36 @@ flowchart LR
     D --> E[Local speech output]
 ```
 
-Language downloads happen before use, not during translation. ML Kit may translate non-English pairs through English. See the [architecture guide](docs/EXTENSIBILITY.md) for modules, engine contracts and extension points.
+ML Kit can use English as an intermediary for non-English pairs. Source-language resolution follows the explicitly selected recognition backend's policy. Downloads are a separate, explicit preparation step—not part of inference.
+
+Whisper uses one multilingual Small INT8 model and one encoder per utterance.
+The same encoder output feeds a language-token comparison restricted to the two
+selected languages and one transcription. It does not run a separate language
+classifier or request repetition because the two language scores are close.
+Native failures, invalid results and blank text still fail without translation.
+Production VAD remains essential: a raw Whisper transcript, including one from
+silence, is not by itself proof that someone spoke.
+
+| Component | Responsibility |
+| --- | --- |
+| `app` | Compose UI, settings, Android speech adapters and runtime ownership |
+| `core` | Language/configuration types, engine contracts and conversation processing |
+| `engine-mlkit` | On-device text translation and actual Google Task lifetimes |
+| `speech-models` | Shared strict catalog, verified package storage, download and installation |
+| `engine-tencent` | Shared pinned GGUF preparation and owner-scoped embedded CPU llama.cpp JNI inference |
+| `engine-sherpa` | Native VAD, joint selected-pair Whisper, retained legacy ASR/LID and Piper synthesis |
+| `translator-test-kit` | Shared evaluation inputs and utilities |
+| `engine-sherpa-model-smoke` | Isolated Android/JNI model-evaluation runner |
+| `build-logic` | Gradle verification tooling, with its own JVM tests |
+
+See the [architecture and extension guide](docs/EXTENSIBILITY.md) for the actual contracts and extension points.
 
 ## Build and run
 
 - **JDK 17**, with `JAVA_HOME` configured.
 - **Android SDK platform 37.0** (`platforms;android-37.0`), Build Tools **36.0.0** and current SDK command-line tools; set `ANDROID_HOME`.
 - An Android **14 / API 34+** emulator or device. The app targets API 36 and packages `arm64-v8a` and `x86_64`.
+- **Python 3.12+** and explicitly prepared paired Sherpa and Tencent native distributions. Native compilation requires Linux x86_64 (including WSL) and the pinned toolchains below; ordinary Gradle builds only verify the prepared distributions.
 
 Native preparation needs network access but does not download language models. It requires Linux x86_64; on Windows use PowerShell 7 and WSL Ubuntu with Python 3 and Git. See [environment setup](CONTRIBUTING.md#development-environment) for full prerequisites.
 
@@ -53,7 +76,6 @@ Native preparation needs network access but does not download language models. I
 ```powershell
 pwsh -File tools/android/prepare-tencent-native.ps1
 .\gradlew.bat :engine-sherpa:prepareSherpaArchive --console=plain
-.\gradlew.bat :app:assembleDebug
 ```
 
 **Linux**
@@ -61,12 +83,64 @@ pwsh -File tools/android/prepare-tencent-native.ps1
 ```bash
 python3 tools/android/prepare-tencent-native.py
 bash ./gradlew :engine-sherpa:prepareSherpaArchive --console=plain
-bash ./gradlew :app:assembleDebug
 ```
 
 The APK is written to `app/build/outputs/apk/debug/app-debug.apk`.
 
-Ordinary builds verify prepared native artifacts without downloading or rebuilding them. See [Contributing](CONTRIBUTING.md#baseline-host-checks) for artifact preparation, troubleshooting and verification commands.
+The explicit stock-input command downloads the official Sherpa 1.13.8 AAR (50,129,134 bytes) to `engine-sherpa/libs/sherpa-onnx-1.13.8.aar`, verifies SHA-256 `633c24321e06b1fe79feafa03ea16cbc0f8a286641e2da3559bac91bdb13bd96`, and reuses valid bytes without network access. It is a preparation input, **not** the paired runtime shipped by the app. Corrupt existing input fails unchanged; inspect it explicitly rather than allowing an ordinary build to repair it.
+
+Prepare the selected-pair Sherpa distribution on Linux/WSL before assembly:
+
+```bash
+python3 tools/android/prepare-sherpa-native.py \
+  --tools-root /absolute/path/to/verified-native-tools \
+  --source-cache /absolute/path/to/pinned-native-sources/sherpa \
+  --output engine-sherpa/.native-cache/android \
+  --abis arm64-v8a x86_64 --download
+```
+
+Its [manifest](engine-sherpa/native-build.json) pins source, dependencies, headers
+and tools; its [six-file patch](engine-sherpa/native/whisper-language-pair.patch)
+adds selected-pair recognition without changing the stock Kotlin/JNI layouts.
+The generated `sherpa-onnx-1.13.8-pair-v1.aar` retains the official wrapper and
+per-ABI ORT bytes, rebuilds all three Sherpa libraries for both shipped ABIs, and
+preserves notices. Its receipt binds actual native bytes, public APIs, 16 KiB
+alignment and the explicit retained feature marker. Ordinary builds never fall
+back to the official AAR or invoke native compilation. Read-only verification:
+
+```powershell
+python tools/android/prepare-sherpa-native.py --verify --output engine-sherpa/.native-cache/android --abis arm64-v8a x86_64
+```
+
+The read-only Sherpa tool root must contain the exact NDK r29 beta1, CMake 4.2.3
+and Ninja 1.13.2 directories pinned in
+[`native-build.json`](engine-sherpa/native-build.json). The
+[host workflow's preparation step](.github/workflows/host-checks.yml) downloads
+the official tool archives, verifies their hashes and lays them out. The helper
+independently verifies tool-tree identities; `--download` permits only missing
+pinned SDK source archives, never tool or model installation.
+Windows can prepare through WSL; macOS/Windows Gradle builds need the complete
+verified Linux-prepared distribution. Copy its receipt and payload together
+without editing the receipt. Missing, stale, extra or corrupt artifacts fail
+closed. See [Sherpa provenance and licenses](engine-sherpa/THIRD_PARTY.md) and
+[Tencent preparation](CONTRIBUTING.md#baseline-host-checks).
+
+After both distributions are prepared, assemble with `.\gradlew.bat :app:assembleDebug`
+on Windows or `bash ./gradlew :app:assembleDebug` on Linux/macOS.
+
+### Multilingual Whisper recognition
+
+For Dutch Conversation, open Settings, explicitly choose **Whisper · offline
+recognition**, Apply, and prepare the selected languages. The shared model has
+375,485,327 bytes across three verified raw packages; installation also requires
+temporary headroom. It needs neither Android recognition-language packs nor the
+legacy independent language-ID model. System output still needs genuine offline
+voices for both participants. No model menu or per-turn speaker action is added.
+
+Fresh-install defaults, Reset and settings schemas remain unchanged. Selecting
+Whisper does not silently replace a saved System or Sherpa selection. A saved
+removed backend ID uses the unknown-backend System fallback; other
+well-formed preferences remain intact.
 
 After installation:
 

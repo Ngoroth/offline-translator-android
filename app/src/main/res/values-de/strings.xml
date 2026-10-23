@@ -71,6 +71,7 @@
     <string name="conversation_failure_microphone">Das Mikrofon ist nicht verfügbar. Schließe andere Aufnahme-Apps und starte erneut.</string>
     <string name="conversation_failure_capture">Aufnahme fehlgeschlagen. Prüfe den Mikrofonzugriff und starte erneut.</string>
     <string name="conversation_failure_language">Diese Sprache ist nicht für das Gespräch ausgewählt. Wiederhole das Gesagte in einer ausgewählten Sprache.</string>
+    <string name="conversation_failure_undetermined_language">Die Sprache konnte nicht bestimmt werden. Bitte wiederhole das Gesagte.</string>
     <string name="conversation_failure_recognition">Die Sprache konnte nicht erkannt werden. Wiederhole das Gesagte deutlich.</string>
     <string name="conversation_failure_translation">Übersetzung fehlgeschlagen. Deine erkannten Wörter wurden beibehalten. Wiederhole das Gesagte.</string>
     <string name="conversation_failure_playback">Die Übersetzung konnte nicht wiedergegeben werden. Ihr Text wurde beibehalten. Prüfe die Audioausgabe und versuche es erneut.</string>
@@ -128,6 +129,7 @@
     <string name="settings_recognition_backend">Spracherkennung</string>
     <string name="settings_recognition_system">Spracherkennung auf dem Gerät durch Android</string>
     <string name="settings_recognition_sherpa">Lokale Sherpa-Erkennung · Russisch/Englisch</string>
+    <string name="settings_recognition_whisper">Whisper · Offline-Erkennung</string>
     <string name="conversation_recognition_ready">Die ausgewählten Offline-Erkennungsmodelle sind bereit.</string>
     <string name="conversation_recognition_missing_model">Ein Offline-Erkennungsmodell fehlt. Bereite die ausgewählten Sprachen vor.</string>
     <string name="conversation_recognition_unsupported">Die Offline-Erkennung von Android unterstützt dieses Sprachpaar nicht. Es wird nicht automatisch eine andere Engine ausgewählt.</string>
@@ -136,7 +138,7 @@
     <string name="conversation_recognition_downloading">Android lädt Erkennungsmodelle herunter. Warte und prüfe dann erneut.</string>
     <string name="conversation_recognition_download_failed">Der Download für die Spracherkennung ist fehlgeschlagen. Prüfe deine Verbindung und versuche die Vorbereitung erneut.</string>
     <string name="conversation_recognition_check_failed">Die Prüfung der Spracherkennung ist fehlgeschlagen. Prüfe erneut, bevor du startest.</string>
-    <string name="conversation_recognition_sherpa_action">Erweiterte Einstellungen öffnen</string>
+    <string name="conversation_recognition_settings_action">Erweiterte Einstellungen öffnen</string>
     <string name="conversation_recheck_recognition">Offline-Erkennung erneut prüfen</string>
     <string name="settings_interface_language">Oberflächensprache</string>
     <string name="settings_interface_language_immediate">Wird sofort angewendet</string>
@@ -162,11 +164,13 @@
     <string name="language_name_fr">Französisch</string>
     <string name="language_name_hi">Hindi</string>
     <string name="language_name_ja">Japanisch</string>
+    <string name="language_name_nl">Niederländisch</string>
     <string name="model_vad_silero">Silero VAD 6.2.2</string>
     <string name="model_lid_whisper">Whisper tiny · Sprachbestimmung</string>
     <string name="model_asr_gigaam">GigaAM v1 CTC · Russisch · offline</string>
     <string name="model_asr_whisper_en">Whisper tiny.en · Englisch · offline</string>
     <string name="model_asr_whisper_multilingual">Whisper tiny mehrsprachig · Englisch · offline</string>
+    <string name="model_asr_whisper_small_multilingual">Whisper Small INT8 · mehrsprachig · offline</string>
     <string name="model_tts_irina">Piper Irina medium · Russisch</string>
     <string name="model_tts_lessac">Piper Lessac medium · Englisch</string>
     <string name="translation_verifying">Integrität des Übersetzungsmodells wird geprüft…</string>

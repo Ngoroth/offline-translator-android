@@ -1,4 +1,4 @@
-package com.example.offlinetranslator.sherpa
+package com.example.offlinetranslator.speechmodels
 
 import org.apache.commons.compress.archivers.tar.TarArchiveEntry
 import org.apache.commons.compress.archivers.tar.TarArchiveOutputStream

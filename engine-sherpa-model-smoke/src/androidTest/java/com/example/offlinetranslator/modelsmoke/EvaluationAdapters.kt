@@ -6,9 +6,9 @@ import com.example.offlinetranslator.testkit.WaveReader
 import com.k2fsa.sherpa.onnx.*
 import com.example.offlinetranslator.core.LanguageId
 import com.example.offlinetranslator.core.SpeechModelRole
-import com.example.offlinetranslator.sherpa.SpeechModelAdapter
-import com.example.offlinetranslator.sherpa.SpeechModelDefinition
-import com.example.offlinetranslator.sherpa.SpeechModelRef
+import com.example.offlinetranslator.sherpa.SherpaSpeechModelAdapter
+import com.example.offlinetranslator.speechmodels.SpeechModelDefinition
+import com.example.offlinetranslator.speechmodels.SpeechModelRef
 import com.example.offlinetranslator.sherpa.SherpaModelFactories
 import org.json.JSONObject
 import java.io.File
@@ -28,7 +28,7 @@ class EvaluationVoice(language: String) : AutoCloseable {
     private val parameters = model.json.getJSONObject("parameters")
     private fun ref(path: String) = SpeechModelRef(model.id, path)
     private val definition = SpeechModelDefinition(model.id, model.id, SpeechModelRole.TTS, setOf(LanguageId(language)),
-        model.json.getInt("sampleRateHz"), SpeechModelAdapter.PiperVits(
+        model.json.getInt("sampleRateHz"), SherpaSpeechModelAdapter.PiperVits(
             ref(model.files.single { it.path.endsWith(".onnx") }.path), ref("tokens.txt"), ref("espeak-ng-data"),
             parameters.getDouble("noiseScale").toFloat(), parameters.getDouble("noiseScaleW").toFloat(),
             parameters.getDouble("lengthScale").toFloat(), parameters.getInt("numThreads")), model.files.map { ref(it.path) })

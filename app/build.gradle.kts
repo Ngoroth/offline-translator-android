@@ -30,9 +30,14 @@ val generateDebugAndroidTestOfficialFixtureAliases = tasks.register<Sync>("gener
         rename("common_voice_ru_18889191.wav", "short-human-ru-come.wav")
     }
     from(rootProject.layout.projectDirectory.dir("test-data/corpus/v1/quality/en")) {
-        include("common_voice_en_15903562.wav", "common_voice_en_18361303.wav")
+        include("common_voice_en_1282109.wav", "common_voice_en_15903562.wav", "common_voice_en_18361303.wav")
         rename("common_voice_en_15903562.wav", "short-human-en-right.wav")
         rename("common_voice_en_18361303.wav", "short-human-en-aisle.wav")
+        rename("common_voice_en_1282109.wav", "short-human-en-wait.wav")
+    }
+    from(rootProject.layout.projectDirectory.dir("test-data/conversation")) {
+        include("nl-fleurs-test-0.wav", "nl-fleurs-test-1.wav", "manifest.json")
+        into("conversation")
     }
     into(fixtureAliases)
     doFirst {
@@ -43,6 +48,9 @@ val generateDebugAndroidTestOfficialFixtureAliases = tasks.register<Sync>("gener
             "common_voice_en_15903562.wav" to (87596L to "1f1d013f7217228a03c293749a98de6197efdf16d81ee66ec82f2cf691bc1309"),
             "common_voice_ru_18889191.wav" to (84524L to "b0575a2591783d64d325d47f7127b3daf3d73810f703ac8e793a6dd5743269c4"),
             "common_voice_en_18361303.wav" to (100652L to "418cf7345bddc6aea09007564ac19d703c31c55c4a45a76ffe6ff0972a64c518"),
+            "common_voice_en_1282109.wav" to (206636L to "5643c304164391cdb29c046c51433b82679d6001ef5689d22db7b6029a6acfc0"),
+            "nl-fleurs-test-0.wav" to (207438L to "53cb19844ff097b3a603ba73e817173e9dbedf5e8522cec387e8c4f5dff56790"),
+            "nl-fleurs-test-1.wav" to (140238L to "99ff8d08d87654dcefa2c52b8e2d5b3b6337624b606aa66874b747a9be88b0c1"),
         ).forEach { (name, pin) ->
             val file = inputs.files.files.single { it.name == name }
             require(file.length() == pin.first && MessageDigest.getInstance("SHA-256").digest(file.readBytes()).joinToString("") { "%02x".format(it) } == pin.second) { "Official fixture mismatch: $name" }
@@ -61,8 +69,8 @@ android {
         applicationId = "com.example.offlinetranslator"
         minSdk = 34
         targetSdk = 36
-        versionCode = 3
-        versionName = "0.1.2"
+        versionCode = 4
+        versionName = "0.1.3"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         ndk { abiFilters += setOf("arm64-v8a", "x86_64") }
     }
@@ -101,6 +109,7 @@ dependencies {
     implementation(project(":engine-mlkit"))
     implementation(project(":engine-tencent"))
     implementation(project(":engine-sherpa"))
+    implementation(project(":speech-models"))
     // `:engine-sherpa` owns the runtime through the root's local verified artifact repo.
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.activity.compose)

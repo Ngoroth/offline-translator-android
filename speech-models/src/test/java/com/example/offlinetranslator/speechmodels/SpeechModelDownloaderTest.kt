@@ -1,4 +1,4 @@
-package com.example.offlinetranslator.sherpa
+package com.example.offlinetranslator.speechmodels
 
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertArrayEquals

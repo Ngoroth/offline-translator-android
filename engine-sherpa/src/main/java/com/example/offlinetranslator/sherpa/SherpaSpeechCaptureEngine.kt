@@ -7,6 +7,7 @@ import com.example.offlinetranslator.core.SpeechCaptureFailure
 import com.example.offlinetranslator.core.SpeechCaptureListener
 import com.example.offlinetranslator.core.SpeechModelRole
 import com.example.offlinetranslator.core.SpeechSegment
+import com.example.offlinetranslator.speechmodels.SpeechModelStore
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.CoroutineStart

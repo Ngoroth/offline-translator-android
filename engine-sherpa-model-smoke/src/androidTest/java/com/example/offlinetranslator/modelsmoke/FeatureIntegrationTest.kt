@@ -4,6 +4,7 @@ import android.net.ConnectivityManager
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.example.offlinetranslator.core.*
 import com.example.offlinetranslator.sherpa.*
+import com.example.offlinetranslator.speechmodels.SpeechModelStore
 import com.example.offlinetranslator.testkit.*
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.first

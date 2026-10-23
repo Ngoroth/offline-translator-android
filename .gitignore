@@ -11,7 +11,7 @@ captures/
 /.agents/
 .cache/translator-evaluation/
 /engine-sherpa/libs/*.aar
-/engine-tencent/.native-cache/
+.native-cache/
 /engine-tencent/libs/
 
 # Local environment and credentials
@@ -23,7 +23,7 @@ keystore.properties
 *.jks
 *.keystore
 *.p12
-!/engine-sherpa/src/test/resources/model-fixture.p12
+!/speech-models/src/test/resources/model-fixture.p12
 *.pem
 *.key
 *.pfx

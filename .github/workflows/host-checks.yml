@@ -17,7 +17,7 @@ jobs:
   host:
     name: Unit tests, lint and debug APKs
     runs-on: ubuntu-24.04
-    timeout-minutes: 45
+    timeout-minutes: 90
     steps:
       - name: Check out source
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
@@ -48,6 +48,47 @@ jobs:
         shell: bash
         run: bash ./gradlew :engine-sherpa:prepareSherpaArchive --no-daemon --console=plain
 
+      - name: Prepare pinned Sherpa native toolchains
+        shell: bash
+        run: |
+          set -euo pipefail
+          tools_root="$RUNNER_TEMP/sherpa-tools"
+          mkdir -p "$tools_root"
+          python3 - <<'PY' > "$RUNNER_TEMP/sherpa-tool-pins.tsv"
+          import json
+          from pathlib import Path
+          manifest = json.loads(Path("engine-sherpa/native-build.json").read_text())
+          for name, tool in manifest["tools"].items():
+              print("\t".join((name, tool["url"], tool["archiveSha256"], tool["directory"])))
+          PY
+          while IFS=$'\t' read -r name url digest directory; do
+            archive="$tools_root/$name.archive"
+            curl --fail --location --proto '=https' --proto-redir '=https' "$url" --output "$archive"
+            printf '%s  %s\n' "$digest" "$archive" | sha256sum --check
+            case "$name" in
+              ndk) unzip -q "$archive" -d "$tools_root" ;;
+              cmake) tar -xzf "$archive" -C "$tools_root" ;;
+              ninja) mkdir "$tools_root/$directory"; unzip -q "$archive" -d "$tools_root/$directory" ;;
+              *) echo "Unsupported pinned native tool: $name" >&2; exit 1 ;;
+            esac
+          done < "$RUNNER_TEMP/sherpa-tool-pins.tsv"
+
+      - name: Prepare pinned paired Sherpa runtime
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 tools/android/prepare-sherpa-native.py \
+            --tools-root "$RUNNER_TEMP/sherpa-tools" \
+            --source-cache "$RUNNER_TEMP/sherpa-sources" \
+            --output engine-sherpa/.native-cache/android \
+            --abis arm64-v8a x86_64 --download
+          python3 tools/android/prepare-sherpa-native.py --verify \
+            --output engine-sherpa/.native-cache/android --abis arm64-v8a x86_64
+
+      - name: Test paired Sherpa preparation boundaries
+        shell: bash
+        run: python3 -m unittest discover -s tools/android -p 'test_prepare_sherpa_native.py'
+
       - name: Run application host checks
         shell: bash
         run: >-
@@ -56,6 +97,7 @@ jobs:
           :engine-mlkit:testDebugUnitTest
           :engine-tencent:testDebugUnitTest
           :engine-sherpa:testDebugUnitTest
+          :speech-models:testDebugUnitTest
           :app:testDebugUnitTest
           :translator-test-kit:testDebugUnitTest
           :app:lintDebug
@@ -79,6 +121,7 @@ jobs:
             engine-mlkit/build/test-results/testDebugUnitTest/
             engine-tencent/build/test-results/testDebugUnitTest/
             engine-sherpa/build/test-results/testDebugUnitTest/
+            speech-models/build/test-results/testDebugUnitTest/
             app/build/test-results/testDebugUnitTest/
             translator-test-kit/build/test-results/testDebugUnitTest/
             build-logic/build/test-results/test/

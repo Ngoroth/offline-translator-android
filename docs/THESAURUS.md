@@ -5,10 +5,10 @@ skill: ubiquitous-language
 
 # Offline Translator Thesaurus
 
-> **Reconstructed, not authored.** This vocabulary is reconstructed from the active
-> code: identifiers are supported by source evidence, while definitions are an
-> interpretation that a domain expert may refine. Maintain it through the
-> `ubiquitous-language` skill.
+> Existing vocabulary is reconstructed from active code; new approved concepts
+> cite their design until implementation supplies source evidence. Definitions
+> are interpretations that a domain expert may refine. Maintain this registry
+> through the `ubiquitous-language` skill.
 >
 > Scope: text translation, live conversation, speech resources and user choices.
 > Human-readable terms are in English; each Identifier preserves the existing
@@ -45,6 +45,7 @@ skill: ubiquitous-language
 - **Prepare** `Prepare` kind:command
 - **Recognition backend** `SpeechRecognitionBackend` kind:policy
 - **Recognition readiness** `SpeechRecognitionReadiness` kind:state
+- **Recognition result** `ConversationRecognitionResult` kind:value
 - **Recognized utterance** `RecognizedUtterance` kind:value
 - **Speech capture** `SpeechCaptureEngine` kind:service
 - **Speech model** `SpeechModelDefinition` kind:entity
@@ -65,6 +66,7 @@ skill: ubiquitous-language
 - **Translation preparation** `TranslationPreparationState` kind:state
 - **Translation preparation phase** `TranslationPreparationPhase` kind:state
 - **Translation provider** `TranslationProviderDescriptor` kind:value
+- **Undetermined language** `UndeterminedLanguage` kind:state
 - **Utterance recognition** `ConversationRecognitionEngine` kind:service
 - **Utterance status** `ConversationTranscriptStatus` kind:state
 
@@ -147,30 +149,36 @@ skill: ubiquitous-language
 ### Playback start
 - **Definition**: A speech-output notification with an optional timestamp for the first non-silent audio presentation and a flag indicating measurement provenance.
 - **NOT**: A guaranteed physical measurement: a notification without a timestamp reports only a phase and provides no numerical latency.
-- **Evidence**: `core/src/main/java/com/example/offlinetranslator/core/ConversationEngines.kt:25-29`, `ConversationPipeline.kt:267-276` in the same directory.
+- **Evidence**: `core/src/main/java/com/example/offlinetranslator/core/ConversationEngines.kt:55-59` (`SpeechPlaybackStart`).
 
 ### Prepare
 - **Definition**: Explicitly establish a component's resources and readiness before local processing, including model downloads or initialization where that component requires them.
 - **NOT**: Install: preparation does not always download files, and installation does not guarantee readiness of every conversation component.
 - **Related**: Conversation preparation.
-- **Evidence**: `core/src/main/java/com/example/offlinetranslator/core/TranslationEngine.kt:10-11`, `ConversationEngines.kt:18-20,34-36` in the same directory.
+- **Evidence**: `core/src/main/java/com/example/offlinetranslator/core/TranslationEngine.kt` (`prepare`), `ConversationEngines.kt:49,66` in the same directory.
 
 ### Recognition backend
-- **Definition**: A choice between Android system offline recognition and Sherpa recognition, independent of the Speech output backend.
+- **Definition**: A choice between Android system offline, joint Whisper and legacy Sherpa recognition, independent of the Speech output backend.
 - **NOT**: Speech output backend or Translation engine; this choice neither replaces speech output nor enables automatic switching between backends.
 - **Related**: Utterance recognition, Speech output backend, Recognition readiness.
-- **Evidence**: `core/src/main/java/com/example/offlinetranslator/core/AppSettings.kt:8-11`.
+- **Evidence**: `core/src/main/java/com/example/offlinetranslator/core/AppSettings.kt` (`SpeechRecognitionBackend`).
 
 ### Recognition readiness
 - **Definition**: The state of the selected recognition backend and its selected resources for the current language pair: ready, missing local model, unsupported, engine unavailable, scheduled, downloading, download failed or check failed.
 - **NOT**: Language identification quality, Speech output readiness or Translation model readiness.
 - **Related**: Recognition backend, Conversation preparation.
-- **Evidence**: `core/src/main/java/com/example/offlinetranslator/core/ConversationEngines.kt:17-29`.
+- **Evidence**: `core/src/main/java/com/example/offlinetranslator/core/ConversationEngines.kt:38-42`.
+
+### Recognition result
+- **Definition**: The outcome of recognizing a speech segment, carrying original text and either an assigned translation direction or an undetermined language.
+- **NOT**: Recognized utterance alone: an outcome may retain text without authorizing translation or playback.
+- **Related**: Recognized utterance, Undetermined language.
+- **Evidence**: `core/src/main/java/com/example/offlinetranslator/core/ConversationEngines.kt:13-22`.
 
 ### Recognized utterance
 - **Definition**: A recognition result containing the original text and translation direction determined from the utterance language.
 - **NOT**: Conversation utterance: the result does not yet contain a translation, playback status or record failure.
-- **Evidence**: `core/src/main/java/com/example/offlinetranslator/core/ConversationEngines.kt:13-20`.
+- **Evidence**: `core/src/main/java/com/example/offlinetranslator/core/ConversationEngines.kt:17-20`.
 
 ### Speech capture
 - **Definition**: Obtaining microphone audio while the application is active and producing bounded speech segments for processing.
@@ -182,7 +190,7 @@ skill: ubiquitous-language
 - **Definition**: An identifiable description of an executable speech model, including its role, languages, adapter parameters and references to required files.
 - **NOT**: Speech resource package or an ML Kit translation model; a Piper voice has the TTS role, but a System voice is not a model in this catalog.
 - **Related**: Speech model role.
-- **Evidence**: `engine-sherpa/src/main/java/com/example/offlinetranslator/sherpa/SpeechModelDefinition.kt:7-17,54-62`.
+- **Evidence**: `speech-models/src/main/java/com/example/offlinetranslator/speechmodels/SpeechModelDefinition.kt:9-17`.
 
 ### Speech model role
 - **Definition**: The purpose of a speech resource: voice activity detection (VAD), speech recognition (ASR), language identification (LANGUAGE_ID) or speech synthesis (TTS).
@@ -198,7 +206,7 @@ skill: ubiquitous-language
 - **Definition**: Local synthesis and playback of translated text in the target language, including the ability to interrupt current speech.
 - **NOT**: Speech capture or Translation engine; synthesis and audio presentation are parts of speech output, not synonyms for translation.
 - **Related**: Speech output backend, Speech output readiness, Playback start.
-- **Evidence**: `core/src/main/java/com/example/offlinetranslator/core/ConversationEngines.kt:33-40`.
+- **Evidence**: `core/src/main/java/com/example/offlinetranslator/core/ConversationEngines.kt:63-71`.
 
 ### Speech output backend
 - **Definition**: The explicit choice between Android system offline speech output and local Piper voices.
@@ -208,12 +216,12 @@ skill: ubiquitous-language
 ### Speech output readiness
 - **Definition**: Speech-output availability, distinguishing ready, missing local voice, engine unavailable and initialization failed states.
 - **NOT**: Translation model readiness or the presence of recognition models.
-- **Evidence**: `core/src/main/java/com/example/offlinetranslator/core/ConversationEngines.kt:31-37`.
+- **Evidence**: `core/src/main/java/com/example/offlinetranslator/core/ConversationEngines.kt:61`.
 
 ### Speech resource package
 - **Definition**: An identifiable downloadable archive or file with a verifiable set of speech-resource files, size, source and license.
 - **NOT**: Speech model: the package is an installation unit, while one model can reference multiple packages and share their files with other models.
-- **Evidence**: `engine-sherpa/src/main/java/com/example/offlinetranslator/sherpa/SpeechModelCatalog.kt:15-44`.
+- **Evidence**: `speech-models/src/main/java/com/example/offlinetranslator/speechmodels/SpeechModelCatalog.kt:14-27`.
 
 ### Speech segment
 - **Definition**: A bounded fragment of one utterance in mono 16 kHz PCM, extracted by voice activity detection and lasting no more than 15 seconds.
@@ -267,11 +275,17 @@ skill: ubiquitous-language
 - **NOT**: Speech output backend: choosing a text or conversation translation provider does not choose recognition or a voice.
 - **Evidence**: `core/src/main/java/com/example/offlinetranslator/core/TranslationCapabilities.kt:25-32`. SDK information stays in the provider description, not ordinary Help.
 
+### Undetermined language
+- **Definition**: A recognition outcome retaining any original text without a sufficiently supported language assignment within the selected pair.
+- **NOT**: An unsupported selected pair or a recognized direction that may be guessed for translation.
+- **Related**: Recognition result, Utterance recognition.
+- **Evidence**: `core/src/main/java/com/example/offlinetranslator/core/ConversationEngines.kt:22`.
+
 ### Utterance recognition
-- **Definition**: Identifying each speech segment's language and obtaining its original text in the language actually identified.
-- **NOT**: Translation engine: recognition returns the original text and direction, not translated text.
-- **Related**: Recognized utterance.
-- **Evidence**: `core/src/main/java/com/example/offlinetranslator/core/ConversationEngines.kt:13-20`.
+- **Definition**: Obtaining a speech segment's original text and resolving its translation direction within the selected pair, or explicitly leaving its source undetermined.
+- **NOT**: Translation engine: recognition returns original text with a direction or an undetermined outcome, not translated text.
+- **Related**: Recognition result, Recognized utterance, Undetermined language.
+- **Evidence**: `core/src/main/java/com/example/offlinetranslator/core/ConversationEngines.kt:33-40`.
 
 ### Utterance status
 - **Definition**: The processing stage of an individual conversation record: understanding, translating, speaking, completed, failed or interrupted.
@@ -287,8 +301,8 @@ meaning rather than mechanically substituting an arbitrary Index term.
 
 ## Legacy
 
-No confirmed legacy domain names were found in the inspected active paths.
-Historical settings-format migration does not make active concepts obsolete.
+- `SpeechTranscriber` → — (see `ConversationRecognitionEngine`) in: `core` — retired with the removed Parakeet-only unconditioned transcription strategy.
+- `TextLanguageIdentifier` → — (see `ConversationRecognitionEngine`) in: `core`, `engine-mlkit` — retired with the removed Parakeet-only text classifier.
 The evaluation `SpeechToTextPipeline` is not the user-facing Text mode:
 the application uses `ConversationPipeline` and `TranslationRoute`, while the
 separate speech pipeline is used by `engine-sherpa-model-smoke`. Do not declare

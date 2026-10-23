@@ -1,4 +1,4 @@
-package com.example.offlinetranslator.sherpa
+package com.example.offlinetranslator.speechmodels
 
 import com.sun.net.httpserver.HttpExchange
 import com.sun.net.httpserver.HttpsConfigurator
@@ -20,7 +20,7 @@ internal class TestHttpsServer(
 ) : AutoCloseable {
     private val keyStore = KeyStore.getInstance("PKCS12").apply {
         val stream = checkNotNull(TestHttpsServer::class.java.getResourceAsStream("/model-fixture.p12")) {
-            "Missing test-only TLS fixture /model-fixture.p12. Tracked test resource must be present in engine-sherpa/src/test/resources/."
+            "Missing test-only TLS fixture /model-fixture.p12. Tracked test resource must be present in speech-models/src/test/resources/."
         }
         stream.use { load(it, FIXTURE_PASSWORD.toCharArray()) }
     }

@@ -50,6 +50,16 @@ class SettingsSheetTest {
         choose(SettingsTestTags.RECOGNITION_SERVICE, service)
         choose(SettingsTestTags.OUTPUT_BACKEND, "piper")
         compose.onNodeWithTag(SettingsTestTags.LID).assertDoesNotExist()
+        choose(SettingsTestTags.RECOGNITION_BACKEND, SpeechRecognitionBackend.WHISPER.persistedId)
+        compose.onNodeWithTag(SettingsTestTags.LID).assertDoesNotExist()
+        compose.onNodeWithTag(SettingsTestTags.RECOGNITION_SERVICE).assertDoesNotExist()
+        compose.runOnIdle {
+            assertEquals(defaults.copy(speechOutputBackend = SpeechOutputBackend.PIPER,
+                speechRecognitionBackend = SpeechRecognitionBackend.WHISPER,
+                speechRecognitionService = service), state.value.draft)
+        }
+        choose(SettingsTestTags.RECOGNITION_BACKEND, "system-offline")
+        compose.onNodeWithTag(SettingsTestTags.RECOGNITION_SERVICE).performScrollTo().assertIsDisplayed()
         choose(SettingsTestTags.RECOGNITION_BACKEND, "sherpa")
         compose.onNodeWithTag(SettingsTestTags.RECOGNITION_SERVICE).assertDoesNotExist()
         choose(SettingsTestTags.VAD, defaults.vadModelId)

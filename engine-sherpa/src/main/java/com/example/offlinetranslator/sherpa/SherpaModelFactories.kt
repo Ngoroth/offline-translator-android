@@ -1,7 +1,11 @@
 package com.example.offlinetranslator.sherpa
 
 import com.example.offlinetranslator.core.SpeechModelRole
+import com.example.offlinetranslator.core.LanguagePair
 import com.example.offlinetranslator.core.SpeechSegment
+import com.example.offlinetranslator.speechmodels.SpeechModelDefinition
+import com.example.offlinetranslator.speechmodels.SpeechModelRef
+import com.example.offlinetranslator.speechmodels.SpeechModelStore
 import com.k2fsa.sherpa.onnx.FeatureConfig
 import com.k2fsa.sherpa.onnx.OfflineModelConfig
 import com.k2fsa.sherpa.onnx.OfflineNemoEncDecCtcModelConfig
@@ -32,7 +36,7 @@ object SherpaModelFactories {
         require(definition.role == SpeechModelRole.ASR && definition.sampleRateHz == SpeechSegment.SAMPLE_RATE_HZ)
         val featureDim: Int
         val model = when (val adapter = definition.adapter) {
-            is SpeechModelAdapter.NemoCtcOffline -> {
+            is SherpaSpeechModelAdapter.NemoCtcOffline -> {
                 featureDim = adapter.featureDim
                 OfflineModelConfig(
                     nemo = OfflineNemoEncDecCtcModelConfig(model = paths(adapter.model)),
@@ -40,12 +44,23 @@ object SherpaModelFactories {
                     numThreads = adapter.numThreads, provider = "cpu",
                 )
             }
-            is SpeechModelAdapter.WhisperOffline -> {
+            is SherpaSpeechModelAdapter.WhisperOffline -> {
                 featureDim = adapter.featureDim
                 OfflineModelConfig(
                     whisper = OfflineWhisperModelConfig(
                         encoder = paths(adapter.encoder), decoder = paths(adapter.decoder),
                         language = adapter.language, task = adapter.task, tailPaddings = adapter.tailPaddings,
+                    ),
+                    tokens = paths(adapter.tokens), numThreads = adapter.numThreads, provider = "cpu",
+                )
+            }
+            is SherpaSpeechModelAdapter.WhisperMultilingual -> {
+                featureDim = adapter.featureDim
+                OfflineModelConfig(
+                    whisper = OfflineWhisperModelConfig(
+                        encoder = paths(adapter.encoder), decoder = paths(adapter.decoder),
+                        language = "", task = "transcribe", tailPaddings = adapter.tailPaddings,
+                        enableTokenTimestamps = false, enableSegmentTimestamps = false,
                     ),
                     tokens = paths(adapter.tokens), numThreads = adapter.numThreads, provider = "cpu",
                 )
@@ -62,14 +77,14 @@ object SherpaModelFactories {
         require(definition.role == SpeechModelRole.ASR && definition.sampleRateHz in setOf(8_000, 16_000))
         val featureDim: Int
         val model = when (val adapter = definition.adapter) {
-            is SpeechModelAdapter.ToneCtcOnline -> {
+            is SherpaSpeechModelAdapter.ToneCtcOnline -> {
                 featureDim = adapter.featureDim
                 OnlineModelConfig(
                     toneCtc = OnlineToneCtcModelConfig(model = paths(adapter.model)),
                     tokens = paths(adapter.tokens), numThreads = adapter.numThreads, provider = "cpu",
                 )
             }
-            is SpeechModelAdapter.Zipformer2Online -> {
+            is SherpaSpeechModelAdapter.Zipformer2Online -> {
                 featureDim = adapter.featureDim
                 OnlineModelConfig(
                     transducer = OnlineTransducerModelConfig(
@@ -89,7 +104,7 @@ object SherpaModelFactories {
 
     fun languageIdConfig(definition: SpeechModelDefinition, paths: (SpeechModelRef) -> String): SpokenLanguageIdentificationConfig {
         require(definition.role == SpeechModelRole.LANGUAGE_ID && definition.sampleRateHz == 16_000)
-        val adapter = definition.adapter as? SpeechModelAdapter.WhisperLanguageId ?: error("Model is not a language identifier")
+        val adapter = definition.adapter as? SherpaSpeechModelAdapter.WhisperLanguageId ?: error("Model is not a language identifier")
         return SpokenLanguageIdentificationConfig(
             whisper = SpokenLanguageIdentificationWhisperConfig(encoder = paths(adapter.encoder), decoder = paths(adapter.decoder)),
             numThreads = adapter.numThreads, provider = "cpu",
@@ -99,7 +114,7 @@ object SherpaModelFactories {
     fun vadConfig(definition: SpeechModelDefinition, paths: (SpeechModelRef) -> String, vadMinSilenceMs: Int): VadModelConfig {
         require(definition.role == SpeechModelRole.VAD && definition.sampleRateHz == SpeechSegment.SAMPLE_RATE_HZ)
         require(vadMinSilenceMs in 300..1500)
-        val adapter = definition.adapter as? SpeechModelAdapter.Silero ?: error("Model is not a VAD")
+        val adapter = definition.adapter as? SherpaSpeechModelAdapter.Silero ?: error("Model is not a VAD")
         require(adapter.windowSize == SherpaSpeechSegmenter.FRAME_SAMPLES)
         return VadModelConfig(
             sileroVadModelConfig = SileroVadModelConfig(
@@ -114,7 +129,7 @@ object SherpaModelFactories {
 
     fun ttsConfig(definition: SpeechModelDefinition, paths: (SpeechModelRef) -> String): OfflineTtsConfig {
         require(definition.role == SpeechModelRole.TTS && definition.sampleRateHz == SpeechPcmBuffer.SAMPLE_RATE)
-        val adapter = definition.adapter as? SpeechModelAdapter.PiperVits ?: error("Model is not a Piper voice")
+        val adapter = definition.adapter as? SherpaSpeechModelAdapter.PiperVits ?: error("Model is not a Piper voice")
         return OfflineTtsConfig(
             model = OfflineTtsModelConfig(
                 vits = OfflineTtsVitsModelConfig(
@@ -144,17 +159,31 @@ object SherpaModelFactories {
         val paths = resolveFiles(store, definition)
         currentCoroutineContext().ensureActive()
         return when (definition.adapter) {
-            is SpeechModelAdapter.NemoCtcOffline, is SpeechModelAdapter.WhisperOffline ->
+            is SherpaSpeechModelAdapter.NemoCtcOffline, is SherpaSpeechModelAdapter.WhisperOffline ->
                 OfflineAsr(OfflineRecognizer(config = offlineConfig(definition, paths::getValue)))
-            is SpeechModelAdapter.ToneCtcOnline, is SpeechModelAdapter.Zipformer2Online ->
+            is SherpaSpeechModelAdapter.ToneCtcOnline, is SherpaSpeechModelAdapter.Zipformer2Online ->
                 OnlineAsr(OnlineRecognizer(config = onlineConfig(definition, paths::getValue)), definition.sampleRateHz)
             else -> error("Model is not an ASR")
         }
     }
 
+    internal suspend fun createWhisperRecognizer(
+        store: SpeechModelStore,
+        definition: SpeechModelDefinition,
+        pair: LanguagePair,
+    ): NativeWhisperRecognizer {
+        require(definition.adapter is SherpaSpeechModelAdapter.WhisperMultilingual) {
+            "Model is not a multilingual Whisper ASR"
+        }
+        require(pair.source in definition.languages && pair.target in definition.languages)
+        val paths = resolveFiles(store, definition)
+        currentCoroutineContext().ensureActive()
+        return PairedWhisperAsr(OfflineRecognizer(config = offlineConfig(definition, paths::getValue)), pair)
+    }
+
     internal suspend fun createVoice(cacheDir: File, store: SpeechModelStore, definition: SpeechModelDefinition, speedPercent: Int): ConversationVoice {
         require(speedPercent in 75..125)
-        val adapter = definition.adapter as? SpeechModelAdapter.PiperVits ?: error("Model is not a Piper voice")
+        val adapter = definition.adapter as? SherpaSpeechModelAdapter.PiperVits ?: error("Model is not a Piper voice")
         val paths = resolveFiles(store, definition)
         val inventoryRef = definition.requiredRefs.firstOrNull {
             it.packageId == adapter.dataDir.packageId && it.path.startsWith(adapter.dataDir.path + "/")
@@ -187,7 +216,7 @@ object SherpaModelFactories {
 
     private suspend fun resolveFiles(store: SpeechModelStore, definition: SpeechModelDefinition): Map<SpeechModelRef, String> {
         val refs = when (val adapter = definition.adapter) {
-            is SpeechModelAdapter.PiperVits -> listOf(adapter.model, adapter.tokens)
+            is SherpaSpeechModelAdapter.PiperVits -> listOf(adapter.model, adapter.tokens)
             else -> definition.requiredRefs
         }
         val paths = HashMap<SpeechModelRef, String>(refs.size)
@@ -210,6 +239,30 @@ private class OfflineAsr(private val native: OfflineRecognizer) : NativeSpeechRe
             deduplicateConsecutiveSentences(rawText)
         } finally { stream.release() }
     }
+    override fun close() = native.release()
+}
+
+/** A fresh stream must prove paired native completion; a generic option roundtrip cannot do so. */
+private class PairedWhisperAsr(
+    private val native: OfflineRecognizer,
+    pair: LanguagePair,
+) : NativeWhisperRecognizer {
+    private val selectedPair = "${pair.source.value},${pair.target.value}"
+
+    override suspend fun recognize(samples: FloatArray, ensureActive: suspend () -> Unit): NativeWhisperResult {
+        ensureActive()
+        val stream = native.createStream()
+        return try {
+            stream.setOption("whisper-language-pair", selectedPair)
+            stream.acceptWaveform(samples, sampleRate = SpeechSegment.SAMPLE_RATE_HZ)
+            ensureActive()
+            native.decode(stream)
+            ensureActive()
+            val result = native.getResult(stream)
+            NativeWhisperResult(result.text, result.lang, stream.getOption("whisper-language-pair-status"))
+        } finally { stream.release() }
+    }
+
     override fun close() = native.release()
 }
 

@@ -64,9 +64,9 @@ class AppSettingsSerializer : Serializer<AppSettings> {
                     ?: throw IllegalArgumentException("Unknown speech output backend")
             }
             val recognitionBackend = if (version >= 5) {
-                val backendId = string(root, "speechRecognitionBackend")
+                val backendId = identifier(root, "speechRecognitionBackend")
                 SpeechRecognitionBackend.entries.firstOrNull { it.persistedId == backendId }
-                    ?: throw IllegalArgumentException("Unknown speech recognition backend")
+                    ?: SpeechRecognitionBackend.SYSTEM_OFFLINE
             } else SpeechRecognitionBackend.SYSTEM_OFFLINE
             return AppSettings(
                 languagePair = pair,

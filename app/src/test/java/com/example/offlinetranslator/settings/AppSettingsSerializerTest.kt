@@ -97,6 +97,54 @@ class AppSettingsSerializerTest {
     }
 
     @Test
+    fun schemaSixReadsEveryExplicitRecognitionChoiceWithoutChangingHiddenOrOutputPreferences() = runBlocking<Unit> {
+        for ((id, backend) in listOf(
+            "system-offline" to SpeechRecognitionBackend.SYSTEM_OFFLINE,
+            "sherpa" to SpeechRecognitionBackend.SHERPA,
+            "whisper" to SpeechRecognitionBackend.WHISPER,
+        )) {
+            val source = document(6).put("speechRecognitionBackend", id)
+                .put("speechRecognitionService", "missing.provider/.RecognitionService")
+                .put("languageIdModelId", "saved-lid")
+            val expected = AppSettingsTestFixtures.migrated.copy(speechRecognitionBackend = backend,
+                speechRecognitionService = "missing.provider/.RecognitionService", languageIdModelId = "saved-lid")
+            assertEquals(expected, serializer.readFrom(source.toString().byteInputStream()))
+        }
+    }
+
+    @Test
+    fun removedOrUnknownRecognitionBackendFallsBackWithoutChangingOtherSavedFields() = runBlocking<Unit> {
+        val expected = AppSettingsTestFixtures.migrated.copy(
+            languagePair = LanguagePair(LanguageCatalog.DUTCH, LanguageCatalog.ENGLISH),
+            speechRecognitionBackend = SpeechRecognitionBackend.SYSTEM_OFFLINE,
+            speechRecognitionService = "missing.provider/.RecognitionService",
+            textEngineId = "tencent",
+            conversationEngineId = "tencent",
+            vadModelId = "saved-vad",
+            languageIdModelId = "saved-lid",
+            vadMinSilenceMs = 1200,
+            ttsSpeedPercent = 115,
+        )
+        val output = ByteArrayOutputStream()
+        serializer.writeTo(expected, output)
+        for (version in 5..6) {
+            for (backendId in listOf("nemo", "removed-backend")) {
+                val source = JSONObject(output.toString("UTF-8"))
+                    .put("schemaVersion", version)
+                    .put("speechRecognitionBackend", backendId)
+                if (version == 5) source.remove("speechRecognitionService")
+                val migrated = if (version == 5) expected.copy(speechRecognitionService = null) else expected
+                val loaded = serializer.readFrom(source.toString().byteInputStream())
+                assertEquals(migrated, loaded)
+                val rewritten = ByteArrayOutputStream()
+                serializer.writeTo(loaded, rewritten)
+                assertEquals("system-offline", JSONObject(rewritten.toString("UTF-8")).getString("speechRecognitionBackend"))
+                assertEquals(migrated, serializer.readFrom(rewritten.toByteArray().inputStream()))
+            }
+        }
+    }
+
+    @Test
     fun schemaSixRequiresNullOrBoundedComponentSyntaxButNotAnInstalledPackage() = runBlocking<Unit> {
         assertCorrupt(document(6).apply { remove("speechRecognitionService") })
         for (invalid in listOf("", "on-device", "provider/", "/Service", "provider//Service",
@@ -152,10 +200,10 @@ class AppSettingsSerializerTest {
     }
 
     @Test
-    fun recognitionSchemasRequireExactKnownRecognitionBackendIds() {
+    fun recognitionSchemasRequireWellFormedRecognitionBackendIds() {
         for (version in 5..6) {
             assertCorrupt(document(version).apply { remove("speechRecognitionBackend") })
-            for (invalid in listOf("SYSTEM_OFFLINE", "sherpa ", "unknown", "", 12, true, JSONObject.NULL)) {
+            for (invalid in listOf("SYSTEM_OFFLINE", "sherpa ", "", "../unsafe", "a".repeat(129), 12, true, JSONObject.NULL)) {
                 assertCorrupt(document(version).put("speechRecognitionBackend", invalid))
             }
         }

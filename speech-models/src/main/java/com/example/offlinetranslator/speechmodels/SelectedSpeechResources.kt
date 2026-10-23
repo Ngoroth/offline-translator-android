@@ -1,4 +1,4 @@
-package com.example.offlinetranslator.sherpa
+package com.example.offlinetranslator.speechmodels
 
 import com.example.offlinetranslator.core.ConversationModelRepository
 import com.example.offlinetranslator.core.ConversationSessionConfig
@@ -8,7 +8,6 @@ import com.example.offlinetranslator.core.SpeechModelInstallState
 import com.example.offlinetranslator.core.SpeechModelRepository
 import com.example.offlinetranslator.core.SpeechModelRole
 import com.example.offlinetranslator.core.SpeechOutputBackend
-import com.example.offlinetranslator.core.SpeechRecognitionBackend
 import com.example.offlinetranslator.core.SpeechModelStatus
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -22,18 +21,28 @@ import java.util.concurrent.atomic.AtomicBoolean
 
 /** Route-owned projections; closing one never closes the process-shared installer. */
 object SelectedSpeechResources {
-    fun forConversation(store: SpeechModelStore, config: ConversationSessionConfig): ConversationModelRepository {
+    fun forConversation(
+        store: SpeechModelStore,
+        config: ConversationSessionConfig,
+        recognitionModelIds: Set<String>,
+    ): ConversationModelRepository {
         val selections = linkedSetOf(config.vadModelId)
         val installedByOwner = linkedSetOf(config.vadModelId)
         requireModel(store, config.vadModelId, SpeechModelRole.VAD)
-        if (config.speechRecognitionBackend == SpeechRecognitionBackend.SHERPA) {
-            requireModel(store, config.languageIdModelId, SpeechModelRole.LANGUAGE_ID, config.languages.toSet())
-            selections += config.languageIdModelId
-            for (language in config.languages) {
-                val asr = config.asrModelIds.getValue(language)
-                requireModel(store, asr, SpeechModelRole.ASR, setOf(language))
-                selections += asr
+        val recognitionModels = recognitionModelIds.map(store.catalog::model)
+        for (model in recognitionModels) {
+            require(model.role == SpeechModelRole.ASR || model.role == SpeechModelRole.LANGUAGE_ID) {
+                "Selected recognition model has an incompatible role: ${model.id}"
             }
+            require(if (model.role == SpeechModelRole.LANGUAGE_ID) model.languages.containsAll(config.languages)
+                else config.languages.any { it in model.languages }) {
+                "Selected recognition model has incompatible languages: ${model.id}"
+            }
+            selections += model.id
+        }
+        require(recognitionModels.isEmpty() || recognitionModels.filter { it.role == SpeechModelRole.ASR }
+            .flatMap { it.languages }.containsAll(config.languages)) {
+            "Selected recognition models do not cover the conversation languages"
         }
         if (config.speechOutputBackend == SpeechOutputBackend.PIPER) {
             for (language in config.languages) {

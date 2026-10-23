@@ -7,6 +7,7 @@ lifecycle = "2.10.0"
 coroutines = "1.10.2"
 mlkit-translate = "17.0.3"
 sherpa-onnx = "1.13.8"
+sherpa-onnx-pair = "1.13.8-pair-v1"
 commons-compress = "1.28.0"
 json-jvm = "20260814"
 junit = "4.13.2"
@@ -36,7 +37,7 @@ kotlinx-coroutines-core = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-c
 kotlinx-coroutines-android = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-android", version.ref = "coroutines" }
 kotlinx-coroutines-test = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-test", version.ref = "coroutines" }
 mlkit-translate = { module = "com.google.mlkit:translate", version.ref = "mlkit-translate" }
-sherpa-onnx-runtime = { module = "local.verified.sherpa:sherpa-onnx", version.ref = "sherpa-onnx" }
+sherpa-onnx-runtime = { module = "local.verified.sherpa:sherpa-onnx", version.ref = "sherpa-onnx-pair" }
 commons-compress = { module = "org.apache.commons:commons-compress", version.ref = "commons-compress" }
 json-jvm = { module = "org.json:json", version.ref = "json-jvm" }
 junit = { module = "junit:junit", version.ref = "junit" }

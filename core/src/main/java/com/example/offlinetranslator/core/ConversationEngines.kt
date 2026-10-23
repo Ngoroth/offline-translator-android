@@ -10,7 +10,16 @@ interface ConversationModelRepository : AutoCloseable {
     override fun close()
 }
 
-data class RecognizedUtterance(val direction: LanguagePair, val text: String)
+sealed interface ConversationRecognitionResult {
+    val text: String
+}
+
+data class RecognizedUtterance(
+    val direction: LanguagePair,
+    override val text: String,
+) : ConversationRecognitionResult
+
+data class UndeterminedLanguage(override val text: String) : ConversationRecognitionResult
 
 class UnsupportedSpeechLanguageException : RuntimeException("Unsupported speech language")
 
@@ -20,13 +29,13 @@ enum class SpeechRecognitionReadiness {
     SCHEDULED, DOWNLOADING, DOWNLOAD_FAILED, CHECK_FAILED,
 }
 
-/** Identifies each utterance independently, then transcribes its actual source language. */
+/** Recognizes an utterance and determines its direction, or retains text without guessing one. */
 interface ConversationRecognitionEngine : AutoCloseable {
     val readinessState: StateFlow<SpeechRecognitionReadiness>
     suspend fun readiness(): SpeechRecognitionReadiness
     suspend fun install()
     suspend fun prepare()
-    suspend fun recognize(segment: SpeechSegment): RecognizedUtterance
+    suspend fun recognize(segment: SpeechSegment): ConversationRecognitionResult
     override fun close()
     suspend fun closeAndJoin() { close() }
 }

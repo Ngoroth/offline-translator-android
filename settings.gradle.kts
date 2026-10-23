@@ -15,8 +15,8 @@ dependencyResolutionManagement {
         exclusiveContent {
             forRepository {
                 flatDir {
-                    name = "verifiedSherpaRelease"
-                    dirs(rootDir.resolve("engine-sherpa/libs"))
+                    name = "verifiedSherpaPairedRuntime"
+                    dirs(rootDir.resolve("engine-sherpa/.native-cache/android"))
                 }
             }
             filter { includeGroup("local.verified.sherpa") }
@@ -34,6 +34,6 @@ dependencyResolutionManagement {
 }
 
 rootProject.name = "OfflineTranslator"
-include(":app", ":core", ":engine-mlkit", ":engine-sherpa", ":engine-sherpa-model-smoke")
+include(":app", ":core", ":speech-models", ":engine-mlkit", ":engine-sherpa", ":engine-sherpa-model-smoke")
 include(":translator-test-kit")
 include(":engine-tencent")

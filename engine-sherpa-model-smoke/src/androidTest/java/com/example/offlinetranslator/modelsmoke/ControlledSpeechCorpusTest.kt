@@ -9,10 +9,10 @@ import com.example.offlinetranslator.core.SpeechModelRole
 import com.example.offlinetranslator.core.SpeechSegment
 import com.example.offlinetranslator.sherpa.SherpaSpeechRecognitionEngine
 import com.example.offlinetranslator.sherpa.SherpaSpeechSegmenter
-import com.example.offlinetranslator.sherpa.SpeechModelStore
-import com.example.offlinetranslator.sherpa.SpeechModelAdapter
-import com.example.offlinetranslator.sherpa.SpeechModelDefinition
-import com.example.offlinetranslator.sherpa.SpeechModelRef
+import com.example.offlinetranslator.speechmodels.SpeechModelStore
+import com.example.offlinetranslator.sherpa.SherpaSpeechModelAdapter
+import com.example.offlinetranslator.speechmodels.SpeechModelDefinition
+import com.example.offlinetranslator.speechmodels.SpeechModelRef
 import com.example.offlinetranslator.sherpa.SherpaModelFactories
 import com.k2fsa.sherpa.onnx.OnlineRecognizer
 import kotlinx.coroutines.Dispatchers
@@ -52,7 +52,7 @@ class ControlledSpeechCorpusTest {
                     InstrumentationRegistry.getArguments().getString(RUSSIAN_RUNTIME_RESAMPLER_ARGUMENT) == "true"
                 ) {
                     val definition = store.catalog.model(EvaluationSession.asrModelIds(store).getValue(LanguageId("ru")))
-                    require(definition.adapter is SpeechModelAdapter.ToneCtcOnline) { "Runtime-resampler comparison requires T-one" }
+                    require(definition.adapter is SherpaSpeechModelAdapter.ToneCtcOnline) { "Runtime-resampler comparison requires T-one" }
                     val paths = definition.requiredRefs.associateWith { store.modelFile(it.packageId, it.path).absolutePath }
                     RussianRuntimeResamplerRecognizer(definition, paths)
                 } else {
@@ -187,7 +187,7 @@ class ControlledSpeechCorpusTest {
             fun ref(path: String) = SpeechModelRef(id, path)
             val refs = required.map(::ref)
             val definition = SpeechModelDefinition(id, id, SpeechModelRole.ASR, setOf(LanguageId("en")), 16_000,
-                SpeechModelAdapter.Zipformer2Online(ref(ENCODER), ref(DECODER), ref(JOINER), ref(TOKENS), 2, 80), refs)
+                SherpaSpeechModelAdapter.Zipformer2Online(ref(ENCODER), ref(DECODER), ref(JOINER), ref(TOKENS), 2, 80), refs)
             recognizer = OnlineRecognizer(config = SherpaModelFactories.onlineConfig(definition) { ref ->
                 File(directory, ref.path).absolutePath
             })

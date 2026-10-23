@@ -1,6 +1,7 @@
 package com.example.offlinetranslator.sherpa
 
 import com.example.offlinetranslator.core.SpeechSegment
+import com.example.offlinetranslator.speechmodels.SpeechModelStore
 import kotlinx.coroutines.ensureActive
 import com.k2fsa.sherpa.onnx.Vad
 import java.util.concurrent.atomic.AtomicBoolean

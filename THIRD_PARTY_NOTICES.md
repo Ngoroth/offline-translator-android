@@ -4,13 +4,18 @@ Original project materials are licensed under [Apache-2.0](LICENSE). Third-party
 code, audio, models, data and trademarks retain their own terms. This inventory
 is not a complete APK dependency inventory or redistribution clearance.
 
-## Locally prepared native runtime
+## Locally prepared native runtimes
 
-The project uses the official **sherpa-onnx 1.13.8** Android AAR, prepared locally
-by `:engine-sherpa:prepareSherpaArchive` and verified against its pinned SHA-256.
-The current source tree does not vendor the AAR; earlier Git history retains it.
-Exact artifact identity, source revisions and component evidence are in the
-[module provenance record](engine-sherpa/THIRD_PARTY.md).
+The project locally prepares a **modified sherpa-onnx 1.13.8** Android AAR using
+the pinned official AAR as wrapper/ORT input and a six-file selected-pair source
+patch. `:engine-sherpa:prepareSherpaArchive` acquires only that verified input;
+`tools/android/prepare-sherpa-native.py` explicitly rebuilds and verifies the
+ARM64/x86_64 native closure. The source tree does not vendor either AAR.
+Source/dependency/tool pins, the patch, actual-byte receipt and applicable
+redistribution conditions are in the [module provenance record](engine-sherpa/THIRD_PARTY.md).
+Prepared source-supplied license/notice material is retained under
+`assets/sherpa-native/licenses/`; original project licensing does not relicense
+linked third-party components.
 
 | Component | Terms and preserved texts |
 | --- | --- |
@@ -66,6 +71,14 @@ Model packages are downloaded separately, not included in the production AAR/APK
 Their source revisions, licenses and model/voice-specific restrictions are recorded
 in the [module notice](engine-sherpa/THIRD_PARTY.md).
 
+Whisper recognition separately downloads the pinned multilingual **OpenAI Whisper
+Small INT8 ONNX** export and token table. OpenAI publishes its code and model
+weights under MIT; Sherpa's export documentation identifies the selected
+`csukuangfj/sherpa-onnx-whisper-small` repository. The exact HF revision itself
+contains no README/license file: attribution relies on those upstream records,
+not an invented repository license field. See the module notice and catalog for
+the immutable revision and all three SHA-256 identities.
+
 ## Included audio fixtures
 
 - **48 Common Voice 17.0 recordings:** **CC0-1.0**, as declared by the
@@ -76,6 +89,11 @@ in the [module notice](engine-sherpa/THIRD_PARTY.md).
 - **Eight synthetic recordings:** project-authored test sentences generated with
   Windows Microsoft Pavel/David; generation metadata is in
   [smoke-lock.json](test-data/corpus/v1/smoke-lock.json).
+- **Two Dutch Google FLEURS recordings:** **CC BY 4.0**, attribution to Google
+  FLEURS contributors. The [pinned source and fixture manifest](test-data/conversation/manifest.json)
+  records original/converted hashes and the conversion to mono 16 kHz PCM16.
+  Preserve attribution and the [license link](https://creativecommons.org/licenses/by/4.0/)
+  when redistributing these test recordings.
 
 Exact file identities and source provenance are in the
 [manifest](test-data/corpus/v1/manifest.json) and

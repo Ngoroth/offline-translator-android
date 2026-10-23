@@ -1,4 +1,4 @@
-package com.example.offlinetranslator.sherpa
+package com.example.offlinetranslator.speechmodels
 
 import android.content.Context
 import android.content.ContextWrapper
@@ -663,10 +663,12 @@ class SpeechModelStoreTest {
         }
         val json = JSONObject()
             .put("schemaVersion", 2)
-            .put("runtime", "sherpa-onnx-1.13.8")
+            .put("runtime", "fixture-runtime")
             .put("packages", packages)
             .put("models", JSONArray())
-        val catalog = SpeechModelCatalog.parse(ByteArrayInputStream(json.toString().toByteArray()))
+        val catalog = SpeechModelCatalog.parse(ByteArrayInputStream(json.toString().toByteArray()), "fixture-runtime") {
+            error("Package-only fixtures have no adapters")
+        }
         return ModelSet(catalog, bytes)
     }
 

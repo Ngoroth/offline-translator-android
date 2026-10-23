@@ -22,7 +22,7 @@ import com.example.offlinetranslator.conversation.ConversationRoute
 import com.example.offlinetranslator.runtime.AppRuntime
 import com.example.offlinetranslator.core.ConversationSessionConfig
 import com.example.offlinetranslator.core.SpeechCaptureEngine
-import com.example.offlinetranslator.sherpa.SpeechModelStore
+import com.example.offlinetranslator.speechmodels.SpeechModelStore
 import com.example.offlinetranslator.settings.SettingsSheet
 import com.example.offlinetranslator.settings.SettingsViewModel
 import com.example.offlinetranslator.translation.TranslationRoute

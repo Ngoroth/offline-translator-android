@@ -1,4 +1,4 @@
-package com.example.offlinetranslator.sherpa
+package com.example.offlinetranslator.speechmodels
 
 import android.content.Context
 import android.os.StatFs
@@ -35,9 +35,9 @@ class SpeechModelStore private constructor(
     /** Test-only observer of actual digest reads; never replaces verification. */
     internal var onDigestRead: ((packageId: String, file: File) -> Unit)? = null,
 ) : AutoCloseable {
-    constructor(context: Context) : this(
+    constructor(context: Context, catalog: SpeechModelCatalog) : this(
         File(context.noBackupFilesDir, "speech-models").canonicalFile,
-        SpeechModelCatalog.fromAssets(context),
+        catalog,
         SpeechModelDownloader(),
         SpeechArchiveExtractor(),
         { directory -> StatFs(directory.absolutePath).availableBytes },

@@ -12,7 +12,7 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.offlinetranslator.core.*
 import com.example.offlinetranslator.runtime.AppRuntime
-import com.example.offlinetranslator.sherpa.SpeechModelStore
+import com.example.offlinetranslator.speechmodels.SpeechModelStore
 import com.example.offlinetranslator.speech.AndroidRecognitionDataInstaller
 import kotlinx.coroutines.*
 import kotlin.coroutines.coroutineContext
@@ -194,11 +194,10 @@ fun ConversationRoute(
     val recognitionReadiness = shown?.recognitionReadiness?.collectAsStateWithLifecycle()?.value
     val translationPreparation = shown?.translationPreparation?.collectAsStateWithLifecycle()?.value
     val preparationFailure = shown?.preparationFailure?.collectAsStateWithLifecycle()?.value
-    val sherpaEligible = remember(settings) {
+    val localRecognitionEligible = remember(settings) {
         settings.speechRecognitionBackend == SpeechRecognitionBackend.SYSTEM_OFFLINE &&
-            RecommendedConversationRecognition.modelId(settings.languagePair.source) != null &&
-            RecommendedConversationRecognition.modelId(settings.languagePair.target) != null &&
-            runtime.conversationProblems(settings.copy(speechRecognitionBackend = SpeechRecognitionBackend.SHERPA)).isEmpty()
+            (runtime.conversationProblems(settings.copy(speechRecognitionBackend = SpeechRecognitionBackend.SHERPA)).isEmpty() ||
+                runtime.conversationProblems(settings.copy(speechRecognitionBackend = SpeechRecognitionBackend.WHISPER)).isEmpty())
     }
     ConversationScreen(
         state = state, models = statuses, preparation = preparation,
@@ -225,7 +224,7 @@ fun ConversationRoute(
         systemRecognition = settings.speechRecognitionBackend == SpeechRecognitionBackend.SYSTEM_OFFLINE,
         recognitionReadiness = recognitionReadiness,
         speechRecognitionService = settings.speechRecognitionService,
-        canChooseSherpa = sherpaEligible,
+        canChooseLocalRecognition = localRecognitionEligible,
         onOpenAdvancedSettings = open@{
             val latest = runtime.settings.state.value.settings ?: return@open
             if (mounted && foreground && !changing && !runtime.owners.busy.value && !teardownFailed &&
@@ -234,7 +233,8 @@ fun ConversationRoute(
             }
         },
         systemOutput = settings.speechOutputBackend == SpeechOutputBackend.SYSTEM_OFFLINE,
-        canInstallRecognitionData = shown != null && settings.speechRecognitionService != null &&
+        canInstallRecognitionData = shown != null && settings.speechRecognitionBackend == SpeechRecognitionBackend.SYSTEM_OFFLINE &&
+            settings.speechRecognitionService != null &&
             recognitionReadiness in setOf(SpeechRecognitionReadiness.MISSING_LOCAL_MODEL, SpeechRecognitionReadiness.SCHEDULED) &&
             installRequest == null && foreground && !changing && !teardownFailed &&
             preparation in setOf(ConversationPreparation.IDLE, ConversationPreparation.ERROR) && !state.sessionActive,
@@ -245,6 +245,7 @@ fun ConversationRoute(
             val initialOwnership = runtime.owners.ownershipVersion.value
             fun fresh(): Boolean {
                 val latest = runtime.settings.state.value
+                if (initialSettings.speechRecognitionBackend != SpeechRecognitionBackend.SYSTEM_OFFLINE) return false
                 return mounted && foreground && lifecycleOwner.lifecycle.currentState.isAtLeast(Lifecycle.State.STARTED) &&
                     viewModel === requested && requested.hasCurrentOwner && !changing &&
                     !runtime.owners.teardownFailed.value && !latest.loading && !latest.loadError &&

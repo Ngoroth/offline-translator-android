@@ -1,23 +1,10 @@
 package com.example.offlinetranslator.sherpa
 
-import com.example.offlinetranslator.core.LanguageId
-import com.example.offlinetranslator.core.SpeechModelRole
+import com.example.offlinetranslator.speechmodels.SpeechModelAdapter
+import com.example.offlinetranslator.speechmodels.SpeechModelRef
 
-/** Artifact references are resolved against the catalog inventory before any native factory runs. */
-data class SpeechModelRef(val packageId: String, val path: String)
-
-data class SpeechModelDefinition(
-    val id: String,
-    val displayName: String,
-    val role: SpeechModelRole,
-    val languages: Set<LanguageId>,
-    val sampleRateHz: Int,
-    val adapter: SpeechModelAdapter,
-    val requiredRefs: List<SpeechModelRef>,
-)
-
-/** Only compiled families may cross the native boundary; provider/library paths are not metadata. */
-sealed interface SpeechModelAdapter {
+/** Only compiled Sherpa families may cross its native boundary. */
+sealed interface SherpaSpeechModelAdapter : SpeechModelAdapter {
     data class Silero(
         val model: SpeechModelRef,
         val numThreads: Int,
@@ -25,14 +12,14 @@ sealed interface SpeechModelAdapter {
         val minSpeechDuration: Float,
         val maxSpeechDuration: Float,
         val windowSize: Int,
-    ) : SpeechModelAdapter
+    ) : SherpaSpeechModelAdapter
 
     data class NemoCtcOffline(
         val model: SpeechModelRef,
         val tokens: SpeechModelRef,
         val numThreads: Int,
         val featureDim: Int,
-    ) : SpeechModelAdapter
+    ) : SherpaSpeechModelAdapter
 
     data class WhisperOffline(
         val encoder: SpeechModelRef,
@@ -43,13 +30,22 @@ sealed interface SpeechModelAdapter {
         val tailPaddings: Int,
         val numThreads: Int,
         val featureDim: Int,
-    ) : SpeechModelAdapter
+    ) : SherpaSpeechModelAdapter
+
+    data class WhisperMultilingual(
+        val encoder: SpeechModelRef,
+        val decoder: SpeechModelRef,
+        val tokens: SpeechModelRef,
+        val tailPaddings: Int,
+        val numThreads: Int,
+        val featureDim: Int,
+    ) : SherpaSpeechModelAdapter
 
     data class WhisperLanguageId(
         val encoder: SpeechModelRef,
         val decoder: SpeechModelRef,
         val numThreads: Int,
-    ) : SpeechModelAdapter
+    ) : SherpaSpeechModelAdapter
 
     data class PiperVits(
         val model: SpeechModelRef,
@@ -59,14 +55,14 @@ sealed interface SpeechModelAdapter {
         val noiseScaleW: Float,
         val lengthScale: Float,
         val numThreads: Int,
-    ) : SpeechModelAdapter
+    ) : SherpaSpeechModelAdapter
 
     data class ToneCtcOnline(
         val model: SpeechModelRef,
         val tokens: SpeechModelRef,
         val numThreads: Int,
         val featureDim: Int,
-    ) : SpeechModelAdapter
+    ) : SherpaSpeechModelAdapter
 
     data class Zipformer2Online(
         val encoder: SpeechModelRef,
@@ -75,5 +71,5 @@ sealed interface SpeechModelAdapter {
         val tokens: SpeechModelRef,
         val numThreads: Int,
         val featureDim: Int,
-    ) : SpeechModelAdapter
+    ) : SherpaSpeechModelAdapter
 }

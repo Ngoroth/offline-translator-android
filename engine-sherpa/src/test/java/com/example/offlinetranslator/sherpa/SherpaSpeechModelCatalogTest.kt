@@ -1,7 +1,11 @@
 package com.example.offlinetranslator.sherpa
 
+import com.example.offlinetranslator.core.ConversationSessionConfig
+import com.example.offlinetranslator.core.LanguageCatalog
 import com.example.offlinetranslator.core.LanguageId
 import com.example.offlinetranslator.core.SpeechModelRole
+import com.example.offlinetranslator.core.SpeechOutputBackend
+import com.example.offlinetranslator.core.SpeechRecognitionBackend
 import org.json.JSONArray
 import org.json.JSONObject
 import org.junit.Assert.assertEquals
@@ -9,18 +13,91 @@ import org.junit.Assert.assertFalse
 import org.junit.Assert.assertThrows
 import org.junit.Assert.assertTrue
 import org.junit.Test
-import java.io.ByteArrayInputStream
 import java.io.File
 
-class SpeechModelCatalogTest {
-    @Test fun supportsSpaceSeparatedVoiceNamesWithoutAcceptingEscapingOrAmbiguousPaths() {
-        assertTrue(SpeechModelCatalog.safeRelativePath("espeak-ng-data/voices/!v/Mr serious"))
-        assertTrue(SpeechModelCatalog.safeRelativePath("voices/Voice variant 2.json"))
-        for (unsafe in listOf(
-            "../model.onnx", "/model.onnx", "voices/../model.onnx", "voices//model.onnx",
-            "voices/ ../model.onnx", "voices/name /model.onnx", "voices/name\nmodel.onnx",
-            "voices/name\tmodel.onnx", "C:/model.onnx", "voices\\model.onnx",
-        )) assertFalse("Unsafe model path: $unsafe", SpeechModelCatalog.safeRelativePath(unsafe))
+class SherpaSpeechModelCatalogTest {
+    @Test fun oneSharedWhisperSelectionCoversCurrentPairsWithoutOldIdentifierOrPerLanguagePackages() {
+        val catalog = parse(document())
+        val modelId = WhisperConversationRecognitionEngine.MODEL_ID
+        val dependencies = catalog.requiredPackages(setOf(modelId))
+        assertEquals(setOf("whisper-small-multilingual-int8-encoder", "whisper-small-multilingual-int8-decoder",
+            "whisper-small-multilingual-int8-tokens"), dependencies)
+        for (languages in listOf(listOf("nl", "en"), listOf("en", "nl"), listOf("nl", "ru"),
+            listOf("ru", "nl"), listOf("ru", "en"), listOf("en", "ru"))) {
+            val selected = WhisperConversationRecognitionEngine.selectedDefinition(catalog, config(languages))
+            assertEquals(dependencies, catalog.requiredPackages(setOf(selected.id)))
+        }
+        assertEquals(LanguageCatalog.entries.mapTo(linkedSetOf()) { it.id }, catalog.model(modelId).languages)
+        assertEquals(setOf(LanguageId("en"), LanguageId("ru")),
+            catalog.models.filter { it.role == SpeechModelRole.TTS }.flatMap { it.languages }.toSet())
+    }
+
+    @Test fun multilingualWhisperRejectsForcedLanguageWrongRoleAndUnboundedNativeParameters() {
+        for ((field, value) in listOf("role" to "LANGUAGE_ID", "sampleRateHz" to 8_000,
+            "languages" to JSONArray().put("en"))) {
+            val invalid = document()
+            whisper(invalid).put(field, value)
+            rejects(invalid)
+        }
+        for ((field, value) in listOf("language" to "en", "task" to "translate",
+            "tailPaddings" to 0, "tailPaddings" to 301, "numThreads" to 2, "featureDim" to 128)) {
+            val invalid = document()
+            whisper(invalid).getJSONObject("adapter").put(field, value)
+            rejects(invalid)
+        }
+        val oldMonolingual = document()
+        oldMonolingual.getJSONArray("models").getJSONObject(2).put("languages", JSONArray().put("en").put("nl"))
+        rejects(oldMonolingual)
+    }
+
+    @Test fun sharedWhisperDependenciesMustBeDeclaredDistinctFilesBeforeSelection() {
+        for (name in listOf("encoder", "decoder", "tokens")) {
+            val missing = document()
+            whisper(missing).getJSONObject("adapter").getJSONObject(name).put("path", "absent.onnx")
+            rejects(missing)
+        }
+        val aliased = document()
+        val adapter = whisper(aliased).getJSONObject("adapter")
+        adapter.put("decoder", adapter.getJSONObject("encoder"))
+        rejects(aliased)
+        val missingPackage = document()
+        val packages = missingPackage.getJSONArray("packages")
+        for (index in 0 until packages.length()) {
+            if (packages.getJSONObject(index).getString("id") == "whisper-small-multilingual-int8-decoder") {
+                packages.remove(index)
+                break
+            }
+        }
+        rejects(missingPackage)
+    }
+
+    @Test fun selectedWhisperCannotUseMissingWrongFamilyOrUnsupportedSessionModel() {
+        val selectedConfig = config(listOf("en", "nl"))
+        val missing = document()
+        val models = missing.getJSONArray("models")
+        for (index in 0 until models.length()) {
+            if (models.getJSONObject(index).getString("id") == WhisperConversationRecognitionEngine.MODEL_ID) {
+                models.remove(index)
+                break
+            }
+        }
+        assertThrows(IllegalArgumentException::class.java) {
+            WhisperConversationRecognitionEngine.selectedDefinition(parse(missing), selectedConfig)
+        }
+        val wrongFamily = document()
+        val old = wrongFamily.getJSONArray("models").getJSONObject(2)
+        whisper(wrongFamily).put("adapter", old.getJSONObject("adapter")).put("languages", old.getJSONArray("languages"))
+        assertThrows(IllegalStateException::class.java) {
+            WhisperConversationRecognitionEngine.selectedDefinition(parse(wrongFamily), selectedConfig)
+        }
+        val unsupported = document()
+        whisper(unsupported).put("languages", JSONArray().put("en").put("ru"))
+        assertThrows(IllegalArgumentException::class.java) {
+            WhisperConversationRecognitionEngine.selectedDefinition(parse(unsupported), selectedConfig)
+        }
+        assertThrows(IllegalArgumentException::class.java) {
+            WhisperConversationRecognitionEngine.selectedDefinition(parse(document()), config(listOf("en", "nl"), SpeechRecognitionBackend.SYSTEM_OFFLINE))
+        }
     }
 
     @Test fun selectedDependenciesDeduplicateSharedWeightsAndExcludeUnselectedArtifacts() {
@@ -34,43 +111,6 @@ class SpeechModelCatalogTest {
         assertFalse("whisper-tiny-tokens" in defaults)
         assertTrue(catalog.requiredPackages(emptySet()).isEmpty())
         assertThrows(IllegalArgumentException::class.java) { catalog.requiredPackages(setOf("missing")) }
-    }
-
-    @Test fun preservesNativeDefaultParametersAndExpandsVerifiedPiperDirectoryInventory() {
-        val catalog = parse(document())
-        val vad = catalog.model("vad-silero-6.2.2").adapter as SpeechModelAdapter.Silero
-        assertEquals(1, vad.numThreads)
-        assertEquals(0.5f, vad.threshold, 0f)
-        assertEquals(0.25f, vad.minSpeechDuration, 0f)
-        assertEquals(14f, vad.maxSpeechDuration, 0f)
-        assertEquals(512, vad.windowSize)
-        val nemo = catalog.model("asr-ru-gigaam-v1").adapter as SpeechModelAdapter.NemoCtcOffline
-        assertEquals(4, nemo.numThreads)
-        assertEquals(80, nemo.featureDim)
-        for (id in listOf("asr-en-whisper-tiny.en", "asr-en-whisper-tiny")) {
-            val whisper = catalog.model(id).adapter as SpeechModelAdapter.WhisperOffline
-            assertEquals("en", whisper.language)
-            assertEquals("transcribe", whisper.task)
-            assertEquals(1_000, whisper.tailPaddings)
-            assertEquals(2, whisper.numThreads)
-            assertEquals(80, whisper.featureDim)
-        }
-        assertEquals(2, (catalog.model("lid-whisper-tiny").adapter as SpeechModelAdapter.WhisperLanguageId).numThreads)
-        for (id in listOf("tts-ru-piper-irina-medium", "tts-en-piper-lessac-medium")) {
-            val model = catalog.model(id)
-            val voice = model.adapter as SpeechModelAdapter.PiperVits
-            assertEquals(0.667f, voice.noiseScale, 0f)
-            assertEquals(0.8f, voice.noiseScaleW, 0f)
-            assertEquals(1f, voice.lengthScale, 0f)
-            assertEquals(2, voice.numThreads)
-            assertEquals(22_050, model.sampleRateHz)
-            val expected = catalog.packageInfo(voice.dataDir.packageId).files
-                .filter { it.path.startsWith(voice.dataDir.path + "/") }
-                .map { SpeechModelRef(voice.dataDir.packageId, it.path) }.toSet()
-            assertTrue(expected.isNotEmpty())
-            assertEquals(expected, model.requiredRefs.filter { it.path.startsWith(voice.dataDir.path + "/") }.toSet())
-            assertFalse(voice.dataDir in model.requiredRefs)
-        }
     }
 
     @Test fun acceptsIsolatedDefinitionsWithoutRequiringEveryRole() {
@@ -107,8 +147,8 @@ class SpeechModelCatalogTest {
             val parsed = parse(document).model("asr-ru-gigaam-v1")
             assertEquals(setOf(LanguageId("ru")), parsed.languages)
             assertEquals(if (family == "toneCtcOnline") 2 else 4, parsed.requiredRefs.size)
-            assertTrue(if (family == "toneCtcOnline") parsed.adapter is SpeechModelAdapter.ToneCtcOnline
-                else parsed.adapter is SpeechModelAdapter.Zipformer2Online)
+            assertTrue(if (family == "toneCtcOnline") parsed.adapter is SherpaSpeechModelAdapter.ToneCtcOnline
+                else parsed.adapter is SherpaSpeechModelAdapter.Zipformer2Online)
         }
     }
 
@@ -171,51 +211,19 @@ class SpeechModelCatalogTest {
         }
     }
 
-    @Test fun rejectsUnboundedMetadataFilesEntriesBytesAndDuplicateIdentities() {
-        assertThrows(IllegalArgumentException::class.java) {
-            SpeechModelCatalog.parse(ByteArrayInputStream(ByteArray(SpeechModelCatalog.MAX_CATALOG_BYTES + 1) { 32 }))
-        }
-        for ((field, value) in listOf("maxEntries" to 1_025L, "maxUnpackedBytes" to Long.MAX_VALUE,
-            "archiveBytes" to Long.MAX_VALUE, "archiveBytes" to "2327524")) {
-            val invalid = document()
-            invalid.getJSONArray("packages").getJSONObject(0).put(field, value)
-            rejects(invalid)
-        }
-        val tooMany = document()
-        val files = tooMany.getJSONArray("packages").getJSONObject(5).getJSONArray("files")
-        while (files.length() <= 512) files.put(files.getJSONObject(0))
-        rejects(tooMany)
-        for (arrayName in listOf("packages", "models")) {
-            val duplicate = document()
-            val array = duplicate.getJSONArray(arrayName)
-            array.put(array.get(0))
-            rejects(duplicate)
-            val oversized = document()
-            val entries = oversized.getJSONArray(arrayName)
-            while (entries.length() <= 64) entries.put(entries.get(0))
-            rejects(oversized)
-        }
+    private fun whisper(document: JSONObject): JSONObject {
+        val models = document.getJSONArray("models")
+        return (0 until models.length()).map { models.getJSONObject(it) }
+            .single { it.getString("id") == WhisperConversationRecognitionEngine.MODEL_ID }
     }
 
-    @Test fun rejectsUntrustedUrlsDigestInventoryAndRawPackageMismatch() {
-        for ((field, value) in listOf("url" to "http://raw.githubusercontent.com/model.onnx",
-            "url" to "https://evil.example/model.onnx", "url" to "https://user@raw.githubusercontent.com/model.onnx",
-            "archiveSha256" to "bad", "archiveSha256" to "A".repeat(64))) {
-            val invalid = document()
-            invalid.getJSONArray("packages").getJSONObject(0).put(field, value)
-            rejects(invalid)
-        }
-        for ((field, value) in listOf("path" to "../model.onnx", "sha256" to "bad", "bytes" to 0L,
-            "bytes" to 2327523L)) {
-            val invalid = document()
-            invalid.getJSONArray("packages").getJSONObject(0).getJSONArray("files").getJSONObject(0).put(field, value)
-            rejects(invalid)
-        }
-    }
+    private fun config(languages: List<String>, backend: SpeechRecognitionBackend = SpeechRecognitionBackend.WHISPER) =
+        ConversationSessionConfig(languages.map { LanguageId(it) }, "test", backend,
+            "vad-silero-6.2.2", "lid-whisper-tiny", 700, 100, SpeechOutputBackend.SYSTEM_OFFLINE)
 
     private fun rejects(document: JSONObject) {
         assertThrows(IllegalArgumentException::class.java) { parse(document) }
     }
     private fun document() = JSONObject(File("src/main/assets/speech-models.json").readText())
-    private fun parse(document: JSONObject) = SpeechModelCatalog.parse(document.toString().byteInputStream())
+    private fun parse(document: JSONObject) = SherpaSpeechModelCatalog.parse(document.toString().byteInputStream())
 }

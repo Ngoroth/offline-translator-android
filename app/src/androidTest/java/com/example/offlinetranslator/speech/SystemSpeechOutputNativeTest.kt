@@ -121,12 +121,22 @@ class SystemSpeechOutputNativeTest {
         } finally { output.closeAndJoin() }
         assertOffline()
     }
-    @Test fun allSixteenSelectedLocalesHaveGenuineInstalledOfflineVoiceAndCompletedPcm() = runBlocking<Unit> {
+    @Test fun allSelectedLocalesHaveGenuineInstalledOfflineVoiceAndCompletedPcm() = runBlocking<Unit> {
         assertOffline()
         val destination = InstrumentationRegistry.getArguments().getString("systemTtsEvidenceDir")?.let(::File)
             ?: File(requireNotNull(context.getExternalFilesDir(null)), "system-tts-evidence")
         check(destination.isDirectory || destination.mkdirs()) { "Fixture evidence directory is inaccessible" }
-        for ((language, text) in ALL_FIXTURES) {
+        val requestedLanguageIds = InstrumentationRegistry.getArguments()
+            .getString("systemTtsLanguageIds")?.split(',')?.toSet()
+        val fixtures = if (requestedLanguageIds == null) ALL_FIXTURES else {
+            ALL_FIXTURES.filter { it.first.value in requestedLanguageIds }.also { selected ->
+                require(selected.map { it.first.value }.toSet() == requestedLanguageIds) {
+                    "Every requested speech-output language must have a fixed fixture"
+                }
+            }
+        }
+        Log.i(TAG, "voiceFixtureLanguages=${fixtures.map { it.first.value }}")
+        for ((language, text) in fixtures) {
             val partner = if (language == LanguageCatalog.ENGLISH) LanguageCatalog.RUSSIAN else LanguageCatalog.ENGLISH
             val selected = AppSettings(
                 languagePair = LanguagePair(language, partner),
@@ -397,6 +407,7 @@ class SystemSpeechOutputNativeTest {
             LanguageCatalog.FRENCH to "Nous avons besoin de deux billets de train.",
             LanguageCatalog.HINDI to "हमें ट्रेन के दो टिकट चाहिए।",
             LanguageCatalog.JAPANESE to "電車の切符が二枚必要です。",
+            LanguageCatalog.DUTCH to "We hebben twee treinkaartjes nodig.",
         )
         private val LONG_FIXTURE = "The train leaves tomorrow. We need two tickets at five o'clock. ".repeat(40)
         private val LONG_RUSSIAN_FIXTURE = "Поезд отправляется завтра. Нам нужны два билета на пять часов. ".repeat(40)

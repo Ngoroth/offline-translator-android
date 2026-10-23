@@ -2,6 +2,7 @@ package com.example.offlinetranslator.modelsmoke
 
 import com.example.offlinetranslator.core.*
 import com.example.offlinetranslator.sherpa.*
+import com.example.offlinetranslator.speechmodels.SpeechModelStore
 import com.example.offlinetranslator.testkit.*
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.collect

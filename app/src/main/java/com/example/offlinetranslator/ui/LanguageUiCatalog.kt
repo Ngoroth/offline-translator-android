@@ -29,6 +29,7 @@ internal fun languageNameResource(id: LanguageId): Int? = when (id.value) {
     "fr" -> R.string.language_name_fr
     "hi" -> R.string.language_name_hi
     "ja" -> R.string.language_name_ja
+    "nl" -> R.string.language_name_nl
     else -> null
 }
 
@@ -40,6 +41,7 @@ internal fun speechModelName(id: String, fallback: String): String {
         "asr-ru-gigaam-v1" -> R.string.model_asr_gigaam
         "asr-en-whisper-tiny.en" -> R.string.model_asr_whisper_en
         "asr-en-whisper-tiny" -> R.string.model_asr_whisper_multilingual
+        "asr-whisper-small-multilingual-int8" -> R.string.model_asr_whisper_small_multilingual
         "tts-ru-piper-irina-medium" -> R.string.model_tts_irina
         "tts-en-piper-lessac-medium" -> R.string.model_tts_lessac
         else -> return fallback

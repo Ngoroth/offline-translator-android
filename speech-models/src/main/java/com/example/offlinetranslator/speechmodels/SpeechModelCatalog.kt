@@ -1,6 +1,5 @@
-package com.example.offlinetranslator.sherpa
+package com.example.offlinetranslator.speechmodels
 
-import android.content.Context
 import com.example.offlinetranslator.core.LanguageId
 import com.example.offlinetranslator.core.SpeechModelRole
 import org.json.JSONArray
@@ -52,10 +51,21 @@ class SpeechModelCatalog private constructor(
         private const val MAX_PACKAGE_BYTES = 1_024L * 1_024 * 1_024
         private const val MAX_EXPECTED_FILES = 512
 
-        fun fromAssets(context: Context): SpeechModelCatalog =
-            context.assets.open("speech-models.json").use(::parse)
+        fun merge(vararg catalogs: SpeechModelCatalog): SpeechModelCatalog {
+            val packages = catalogs.flatMap { it.packages }
+            val models = catalogs.flatMap { it.models }
+            require(packages.size <= 64) { "Too many packages" }
+            require(models.size <= 64) { "Too many models" }
+            require(packages.map { it.id }.toSet().size == packages.size) { "Duplicate package ID" }
+            require(models.map { it.id }.toSet().size == models.size) { "Duplicate model ID" }
+            return SpeechModelCatalog(packages, models)
+        }
 
-        fun parse(input: InputStream): SpeechModelCatalog {
+        fun parse(
+            input: InputStream,
+            expectedRuntime: String,
+            decodeAdapter: (SpeechModelAdapterReader) -> SpeechModelAdapter,
+        ): SpeechModelCatalog {
             val output = ByteArrayOutputStream()
             val buffer = ByteArray(4_096)
             while (true) {
@@ -68,7 +78,7 @@ class SpeechModelCatalog private constructor(
                 val document = JSONObject(output.toString(Charsets.UTF_8.name()))
                 document.fields("schemaVersion", "runtime", "packages", "models")
                 require(document.integer("schemaVersion") == 2L) { "Unsupported model catalog" }
-                require(document.text("runtime") == "sherpa-onnx-1.13.8") { "Wrong runtime" }
+                require(document.text("runtime") == expectedRuntime) { "Wrong runtime" }
                 val rawPackages = document.getJSONArray("packages")
                 require(rawPackages.length() <= 64) { "Too many packages" }
                 val packages = (0 until rawPackages.length()).map { parsePackage(rawPackages.getJSONObject(it)) }
@@ -76,7 +86,7 @@ class SpeechModelCatalog private constructor(
                 val inventory = packages.associateBy { it.id }
                 val rawModels = document.getJSONArray("models")
                 require(rawModels.length() <= 64) { "Too many models" }
-                val models = (0 until rawModels.length()).map { parseModel(rawModels.getJSONObject(it), inventory) }
+                val models = (0 until rawModels.length()).map { parseModel(rawModels.getJSONObject(it), inventory, decodeAdapter) }
                 require(models.map { it.id }.toSet().size == models.size) { "Duplicate model ID" }
                 return SpeechModelCatalog(packages, models)
             } catch (error: JSONException) {
@@ -132,130 +142,30 @@ class SpeechModelCatalog private constructor(
                 url, hosts, format, archiveBytes, archiveSha, limit, files, maxEntries)
         }
 
-        private fun parseModel(entry: JSONObject, inventory: Map<String, SpeechModelPackage>): SpeechModelDefinition {
+        private fun parseModel(
+            entry: JSONObject,
+            inventory: Map<String, SpeechModelPackage>,
+            decodeAdapter: (SpeechModelAdapterReader) -> SpeechModelAdapter,
+        ): SpeechModelDefinition {
             entry.fields("id", "displayName", "role", "languages", "sampleRateHz", "adapter")
             val id = entry.text("id")
             require(ID.matches(id)) { "Invalid model ID" }
             val role = SpeechModelRole.valueOf(entry.text("role"))
             val languageStrings = entry.getJSONArray("languages").strings()
-            require(languageStrings.size <= 16 && languageStrings.distinct().size == languageStrings.size) {
+            require(languageStrings.size <= 32 && languageStrings.distinct().size == languageStrings.size) {
                 "Invalid model languages"
             }
             val languages = languageStrings.mapTo(linkedSetOf()) { value ->
                 LanguageId(value).also { require(it.value == value) { "Noncanonical model language" } }
             }
             val rate = entry.intRange("sampleRateHz", 8_000..48_000)
-            val json = entry.getJSONObject("adapter")
-            val refs = mutableListOf<SpeechModelRef>()
-            fun ref(name: String, directory: Boolean = false): SpeechModelRef {
-                val value = json.getJSONObject(name)
-                value.fields("packageId", "path")
-                val result = SpeechModelRef(value.text("packageId"), value.text("path"))
-                require(safeRelativePath(result.path)) { "Unsafe model reference" }
-                val pkg = requireNotNull(inventory[result.packageId]) { "Undeclared reference package" }
-                val files = if (directory) pkg.files.filter { it.path.startsWith(result.path + "/") }
-                    else pkg.files.filter { it.path == result.path }
-                require(files.isNotEmpty()) { "Undeclared reference file or directory" }
-                refs += files.map { SpeechModelRef(pkg.id, it.path) }
-                return result
-            }
-            fun threads() = json.intRange("numThreads", 1..16)
-            fun features() = json.intRange("featureDim", 80..80)
-            val adapter: SpeechModelAdapter = when (json.text("family")) {
-                "silero" -> {
-                    json.fields("family", "model", "numThreads", "threshold", "minSpeechDuration", "maxSpeechDuration", "windowSize")
-                    require(role == SpeechModelRole.VAD && languages.isEmpty() && rate == 16_000) { "Invalid Silero role/language/rate" }
-                    val min = json.positiveFloat("minSpeechDuration", 14f)
-                    val max = json.positiveFloat("maxSpeechDuration", 14f)
-                    require(min <= max) { "Invalid speech durations" }
-                    SpeechModelAdapter.Silero(ref("model"), threads(), json.positiveFloat("threshold", 1f), min, max,
-                        json.intRange("windowSize", 512..512))
-                }
-                "nemoCtcOffline" -> {
-                    json.fields("family", "model", "tokens", "numThreads", "featureDim")
-                    requireAsr(role, languages, rate)
-                    require(rate == 16_000) { "Unsupported offline Nemo sample rate" }
-                    SpeechModelAdapter.NemoCtcOffline(ref("model"), ref("tokens"), threads(), features())
-                }
-                "whisperOffline" -> {
-                    json.fields("family", "encoder", "decoder", "tokens", "language", "task", "tailPaddings", "numThreads", "featureDim")
-                    val language = json.text("language")
-                    require(role == SpeechModelRole.ASR && languages.size == 1 && languages.single().value == language && rate == 16_000) {
-                        "Invalid Whisper role/language/rate"
-                    }
-                    require(json.text("task") == "transcribe") { "Unsupported Whisper task" }
-                    SpeechModelAdapter.WhisperOffline(ref("encoder"), ref("decoder"), ref("tokens"), language,
-                        json.text("task"), json.intRange("tailPaddings", 0..10_000), threads(), features())
-                }
-                "whisperLanguageId" -> {
-                    json.fields("family", "encoder", "decoder", "numThreads")
-                    require(role == SpeechModelRole.LANGUAGE_ID && languages.size >= 2 && rate == 16_000) { "Invalid language identifier" }
-                    SpeechModelAdapter.WhisperLanguageId(ref("encoder"), ref("decoder"), threads())
-                }
-                "piperVits" -> {
-                    json.fields("family", "model", "tokens", "dataDir", "noiseScale", "noiseScaleW", "lengthScale", "numThreads")
-                    require(role == SpeechModelRole.TTS && languages.size == 1 && rate == 22_050) { "Invalid Piper role/language/rate" }
-                    SpeechModelAdapter.PiperVits(ref("model"), ref("tokens"), ref("dataDir", directory = true),
-                        json.positiveFloat("noiseScale", 10f), json.positiveFloat("noiseScaleW", 10f),
-                        json.positiveFloat("lengthScale", 10f), threads())
-                }
-                "toneCtcOnline" -> {
-                    json.fields("family", "model", "tokens", "numThreads", "featureDim")
-                    requireAsr(role, languages, rate)
-                    SpeechModelAdapter.ToneCtcOnline(ref("model"), ref("tokens"), threads(), features())
-                }
-                "zipformer2Online" -> {
-                    json.fields("family", "encoder", "decoder", "joiner", "tokens", "numThreads", "featureDim")
-                    requireAsr(role, languages, rate)
-                    SpeechModelAdapter.Zipformer2Online(ref("encoder"), ref("decoder"), ref("joiner"), ref("tokens"), threads(), features())
-                }
-                else -> throw IllegalArgumentException("Unsupported speech adapter family")
-            }
+            val reader = SpeechModelAdapterReader(role, languages, rate, entry.getJSONObject("adapter"), inventory)
+            val adapter = decodeAdapter(reader)
+            val refs = reader.requiredRefs
             require(refs.distinct().size == refs.size) { "Aliased model references" }
-            return SpeechModelDefinition(id, entry.text("displayName"), role, languages, rate, adapter, refs)
+            return SpeechModelDefinition(id, entry.text("displayName"), role, languages, rate, adapter, refs.toList())
         }
 
-        private fun requireAsr(role: SpeechModelRole, languages: Set<LanguageId>, rate: Int) {
-            require(role == SpeechModelRole.ASR && languages.isNotEmpty() && rate in setOf(8_000, 16_000)) {
-                "Invalid ASR role/language/rate"
-            }
-        }
-
-        private fun JSONObject.fields(vararg allowed: String) {
-            require(keys().asSequence().all { it in allowed }) { "Unknown catalog field" }
-        }
-
-        private fun JSONObject.text(name: String): String {
-            val value = get(name)
-            require(value is String && value.isNotEmpty()) { "Invalid string: $name" }
-            return value
-        }
-
-        private fun JSONArray.strings(): List<String> = (0 until length()).map {
-            val value = get(it)
-            require(value is String && value.isNotEmpty()) { "Invalid string array" }
-            value
-        }
-
-        private fun JSONObject.integer(name: String): Long {
-            val value = get(name)
-            require(value is Byte || value is Short || value is Int || value is Long) { "Invalid integer: $name" }
-            return (value as Number).toLong()
-        }
-
-        private fun JSONObject.intRange(name: String, range: IntRange): Int {
-            val value = integer(name)
-            require(value in range.first.toLong()..range.last.toLong()) { "Invalid parameter: $name" }
-            return value.toInt()
-        }
-
-        private fun JSONObject.positiveFloat(name: String, max: Float): Float {
-            val value = get(name)
-            require(value is Number) { "Invalid number: $name" }
-            val result = value.toFloat()
-            require(result.isFinite() && result > 0f && result <= max) { "Invalid parameter: $name" }
-            return result
-        }
 
         internal fun safeRelativePath(path: String): Boolean {
             if (path.isEmpty() || path.length > 240 || path.startsWith('/') || path.startsWith('\\') ||

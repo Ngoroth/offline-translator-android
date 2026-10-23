@@ -5,6 +5,7 @@ import com.example.offlinetranslator.core.LanguagePair
 import com.example.offlinetranslator.core.SpeechModelRole
 import com.example.offlinetranslator.core.SpeechRecognitionEngine
 import com.example.offlinetranslator.core.SpeechSegment
+import com.example.offlinetranslator.speechmodels.SpeechModelStore
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.ensureActive

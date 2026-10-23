@@ -19,6 +19,7 @@ object LanguageCatalog {
     val TURKISH = LanguageId("tr")
     val HINDI = LanguageId("hi")
     val JAPANESE = LanguageId("ja")
+    val DUTCH = LanguageId("nl")
     val entries = listOf(
         LanguageMetadata(ENGLISH, "English", "Английский", "Good afternoon."),
         LanguageMetadata(VIETNAMESE, "Vietnamese", "Вьетнамский", "Chào buổi chiều."),
@@ -36,6 +37,7 @@ object LanguageCatalog {
         LanguageMetadata(FRENCH, "French", "Французский", "Bonjour."),
         LanguageMetadata(HINDI, "Hindi", "Хинди", "नमस्ते।"),
         LanguageMetadata(JAPANESE, "Japanese", "Японский", "こんにちは。"),
+        LanguageMetadata(DUTCH, "Dutch", "Нидерландский", "Goedendag."),
     )
     private val byId = entries.associateBy { it.id }
     fun find(id: LanguageId): LanguageMetadata? = byId[id]

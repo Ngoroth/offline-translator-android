@@ -9,7 +9,8 @@ Small focused pull requests are welcome. Explain the problem, behavior changed, 
 - JDK **17**, configured through `JAVA_HOME`.
 - Android SDK, configured through `ANDROID_HOME`, with `platform-tools`, **`platforms;android-37.0`**, and **`build-tools;36.0.0`**.
 - Use current Android SDK command-line tools **23.0** or newer with repository schema 3 support for this platform package. The package name is `platforms;android-37.0`, not `platforms;android-37`; old schema 1/2 repository listings do not include it.
-- The checked-in Gradle wrapper supplies Gradle. Run commands from the repository root. Tencent native preparation supports Linux x86_64; Windows uses PowerShell 7 and an existing WSL Ubuntu with Python 3 and Git. macOS needs a separately prepared verified Linux artifact, not an automatic toolchain substitution.
+- Python **3.12+** and complete verified paired Sherpa and Tencent native distributions; see [README preparation](README.md#build-and-run).
+- The checked-in Gradle wrapper supplies Gradle. Run commands from the repository root. Native preparation supports Linux x86_64; Windows uses PowerShell 7 and an existing WSL Ubuntu with Python 3 and Git. macOS needs separately prepared verified Linux artifacts, not automatic toolchain substitution.
 
 The [host workflow](.github/workflows/host-checks.yml) provisions official Android command-line tools archive revision **16111833** (CLI 23.0), JDK 17, platform 37.0 and Build Tools 36.0.0 on Ubuntu 24.04. Locally, install the named packages with the official SDK Manager and review/accept its licenses; the project's Apache license does not grant SDK or third-party rights.
 
@@ -30,7 +31,7 @@ $env:ANDROID_HOME = "C:\Users\<user>\AppData\Local\Android\Sdk"
 pwsh -File tools/android/prepare-tencent-native.ps1
 .\gradlew.bat :engine-sherpa:prepareSherpaArchive --console=plain
 
-.\gradlew.bat :core:testDebugUnitTest :engine-mlkit:testDebugUnitTest :engine-tencent:testDebugUnitTest :engine-sherpa:testDebugUnitTest :app:testDebugUnitTest :translator-test-kit:testDebugUnitTest :app:lintDebug :app:assembleDebug :app:assembleDebugAndroidTest
+.\gradlew.bat :core:testDebugUnitTest :engine-mlkit:testDebugUnitTest :engine-tencent:testDebugUnitTest :engine-sherpa:testDebugUnitTest :speech-models:testDebugUnitTest :app:testDebugUnitTest :translator-test-kit:testDebugUnitTest :app:lintDebug :app:assembleDebug :app:assembleDebugAndroidTest :engine-sherpa-model-smoke:assembleModelSmoke :engine-sherpa-model-smoke:assembleModelSmokeAndroidTest
 
 # The included build has a separate JVM test gate.
 .\gradlew.bat -p build-logic test --console=plain
@@ -45,7 +46,7 @@ export ANDROID_HOME="/path/to/android-sdk"
 python3 tools/android/prepare-tencent-native.py
 bash ./gradlew :engine-sherpa:prepareSherpaArchive --console=plain
 
-bash ./gradlew :core:testDebugUnitTest :engine-mlkit:testDebugUnitTest :engine-tencent:testDebugUnitTest :engine-sherpa:testDebugUnitTest :app:testDebugUnitTest :translator-test-kit:testDebugUnitTest :app:lintDebug :app:assembleDebug :app:assembleDebugAndroidTest
+bash ./gradlew :core:testDebugUnitTest :engine-mlkit:testDebugUnitTest :engine-tencent:testDebugUnitTest :engine-sherpa:testDebugUnitTest :speech-models:testDebugUnitTest :app:testDebugUnitTest :translator-test-kit:testDebugUnitTest :app:lintDebug :app:assembleDebug :app:assembleDebugAndroidTest :engine-sherpa-model-smoke:assembleModelSmoke :engine-sherpa-model-smoke:assembleModelSmokeAndroidTest
 
 # The included build has a separate JVM test gate.
 bash ./gradlew -p build-logic test --console=plain
@@ -53,7 +54,7 @@ bash ./gradlew -p build-logic test --console=plain
 
 Using `bash ./gradlew` works even when the wrapper is not executable. Run the separate build-logic tests from a real repository checkout with valid Git metadata: existing recovery fixtures use the repository's `.git`. An export without Git metadata is not an equivalent test environment.
 
-Run explicit preparation before either host gate: build-logic recovery tests copy the prepared AAR. Preparation downloads the pinned official Sherpa 1.13.8 runtime to ignored `engine-sherpa/libs/sherpa-onnx-1.13.8.aar` and verifies its size and SHA-256. Valid local bytes are reusable offline; corrupt existing files fail unchanged and must be inspected/removed explicitly. Ordinary builds only verify the file, never download it. See [native provenance](engine-sherpa/THIRD_PARTY.md) for artifact identity and distribution conditions.
+Prepare both native distributions explicitly before the application host gate. The Sherpa command above downloads the pinned official 1.13.8 AAR only as the verified wrapper/ORT preparation input and for build-logic recovery tests. Follow the [Linux/WSL paired-Sherpa command](README.md#build-and-run) and pinned tool-archive layout in the [host workflow](.github/workflows/host-checks.yml) to prepare `sherpa-onnx-1.13.8-pair-v1.aar`. Ordinary builds consume only this source/patch/tool-bound distribution after read-only receipt/hash/ABI/alignment/feature verification; they never fall back to the stock AAR or repair/rebuild missing bytes. Valid prepared bytes are reusable offline. Do not edit receipts or submit generated caches. See [Sherpa provenance](engine-sherpa/THIRD_PARTY.md).
 
 Tencent preparation builds CPU-only JNI from llama.cpp commit `d8d92973c8c21bb4dd5d592f0fec26fe2cd1e654` using isolated NDK `29.0.13113456-beta1`, CMake `4.2.3` and Ninja `1.13.2`. It explicitly obtains/verifies pinned sources/tools under ignored `engine-tencent/.native-cache` and publishes both ABIs in `engine-tencent/libs/tencent-native-d8d92973-r2.aar` plus its receipt. It does not mutate the host Android SDK or download model weights. The Windows wrapper translates absolute paths and forwards to that same Linux recipe in WSL Ubuntu.
 
@@ -77,7 +78,7 @@ For a non-sensitive bug, provide a minimal synthetic reproduction, expected/actu
 
 **Do not submit secrets or real conversation data.** Exclude raw logcat, full bugreports, private recordings/transcripts, signing keys, credentials, local SDK configuration and model caches. Unresolved ML Kit native logging can expose content even offline; review/redact necessary excerpts locally. Follow the [security policy](SECURITY.md) for suspected vulnerabilities.
 
-Test fixtures must be minimal, deterministic and safe to publish. Record source, license and any modifications for third-party audio or data; do not assume upstream availability grants redistribution rights. Never use production credentials as fixtures. The existing self-signed localhost `engine-sherpa/src/test/resources/model-fixture.p12` and its disclosed `fixture-only` password are downloader-test inputs, not a pattern for submitting real private keys.
+Test fixtures must be minimal, deterministic and safe to publish. Record source, license and any modifications for third-party audio or data; do not assume upstream availability grants redistribution rights. Never use production credentials as fixtures. The existing self-signed localhost `speech-models/src/test/resources/model-fixture.p12` and its disclosed `fixture-only` password are downloader-test inputs, not a pattern for submitting real private keys.
 
 Keep generated reports, recordings, model downloads and machine-local configuration out of submissions. Keep pull requests focused and report failures as well as passes.
 

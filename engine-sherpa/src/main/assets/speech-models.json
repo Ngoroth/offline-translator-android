@@ -3766,6 +3766,66 @@
           "sha256": "b34b360dbb493e781e479794586d661700670d65564001f23024971d1f2fa126"
         }
       ]
+    },
+    {
+      "id": "whisper-small-multilingual-int8-encoder",
+      "displayName": "Whisper Small INT8 multilingual encoder",
+      "source": "https://huggingface.co/csukuangfj/sherpa-onnx-whisper-small/tree/8f3c18b358db4d1f2fc1eae49d75cd20989e4309",
+      "license": "Whisper upstream: MIT",
+      "url": "https://huggingface.co/csukuangfj/sherpa-onnx-whisper-small/resolve/8f3c18b358db4d1f2fc1eae49d75cd20989e4309/small-encoder.int8.onnx",
+      "allowedRedirectHosts": ["huggingface.co", "us.aws.cdn.hf.co"],
+      "format": "raw",
+      "archiveBytes": 112442483,
+      "archiveSha256": "4cbe7b22fa9026b843b60a68640c747de05bafb1a11b57edc0e66c232d9f33a9",
+      "maxUnpackedBytes": 112442483,
+      "maxEntries": 1,
+      "files": [
+        {
+          "path": "small-encoder.int8.onnx",
+          "bytes": 112442483,
+          "sha256": "4cbe7b22fa9026b843b60a68640c747de05bafb1a11b57edc0e66c232d9f33a9"
+        }
+      ]
+    },
+    {
+      "id": "whisper-small-multilingual-int8-decoder",
+      "displayName": "Whisper Small INT8 multilingual decoder",
+      "source": "https://huggingface.co/csukuangfj/sherpa-onnx-whisper-small/tree/8f3c18b358db4d1f2fc1eae49d75cd20989e4309",
+      "license": "Whisper upstream: MIT",
+      "url": "https://huggingface.co/csukuangfj/sherpa-onnx-whisper-small/resolve/8f3c18b358db4d1f2fc1eae49d75cd20989e4309/small-decoder.int8.onnx",
+      "allowedRedirectHosts": ["huggingface.co", "us.aws.cdn.hf.co"],
+      "format": "raw",
+      "archiveBytes": 262226114,
+      "archiveSha256": "acad50b5c782696e91b55914cc5ab4f756f1532f76e22aa6fc615f39fb69a8ee",
+      "maxUnpackedBytes": 262226114,
+      "maxEntries": 1,
+      "files": [
+        {
+          "path": "small-decoder.int8.onnx",
+          "bytes": 262226114,
+          "sha256": "acad50b5c782696e91b55914cc5ab4f756f1532f76e22aa6fc615f39fb69a8ee"
+        }
+      ]
+    },
+    {
+      "id": "whisper-small-multilingual-int8-tokens",
+      "displayName": "Whisper Small multilingual tokens",
+      "source": "https://huggingface.co/csukuangfj/sherpa-onnx-whisper-small/tree/8f3c18b358db4d1f2fc1eae49d75cd20989e4309",
+      "license": "Whisper upstream: MIT",
+      "url": "https://huggingface.co/csukuangfj/sherpa-onnx-whisper-small/resolve/8f3c18b358db4d1f2fc1eae49d75cd20989e4309/small-tokens.txt",
+      "allowedRedirectHosts": ["huggingface.co"],
+      "format": "raw",
+      "archiveBytes": 816730,
+      "archiveSha256": "b34b360dbb493e781e479794586d661700670d65564001f23024971d1f2fa126",
+      "maxUnpackedBytes": 816730,
+      "maxEntries": 1,
+      "files": [
+        {
+          "path": "small-tokens.txt",
+          "bytes": 816730,
+          "sha256": "b34b360dbb493e781e479794586d661700670d65564001f23024971d1f2fa126"
+        }
+      ]
     }
   ],
   "models": [
@@ -3943,6 +4003,34 @@
         "task": "transcribe",
         "tailPaddings": 1000,
         "numThreads": 2,
+        "featureDim": 80
+      }
+    },
+    {
+      "id": "asr-whisper-small-multilingual-int8",
+      "displayName": "Whisper Small INT8 multilingual (offline)",
+      "role": "ASR",
+      "languages": [
+        "en", "vi", "id", "de", "fr", "es", "it", "pt", "zh",
+        "ko", "pl", "th", "tr", "ru", "hi", "ja", "nl"
+      ],
+      "sampleRateHz": 16000,
+      "adapter": {
+        "family": "whisperMultilingual",
+        "encoder": {
+          "packageId": "whisper-small-multilingual-int8-encoder",
+          "path": "small-encoder.int8.onnx"
+        },
+        "decoder": {
+          "packageId": "whisper-small-multilingual-int8-decoder",
+          "path": "small-decoder.int8.onnx"
+        },
+        "tokens": {
+          "packageId": "whisper-small-multilingual-int8-tokens",
+          "path": "small-tokens.txt"
+        },
+        "tailPaddings": 300,
+        "numThreads": 4,
         "featureDim": 80
       }
     }
