@@ -4,6 +4,12 @@ Notable capability, behavior and developer-facing compatibility changes. Entries
 
 ## Unreleased
 
+### Development prerelease 0.1.3
+
+- Increased the app version to 0.1.3 / versionCode 4 for the combined Whisper and Tencent build, with Parakeet removed.
+- Dutch conversation requires explicitly selecting Whisper and preparing recognition, translation and offline voice resources. Automatic recognition-backend selection remains deferred; existing defaults are unchanged.
+- This remains an experimental prerelease: known Dutch recognition errors, translation-quality limitations, ML Kit native content logging and unqualified phone/end-to-output performance remain applicable.
+
 ### Integrate main with Whisper and Parakeet removal — 2026-10-22
 
 - Combined Tencent Hy-MT2 translation from main with selected-pair Whisper recognition and the complete Parakeet removal. Existing recognition defaults and independently saved text/conversation translation choices are preserved.
