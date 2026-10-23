@@ -36,8 +36,20 @@ class TranslationViewModel(
     private var foreground = true
     private var disposed = false
     private var cleanupJob: Deferred<Result<Unit>>? = null
+    private var preparationObservation: Job? = null
 
     init {
+        preparationObservation = viewModelScope.launch {
+            owner.translation.preparation.collect { preparation ->
+                if (!disposed && foreground && hasCurrentOwner) mutableState.update {
+                    it.copy(
+                        preparation = preparation,
+                        modelStatus = if (it.isPreparing || (it.modelStatus == ModelUiStatus.CHECKING &&
+                            preparation.phase == TranslationPreparationPhase.VERIFYING)) preparation.phase.toUiStatus() else it.modelStatus,
+                    )
+                }
+            }
+        }
         refreshAvailability()
     }
 
@@ -45,9 +57,9 @@ class TranslationViewModel(
         if (disposed || mutableState.value.operationInProgress) return
         mutableState.update {
             if (value.length > TranslationEngine.MAX_INPUT_CHARACTERS) {
-                it.copy(inputTooLong = true, error = null)
+                it.copy(inputTooLong = true, error = null, failure = null)
             } else if (value != it.input) {
-                it.copy(input = value, inputTooLong = false, result = "", error = null)
+                it.copy(input = value, inputTooLong = false, result = "", error = null, failure = null)
             } else {
                 it
             }
@@ -58,19 +70,19 @@ class TranslationViewModel(
     fun prepare() {
         if (disposed || !foreground || !hasCurrentOwner || !mutableState.value.canPrepare) return
         val request = ++generation
-        mutableState.update { it.copy(modelStatus = ModelUiStatus.DOWNLOADING, error = null) }
+        mutableState.update { it.copy(modelStatus = ModelUiStatus.DOWNLOADING, isPreparing = true, error = null, failure = null) }
         operation = viewModelScope.launch {
             try {
                 val availability = useEngine { it.prepare() } ?: return@launch
                 updateIfCurrent(request) {
-                    it.copy(modelStatus = availability.toUiStatus(), error = null)
+                    it.copy(modelStatus = availability.toUiStatus(), isPreparing = false, error = null, failure = null)
                 }
             } catch (cancelled: CancellationException) {
                 throw cancelled
             } catch (failure: Throwable) {
                 lastFailedAction = FailedAction.PREPARE
                 updateIfCurrent(request) {
-                    it.copy(modelStatus = ModelUiStatus.MISSING, error = failure.toUiError())
+                    it.copy(modelStatus = ModelUiStatus.MISSING, isPreparing = false, error = failure.toUiError(), failure = failure as? TranslationFailure)
                 }
             }
         }
@@ -80,7 +92,7 @@ class TranslationViewModel(
         val snapshot = mutableState.value
         if (disposed || !foreground || !hasCurrentOwner || !snapshot.canTranslate) return
         val request = ++generation
-        mutableState.update { it.copy(isTranslating = true, result = "", error = null) }
+        mutableState.update { it.copy(isTranslating = true, result = "", error = null, failure = null) }
         operation = viewModelScope.launch {
             try {
                 val translated = useEngine { it.translate(snapshot.direction, snapshot.input) } ?: return@launch
@@ -89,10 +101,14 @@ class TranslationViewModel(
                 }
             } catch (cancelled: CancellationException) {
                 throw cancelled
-            } catch (_: Throwable) {
-                lastFailedAction = FailedAction.TRANSLATE
+            } catch (failure: Throwable) {
+                val repair = failure is TranslationFailure.ModelMissing || failure is TranslationFailure.ArtifactCorrupt ||
+                    failure is TranslationFailure.RuntimeLoad || failure is TranslationFailure.Memory
+                lastFailedAction = if (repair) FailedAction.PREPARE else FailedAction.TRANSLATE
                 updateIfCurrent(request) {
-                    it.copy(isTranslating = false, error = TranslationUiError.TRANSLATION_FAILED)
+                    it.copy(isTranslating = false, error = TranslationUiError.TRANSLATION_FAILED,
+                        failure = failure as? TranslationFailure,
+                        modelStatus = if (repair) ModelUiStatus.MISSING else it.modelStatus)
                 }
             }
         }
@@ -118,7 +134,7 @@ class TranslationViewModel(
         foreground = false
         generation++
         operation?.cancel()
-        mutableState.update { it.copy(isTranslating = false, modelStatus = ModelUiStatus.CHECKING, result = "") }
+        mutableState.update { it.copy(isTranslating = false, isPreparing = false, modelStatus = ModelUiStatus.CHECKING, result = "") }
     }
 
     fun dispose() { cleanup() }
@@ -132,6 +148,7 @@ class TranslationViewModel(
         foreground = false
         generation++
         operation?.cancel()
+        preparationObservation?.cancel()
         val cleanupScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
         val result = cleanupScope.async(start = CoroutineStart.LAZY) {
             operation?.join()
@@ -152,15 +169,18 @@ class TranslationViewModel(
         operation = viewModelScope.launch {
             try {
                 val availability = useEngine { it.modelAvailability() } ?: return@launch
+                val failure = owner.translation.preparation.value.lastFailure
                 updateIfCurrent(request) {
-                    it.copy(modelStatus = availability.toUiStatus(), error = null)
+                    it.copy(modelStatus = availability.toUiStatus(), failure = failure,
+                        error = failure?.toUiError())
                 }
             } catch (cancelled: CancellationException) {
                 throw cancelled
-            } catch (_: Throwable) {
+            } catch (failure: Throwable) {
                 lastFailedAction = FailedAction.PREPARE
                 updateIfCurrent(request) {
-                    it.copy(modelStatus = ModelUiStatus.MISSING, error = TranslationUiError.PREPARATION_FAILED)
+                    it.copy(modelStatus = ModelUiStatus.MISSING, error = TranslationUiError.PREPARATION_FAILED,
+                        failure = failure as? TranslationFailure)
                 }
             }
         }
@@ -176,6 +196,15 @@ class TranslationViewModel(
     private fun ModelAvailability.toUiStatus(): ModelUiStatus = when (this) {
         ModelAvailability.MISSING -> ModelUiStatus.MISSING
         ModelAvailability.READY -> ModelUiStatus.READY
+    }
+
+    private fun TranslationPreparationPhase.toUiStatus(): ModelUiStatus = when (this) {
+        TranslationPreparationPhase.CHECKING -> ModelUiStatus.CHECKING
+        TranslationPreparationPhase.MISSING, TranslationPreparationPhase.FAILED -> ModelUiStatus.MISSING
+        TranslationPreparationPhase.DOWNLOADING -> ModelUiStatus.DOWNLOADING
+        TranslationPreparationPhase.VERIFYING -> ModelUiStatus.VERIFYING
+        TranslationPreparationPhase.LOADING -> ModelUiStatus.LOADING
+        TranslationPreparationPhase.READY -> ModelUiStatus.READY
     }
 
     private fun Throwable.toUiError(): TranslationUiError = when (this) {

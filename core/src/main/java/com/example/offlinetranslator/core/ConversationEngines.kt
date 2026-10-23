@@ -21,18 +21,6 @@ data class RecognizedUtterance(
 
 data class UndeterminedLanguage(override val text: String) : ConversationRecognitionResult
 
-/** Unconditioned transcription; the owner serializes use and awaits completion before close. */
-interface SpeechTranscriber : AutoCloseable {
-    suspend fun transcribe(segment: SpeechSegment): String
-    override fun close()
-}
-
-/** Null is policy abstention, not a runtime failure. The owner serializes use and release. */
-interface TextLanguageIdentifier : AutoCloseable {
-    suspend fun identify(text: String, pair: LanguagePair): LanguageId?
-    override fun close()
-}
-
 class UnsupportedSpeechLanguageException : RuntimeException("Unsupported speech language")
 
 /** Selected on-device recognition resources; checking never starts a download. */

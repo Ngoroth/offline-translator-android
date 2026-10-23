@@ -30,13 +30,26 @@ Redistributing the AAR or an APK containing it requires the applicable notices,
 Corresponding Source and compatible combined-work terms; see
 [native distribution conditions](engine-sherpa/THIRD_PARTY.md#conditions-before-redistributing-this-aar-or-an-apk-containing-it).
 
-The selectable NeMo backend adds **NVIDIA NeMo-Speech.cpp 0.2.0** (Apache-2.0),
-patched **llama.cpp / ggml** (MIT and Apache-2.0 additions), and static
-**SentencePiece 0.2.1** with its bundled dependencies. Exact source pins, the
-Android-only modification, model attribution and redistribution terms are in the
-[NeMo provenance record](engine-nemo/THIRD_PARTY.md). Explicit native preparation
-copies the original upstream license and notice texts into the APK under
-`assets/nemo-native/licenses/`; this does not supersede the Sherpa conditions above.
+## Tencent local translation
+
+The optional selectable Tencent provider embeds CPU **llama.cpp** at commit
+[`d8d92973c8c21bb4dd5d592f0fec26fe2cd1e654`](https://github.com/ggml-org/llama.cpp/tree/d8d92973c8c21bb4dd5d592f0fec26fe2cd1e654)
+under MIT. It is explicitly built into a verified local JNI AAR, not downloaded
+as executable application content. Exact source/toolchain/ABI and license
+inventory is in [Tencent native provenance](engine-tencent/THIRD_PARTY.md); its
+notice is packaged in APK license assets and the native distribution.
+
+**Hy-MT2-1.8B-GGUF**, copyright 2026 Tencent, is separately downloaded model
+data under the exact repository Apache-2.0 grant. Pinned revision:
+`a0c709d9fac510f2c807aa3af52872340dc37a4a`; file:
+`Hy-MT2-1.8B-Q4_K_M.gguf`, 1,133,080,448 bytes, SHA-256
+`dc5f44fcf1fa496ee7ad725982c0c8c553a4de00259b53af84c4b89fb0c06699`.
+The [full exact license](LICENSES/Tencent-Hy-MT2-Apache-2.0.txt) is preserved
+and packaged; source [license](https://huggingface.co/tencent/Hy-MT2-1.8B-GGUF/blob/a0c709d9fac510f2c807aa3af52872340dc37a4a/LICENSE.txt)
+SHA-256 is `a1d52d448f81c584a47c583e19dfab2d3851c7c84431b07baee093c1113ed114`.
+No NOTICE file was present in the captured pinned upstream inventory. Weights
+are not bundled in Git, the JNI AAR or the APK. Tencent and Hy-MT2 names remain
+their owners’ marks; attribution is not endorsement or quality certification.
 
 ## Libraries resolved at build time
 
@@ -51,18 +64,12 @@ coordinates are in [the version catalog](gradle/libs.versions.toml).
   and applicable transitive notices.
 - Google ML Kit and Google Translate names, logos and attribution artwork are
   subject to their own SDK/service and branding terms, not the project license.
-- Bundled **ML Kit Language Identification 17.0.6**,
-  `com.google.mlkit:language-id`, is independent of the Translate client. It retains
-  the applicable [ML Kit SDK terms](https://developers.google.com/ml-kit/terms).
 
 ## Downloaded model weights and voice data
 
 Model packages are downloaded separately, not included in the production AAR/APK.
 Their source revisions, licenses and model/voice-specific restrictions are recorded
 in the [module notice](engine-sherpa/THIRD_PARTY.md).
-The NeMo catalog separately downloads NVIDIA's official Parakeet TDT 0.6B v3
-Q8_0 GGUF. Its **CC BY 4.0** attribution, unchanged conversion, pinned revision
-and digest are recorded in the [NeMo model notice](engine-nemo/THIRD_PARTY.md#nvidia-parakeet-tdt-06b-v3-model).
 
 Whisper recognition separately downloads the pinned multilingual **OpenAI Whisper
 Small INT8 ONNX** export and token table. OpenAI publishes its code and model

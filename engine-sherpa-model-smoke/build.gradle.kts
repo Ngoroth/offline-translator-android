@@ -17,6 +17,7 @@ val generateEvaluationUi = tasks.register<EvaluationSourceSync>("generateEvaluat
             "com/example/offlinetranslator/conversation/ConversationScreen.kt", "com/example/offlinetranslator/conversation/ConversationUiState.kt",
             "com/example/offlinetranslator/ui/LanguageUiCatalog.kt", "com/example/offlinetranslator/ui/ProviderAttribution.kt",
             "com/example/offlinetranslator/ui/LanguagePairControls.kt", "com/example/offlinetranslator/ui/TranslatorHelp.kt",
+            "com/example/offlinetranslator/ui/TranslationPreparation.kt",
             "com/example/offlinetranslator/TranslatorHomeLayout.kt",
             "com/example/offlinetranslator/conversation/SystemVoiceDataInstaller.kt")
     }
@@ -102,6 +103,7 @@ dependencies {
     androidTestImplementation(libs.androidx.test.runner)
     androidTestImplementation(libs.androidx.test.espresso.core)
     androidTestImplementation(project(":translator-test-kit"))
+    androidTestImplementation(project(":engine-tencent"))
     androidTestImplementation(platform(libs.androidx.compose.bom))
     androidTestImplementation(libs.androidx.compose.ui.test.junit4)
     "modelSmokeImplementation"(libs.androidx.compose.ui.test.manifest)

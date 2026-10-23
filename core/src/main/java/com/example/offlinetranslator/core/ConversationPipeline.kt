@@ -37,6 +37,7 @@ data class ConversationTranscript(
     val failure: ConversationFailure? = null,
     val latencyMillis: Long? = null,
     val latencyMeasured: Boolean = false,
+    val translationFailure: TranslationFailure? = null,
 )
 
 data class ConversationState(
@@ -47,6 +48,7 @@ data class ConversationState(
     val failure: ConversationFailure? = null,
     val queuedSegments: Int = 0,
     val droppedSegments: Int = 0,
+    val translationFailure: TranslationFailure? = null,
 )
 
 /** One foreground, automatically directed conversation with bounded work and half-duplex output. */
@@ -169,6 +171,9 @@ class ConversationPipeline(
             throw cancelled
         } catch (failure: SpeechCaptureException) {
             failSession(session, failure.reason.toConversationFailure())
+        } catch (failure: TranslationFailure) {
+            update(session) { it.copy(translationFailure = failure) }
+            failSession(session, ConversationFailure.PREPARATION_FAILED)
         } catch (_: Exception) {
             failSession(session, ConversationFailure.PREPARATION_FAILED)
         } finally {
@@ -223,6 +228,7 @@ class ConversationPipeline(
         update(session) { it.copy(
             phase = ConversationPhase.UNDERSTANDING,
             failure = null,
+            translationFailure = null,
             transcripts = it.transcripts.takeLast(MAX_TRANSCRIPTS - 1) + ConversationTranscript(id),
         ) }
         var failureStage = ConversationFailure.RECOGNITION_FAILED
@@ -299,9 +305,14 @@ class ConversationPipeline(
         } catch (_: UnsupportedSpeechLanguageException) {
             updateRow(session, id) { it.copy(status = ConversationTranscriptStatus.ERROR, failure = ConversationFailure.UNSUPPORTED_LANGUAGE) }
             update(session) { it.copy(failure = ConversationFailure.UNSUPPORTED_LANGUAGE) }
-        } catch (_: Exception) {
-            updateRow(session, id) { it.copy(status = ConversationTranscriptStatus.ERROR, failure = failureStage) }
-            update(session) { it.copy(failure = failureStage) }
+        } catch (error: Exception) {
+            val typed = error as? TranslationFailure
+            updateRow(session, id) { it.copy(status = ConversationTranscriptStatus.ERROR, failure = failureStage, translationFailure = typed) }
+            update(session) { it.copy(failure = failureStage, translationFailure = typed) }
+            if (typed is TranslationFailure.ModelMissing || typed is TranslationFailure.ArtifactCorrupt ||
+                typed is TranslationFailure.RuntimeLoad || typed is TranslationFailure.Memory) {
+                failSession(session, ConversationFailure.MODELS_MISSING)
+            }
             if (failureStage == ConversationFailure.PLAYBACK_FAILED) {
                 val playbackReady = try {
                     output.readiness() == SpeechOutputReadiness.READY

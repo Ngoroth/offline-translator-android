@@ -768,6 +768,7 @@ class AndroidRecognitionPreparationIntegrationTest {
         override fun close() { running = false }
     }
     private class Translation : TranslationEngine {
+        override val preparation = kotlinx.coroutines.flow.MutableStateFlow(TranslationPreparationState(TranslationPreparationPhase.READY))
         val phrases = mutableListOf<String>()
         override suspend fun modelAvailability() = ModelAvailability.READY
         override suspend fun prepare() = ModelAvailability.READY

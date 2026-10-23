@@ -11,7 +11,8 @@ captures/
 /.agents/
 .cache/translator-evaluation/
 /engine-sherpa/libs/*.aar
-/engine-sherpa/.native-cache/
+.native-cache/
+/engine-tencent/libs/
 
 # Local environment and credentials
 /.omp/

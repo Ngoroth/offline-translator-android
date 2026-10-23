@@ -56,13 +56,15 @@ skill: ubiquitous-language
 - **Speech output readiness** `SpeechOutputReadiness` kind:state
 - **Speech resource package** `SpeechModelPackage` kind:entity
 - **Speech segment** `SpeechSegment` kind:value
-- **Speech transcription** `SpeechTranscriber` kind:service
 - **System voice** `TtsVoice` kind:value
-- **Text language identification** `TextLanguageIdentifier` kind:service
 - **Translate** `Translate` kind:command
+- **Translation artifact** `TranslationArtifact` kind:entity
 - **Translation capability** `TranslationCapability` kind:value
 - **Translation engine** `TranslationEngine` kind:service
+- **Translation failure** `TranslationFailure` kind:state
 - **Translation model readiness** `ModelAvailability` kind:state
+- **Translation preparation** `TranslationPreparationState` kind:state
+- **Translation preparation phase** `TranslationPreparationPhase` kind:state
 - **Translation provider** `TranslationProviderDescriptor` kind:value
 - **Undetermined language** `UndeterminedLanguage` kind:state
 - **Utterance recognition** `ConversationRecognitionEngine` kind:service
@@ -109,9 +111,9 @@ skill: ubiquitous-language
 - **Evidence**: `core/src/main/java/com/example/offlinetranslator/core/ConversationPipeline.kt:30-39`, `app/src/main/res/values-ru/strings.xml:32-35`.
 
 ### Direct translation
-- **Definition**: A translation path for which the application has confirmed SDK direct-translation evidence for the selected pair.
-- **NOT**: A guarantee of executability, quality or the absence of internal intermediate SDK representations.
-- **Evidence**: `core/src/main/java/com/example/offlinetranslator/core/TranslationCapabilities.kt:3-4,18-19`, `engine-mlkit/src/main/java/com/example/offlinetranslator/mlkit/MlKitTranslationEngine.kt:146-166`.
+- **Definition**: A translation path reported as one source-to-target model invocation, supported by provider-specific routing evidence.
+- **NOT**: A guarantee of output quality or the absence of internal intermediate representations.
+- **Evidence**: `core/src/main/java/com/example/offlinetranslator/core/TranslationCapabilities.kt`, `MlKitTranslationEngine.capability`, `TencentTranslationEngine.capability`.
 
 ### Install
 - **Definition**: Explicitly obtain and verify speech resources owned by the model repository.
@@ -156,7 +158,7 @@ skill: ubiquitous-language
 - **Evidence**: `core/src/main/java/com/example/offlinetranslator/core/TranslationEngine.kt` (`prepare`), `ConversationEngines.kt:49,66` in the same directory.
 
 ### Recognition backend
-- **Definition**: A choice between Android system offline, joint Whisper, legacy Sherpa and NeMo recognition, independent of the Speech output backend.
+- **Definition**: A choice between Android system offline, joint Whisper and legacy Sherpa recognition, independent of the Speech output backend.
 - **NOT**: Speech output backend or Translation engine; this choice neither replaces speech output nor enables automatic switching between backends.
 - **Related**: Utterance recognition, Speech output backend, Recognition readiness.
 - **Evidence**: `core/src/main/java/com/example/offlinetranslator/core/AppSettings.kt` (`SpeechRecognitionBackend`).
@@ -226,28 +228,20 @@ skill: ubiquitous-language
 - **NOT**: Recognized utterance: this is audio with optional end-of-speech timing data, not text.
 - **Evidence**: `core/src/main/java/com/example/offlinetranslator/core/SpeechSegment.kt:3-7,19-34`.
 
-### Speech transcription
-- **Definition**: Obtaining original text from a speech segment without requiring a selected source language or assigning a translation direction.
-- **NOT**: Utterance recognition, which also resolves or explicitly declines a selected-pair direction, or language-conditioned recognition that requires a pair.
-- **Related**: Speech segment, Text language identification.
-- **Evidence**: `core/src/main/java/com/example/offlinetranslator/core/ConversationEngines.kt:24-28`, `engine-nemo/src/main/java/com/example/offlinetranslator/nemo/NemoSpeechTranscriber.kt`.
-
 ### System voice
 - **Definition**: A named Android TTS voice with a language locale and flags for network requirements and missing installed data.
 - **NOT**: A guarantee that every installed voice supports offline output; Piper uses a Speech model rather than this system object.
 - **Related**: Speech output readiness.
 - **Evidence**: `app/src/main/java/com/example/offlinetranslator/speech/AndroidTtsClient.kt:38-43`, `app/src/main/res/values-ru/strings.xml:131-135`.
 
-### Text language identification
-- **Definition**: Assigning one of the selected languages to transcribed original text, or declining when the available evidence does not satisfy the provider's acceptance policy.
-- **NOT**: Language identifier, acoustic language identification, or correction of mistranscribed words.
-- **Related**: Language pair, Speech transcription, Undetermined language.
-- **Evidence**: `core/src/main/java/com/example/offlinetranslator/core/ConversationEngines.kt:30-34`, `engine-mlkit/src/main/java/com/example/offlinetranslator/mlkit/MlKitTextLanguageIdentifier.kt:14-30`.
-
 ### Translate
 - **Definition**: Request translation of text from the source language to the target language of the selected pair.
 - **NOT**: Prepare: translation uses local resources and does not download missing models.
 - **Evidence**: `core/src/main/java/com/example/offlinetranslator/core/TranslationEngine.kt:3-13` (`translate`).
+
+### Translation artifact
+- **Definition**: A pinned, integrity-verified local file containing translation weights, shared across selected language pairs without sharing mutable inference state.
+- **NOT**: A Speech resource package or a loaded Translation engine.
 
 ### Translation capability
 - **Definition**: The engine's classification of the selected pair's translation path: direct, pivot, unsupported or unknown.
@@ -261,10 +255,20 @@ skill: ubiquitous-language
 - **Related**: Translation provider, Translate.
 - **Evidence**: `core/src/main/java/com/example/offlinetranslator/core/TranslationEngine.kt:3-13`.
 
+### Translation failure
+- **Definition**: A typed actionable cause of unsuccessful translation preparation or inference, excluding coroutine cancellation.
+
 ### Translation model readiness
 - **Definition**: Local availability of the models needed for the selected translation, with MISSING and READY states.
 - **NOT**: Translation capability: a supported path can still require resource preparation.
 - **Evidence**: `core/src/main/java/com/example/offlinetranslator/core/ModelAvailability.kt:3-6`, `TranslationEngine.kt:8-11` in the same directory.
+
+### Translation preparation
+- **Definition**: An observable snapshot of explicit translation resource preparation, including phase, available byte progress and the last typed failure.
+- **NOT**: Translation model readiness, which only queries locally available resources.
+
+### Translation preparation phase
+- **Definition**: The current stage of translation preparation: checking, missing, downloading, verifying, loading, ready or failed.
 
 ### Translation provider
 - **Definition**: An identifiable translation implementation with a name, provider and SDK information, attribution and terms of use.
@@ -274,14 +278,14 @@ skill: ubiquitous-language
 ### Undetermined language
 - **Definition**: A recognition outcome retaining any original text without a sufficiently supported language assignment within the selected pair.
 - **NOT**: An unsupported selected pair or a recognized direction that may be guessed for translation.
-- **Related**: Recognition result, Text language identification.
-- **Evidence**: `core/src/main/java/com/example/offlinetranslator/core/ConversationEngines.kt:22`, `TextFirstConversationRecognitionEngine.kt:82-96` in the same directory.
+- **Related**: Recognition result, Utterance recognition.
+- **Evidence**: `core/src/main/java/com/example/offlinetranslator/core/ConversationEngines.kt:22`.
 
 ### Utterance recognition
 - **Definition**: Obtaining a speech segment's original text and resolving its translation direction within the selected pair, or explicitly leaving its source undetermined.
 - **NOT**: Translation engine: recognition returns original text with a direction or an undetermined outcome, not translated text.
 - **Related**: Recognition result, Recognized utterance, Undetermined language.
-- **Evidence**: `core/src/main/java/com/example/offlinetranslator/core/ConversationEngines.kt:44-53`.
+- **Evidence**: `core/src/main/java/com/example/offlinetranslator/core/ConversationEngines.kt:33-40`.
 
 ### Utterance status
 - **Definition**: The processing stage of an individual conversation record: understanding, translating, speaking, completed, failed or interrupted.
@@ -297,8 +301,8 @@ meaning rather than mechanically substituting an arbitrary Index term.
 
 ## Legacy
 
-No confirmed legacy domain names were found in the inspected active paths.
-Historical settings-format migration does not make active concepts obsolete.
+- `SpeechTranscriber` → — (see `ConversationRecognitionEngine`) in: `core` — retired with the removed Parakeet-only unconditioned transcription strategy.
+- `TextLanguageIdentifier` → — (see `ConversationRecognitionEngine`) in: `core`, `engine-mlkit` — retired with the removed Parakeet-only text classifier.
 The evaluation `SpeechToTextPipeline` is not the user-facing Text mode:
 the application uses `ConversationPipeline` and `TranslationRoute`, while the
 separate speech pipeline is used by `engine-sherpa-model-smoke`. Do not declare

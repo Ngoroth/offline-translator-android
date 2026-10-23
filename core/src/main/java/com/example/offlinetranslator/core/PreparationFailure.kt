@@ -1,6 +1,6 @@
 package com.example.offlinetranslator.core
 
-sealed class PreparationFailure(message: String, cause: Throwable? = null) : Exception(message, cause) {
+sealed class PreparationFailure(message: String, cause: Throwable? = null) : TranslationFailure(message, cause) {
     class WifiRequired(cause: Throwable? = null) :
         PreparationFailure("A validated Wi-Fi connection is required", cause)
 

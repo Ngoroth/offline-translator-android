@@ -110,7 +110,8 @@ fun TranslationRoute(homeControls: @Composable () -> Unit, onLanguageTransitionC
             selected == latest.languagePair || selected.source == selected.target ||
             LanguageCatalog.find(selected.source) == null || LanguageCatalog.find(selected.target) == null ||
             (vm != null && (!vm.hasCurrentOwner || vm.config != latest.textConfig() ||
-                vm.state.value.modelStatus == ModelUiStatus.DOWNLOADING || vm.state.value.modelStatus == ModelUiStatus.CHECKING))) return@select
+                vm.state.value.isPreparing || vm.state.value.modelStatus in setOf(ModelUiStatus.DOWNLOADING,
+                    ModelUiStatus.VERIFYING, ModelUiStatus.LOADING, ModelUiStatus.CHECKING)))) return@select
         input = vm?.state?.value?.input ?: input
         inputTooLong = vm?.state?.value?.inputTooLong ?: inputTooLong
         guardedCreation = true

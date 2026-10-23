@@ -9,14 +9,14 @@ Small focused pull requests are welcome. Explain the problem, behavior changed, 
 - JDK **17**, configured through `JAVA_HOME`.
 - Android SDK, configured through `ANDROID_HOME`, with `platform-tools`, **`platforms;android-37.0`**, and **`build-tools;36.0.0`**.
 - Use current Android SDK command-line tools **23.0** or newer with repository schema 3 support for this platform package. The package name is `platforms;android-37.0`, not `platforms;android-37`; old schema 1/2 repository listings do not include it.
-- Python **3.12+** and the complete verified NeMo native distribution. Native preparation runs on Linux x86_64 (including WSL), using the pinned toolchains; see [README preparation](README.md#build-and-run). Windows/macOS Gradle commands consume the prepared distribution rather than compiling it locally.
-- The checked-in Gradle wrapper supplies Gradle. Run commands from the repository root. Windows, Linux and macOS host commands are below.
+- Python **3.12+** and complete verified paired Sherpa and Tencent native distributions; see [README preparation](README.md#build-and-run).
+- The checked-in Gradle wrapper supplies Gradle. Run commands from the repository root. Native preparation supports Linux x86_64; Windows uses PowerShell 7 and an existing WSL Ubuntu with Python 3 and Git. macOS needs separately prepared verified Linux artifacts, not automatic toolchain substitution.
 
 The [host workflow](.github/workflows/host-checks.yml) provisions official Android command-line tools archive revision **16111833** (CLI 23.0), JDK 17, platform 37.0 and Build Tools 36.0.0 on Ubuntu 24.04. Locally, install the named packages with the official SDK Manager and review/accept its licenses; the project's Apache license does not grant SDK or third-party rights.
 
 Host checks run for branch pushes, pull requests and manual dispatch. Tag-only pushes do not start this workflow; publish release tags only after checking their branch commit.
 
-The app compiles against API 37, targets API 36, requires API 34 (Android 14), and packages `arm64-v8a` and `x86_64`. Build/dependency downloads require network access; host checks need neither speech models nor an emulator.
+The app compiles against API 37, targets API 36, requires API 34 (Android 14), and packages `arm64-v8a` and `x86_64`. Explicit native preparation and build/dependency downloads require network access; host checks need neither translation/speech model weights nor an emulator.
 
 ## Baseline host checks
 
@@ -28,23 +28,25 @@ Before changing behavior, record the relevant baseline and distinguish existing 
 $env:JAVA_HOME = "C:\Program Files\Java\jdk-17"
 $env:ANDROID_HOME = "C:\Users\<user>\AppData\Local\Android\Sdk"
 
+pwsh -File tools/android/prepare-tencent-native.ps1
 .\gradlew.bat :engine-sherpa:prepareSherpaArchive --console=plain
 
-.\gradlew.bat :core:testDebugUnitTest :engine-mlkit:testDebugUnitTest :engine-sherpa:testDebugUnitTest :speech-models:testDebugUnitTest :engine-nemo:testDebugUnitTest :app:testDebugUnitTest :translator-test-kit:testDebugUnitTest :app:lintDebug :app:assembleDebug :app:assembleDebugAndroidTest
+.\gradlew.bat :core:testDebugUnitTest :engine-mlkit:testDebugUnitTest :engine-tencent:testDebugUnitTest :engine-sherpa:testDebugUnitTest :speech-models:testDebugUnitTest :app:testDebugUnitTest :translator-test-kit:testDebugUnitTest :app:lintDebug :app:assembleDebug :app:assembleDebugAndroidTest :engine-sherpa-model-smoke:assembleModelSmoke :engine-sherpa-model-smoke:assembleModelSmokeAndroidTest
 
 # The included build has a separate JVM test gate.
 .\gradlew.bat -p build-logic test --console=plain
 ```
 
-### Linux / macOS (POSIX)
+### Linux (POSIX)
 
 ```bash
 export JAVA_HOME="/path/to/jdk-17"
 export ANDROID_HOME="/path/to/android-sdk"
 
+python3 tools/android/prepare-tencent-native.py
 bash ./gradlew :engine-sherpa:prepareSherpaArchive --console=plain
 
-bash ./gradlew :core:testDebugUnitTest :engine-mlkit:testDebugUnitTest :engine-sherpa:testDebugUnitTest :speech-models:testDebugUnitTest :engine-nemo:testDebugUnitTest :app:testDebugUnitTest :translator-test-kit:testDebugUnitTest :app:lintDebug :app:assembleDebug :app:assembleDebugAndroidTest
+bash ./gradlew :core:testDebugUnitTest :engine-mlkit:testDebugUnitTest :engine-tencent:testDebugUnitTest :engine-sherpa:testDebugUnitTest :speech-models:testDebugUnitTest :app:testDebugUnitTest :translator-test-kit:testDebugUnitTest :app:lintDebug :app:assembleDebug :app:assembleDebugAndroidTest :engine-sherpa-model-smoke:assembleModelSmoke :engine-sherpa-model-smoke:assembleModelSmokeAndroidTest
 
 # The included build has a separate JVM test gate.
 bash ./gradlew -p build-logic test --console=plain
@@ -52,9 +54,13 @@ bash ./gradlew -p build-logic test --console=plain
 
 Using `bash ./gradlew` works even when the wrapper is not executable. Run the separate build-logic tests from a real repository checkout with valid Git metadata: existing recovery fixtures use the repository's `.git`. An export without Git metadata is not an equivalent test environment.
 
-Prepare both native runtimes explicitly before the application host gate. The Sherpa command above downloads its pinned official 1.13.8 AAR to ignored `engine-sherpa/libs/sherpa-onnx-1.13.8.aar` and verifies its size and SHA-256. The separate build-logic recovery tests also require this AAR. Valid local bytes are reusable offline; corrupt existing files fail unchanged and must be inspected/removed explicitly. See [Sherpa provenance](engine-sherpa/THIRD_PARTY.md) for artifact identity and distribution conditions.
+Prepare both native distributions explicitly before the application host gate. The Sherpa command above downloads the pinned official 1.13.8 AAR only as the verified wrapper/ORT preparation input and for build-logic recovery tests. Follow the [Linux/WSL paired-Sherpa command](README.md#build-and-run) and pinned tool-archive layout in the [host workflow](.github/workflows/host-checks.yml) to prepare `sherpa-onnx-1.13.8-pair-v1.aar`. Ordinary builds consume only this source/patch/tool-bound distribution after read-only receipt/hash/ABI/alignment/feature verification; they never fall back to the stock AAR or repair/rebuild missing bytes. Valid prepared bytes are reusable offline. Do not edit receipts or submit generated caches. See [Sherpa provenance](engine-sherpa/THIRD_PARTY.md).
 
-For NeMo, follow the [explicit Linux/WSL preparation command](README.md#build-and-run) and the tool-archive layout in the [host workflow](.github/workflows/host-checks.yml). Its helper can explicitly download pinned source archives, but not tools or model weights. Ordinary Gradle builds run read-only native receipt/hash/ABI/alignment verification and never repair or download a missing distribution. Do not modify receipts or submit generated native caches. Exact source/tool pins and shipped licenses are in [NeMo provenance](engine-nemo/THIRD_PARTY.md).
+Tencent preparation builds CPU-only JNI from llama.cpp commit `d8d92973c8c21bb4dd5d592f0fec26fe2cd1e654` using isolated NDK `29.0.13113456-beta1`, CMake `4.2.3` and Ninja `1.13.2`. It explicitly obtains/verifies pinned sources/tools under ignored `engine-tencent/.native-cache` and publishes both ABIs in `engine-tencent/libs/tencent-native-d8d92973-r2.aar` plus its receipt. It does not mutate the host Android SDK or download model weights. The Windows wrapper translates absolute paths and forwards to that same Linux recipe in WSL Ubuntu.
+
+Ordinary Gradle builds only verify the prepared AAR, its content/ABI inventory and the receipt against current native sources, recipe, manifest/notice inputs and effective settings. Changing those inputs requires explicit re-preparation even if an older AAR still matches its own checksum. Missing/stale/altered artifacts fail rather than silently rebuilding/downloading. See [Tencent native provenance](engine-tencent/THIRD_PARTY.md). After dependencies are seeded, verify prepared consumption with `bash ./gradlew :engine-tencent:testDebugUnitTest :app:assembleDebug --offline --console=plain` (Windows: `.\gradlew.bat`).
+
+Tencent native generation uses deterministic strict UTF-8-prefix-constrained greedy decoding, not unconstrained greedy or repaired output. Decoder changes require fresh preparation for both ABIs and the opt-in frozen Chinese-to-Thai JNI regression, not just host success. The regression checks complete Unicode and retained name/time/price facts without pinning sentence wording or certifying full translation quality; follow the [device verification guide](docs/testing/verify-translator.md#tencent-specific-preparation-and-native-checks).
 
 Inspect module `build/test-results/` and `build/reports/`, plus `app/build/reports/lint-results-debug.*`. APK outputs are under `app/build/outputs/apk/`. Assembling the instrumentation APK does not run its tests.
 

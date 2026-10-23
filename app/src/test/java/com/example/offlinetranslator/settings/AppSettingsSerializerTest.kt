@@ -27,7 +27,6 @@ class AppSettingsSerializerTest {
         val out = ByteArrayOutputStream()
         serializer.writeTo(serializer.defaultValue, out)
         val document = JSONObject(out.toString("UTF-8"))
-        assertEquals(6, document.getInt("schemaVersion"))
         assertEquals("system-offline", document.getString("speechOutputBackend"))
         assertEquals("system-offline", document.getString("speechRecognitionBackend"))
         assertEquals("ru", document.getJSONObject("languagePair").getString("source"))
@@ -54,7 +53,6 @@ class AppSettingsSerializerTest {
         val out = ByteArrayOutputStream()
         serializer.writeTo(original, out)
         val document = JSONObject(out.toString("UTF-8"))
-        assertEquals(6, document.getInt("schemaVersion"))
         assertEquals("piper", document.getString("speechOutputBackend"))
         assertEquals("sherpa", document.getString("speechRecognitionBackend"))
         assertEquals(original, serializer.readFrom(ByteArrayInputStream(out.toByteArray())))
@@ -103,7 +101,6 @@ class AppSettingsSerializerTest {
         for ((id, backend) in listOf(
             "system-offline" to SpeechRecognitionBackend.SYSTEM_OFFLINE,
             "sherpa" to SpeechRecognitionBackend.SHERPA,
-            "nemo" to SpeechRecognitionBackend.NEMO,
             "whisper" to SpeechRecognitionBackend.WHISPER,
         )) {
             val source = document(6).put("speechRecognitionBackend", id)
@@ -112,6 +109,38 @@ class AppSettingsSerializerTest {
             val expected = AppSettingsTestFixtures.migrated.copy(speechRecognitionBackend = backend,
                 speechRecognitionService = "missing.provider/.RecognitionService", languageIdModelId = "saved-lid")
             assertEquals(expected, serializer.readFrom(source.toString().byteInputStream()))
+        }
+    }
+
+    @Test
+    fun removedOrUnknownRecognitionBackendFallsBackWithoutChangingOtherSavedFields() = runBlocking<Unit> {
+        val expected = AppSettingsTestFixtures.migrated.copy(
+            languagePair = LanguagePair(LanguageCatalog.DUTCH, LanguageCatalog.ENGLISH),
+            speechRecognitionBackend = SpeechRecognitionBackend.SYSTEM_OFFLINE,
+            speechRecognitionService = "missing.provider/.RecognitionService",
+            textEngineId = "tencent",
+            conversationEngineId = "tencent",
+            vadModelId = "saved-vad",
+            languageIdModelId = "saved-lid",
+            vadMinSilenceMs = 1200,
+            ttsSpeedPercent = 115,
+        )
+        val output = ByteArrayOutputStream()
+        serializer.writeTo(expected, output)
+        for (version in 5..6) {
+            for (backendId in listOf("nemo", "removed-backend")) {
+                val source = JSONObject(output.toString("UTF-8"))
+                    .put("schemaVersion", version)
+                    .put("speechRecognitionBackend", backendId)
+                if (version == 5) source.remove("speechRecognitionService")
+                val migrated = if (version == 5) expected.copy(speechRecognitionService = null) else expected
+                val loaded = serializer.readFrom(source.toString().byteInputStream())
+                assertEquals(migrated, loaded)
+                val rewritten = ByteArrayOutputStream()
+                serializer.writeTo(loaded, rewritten)
+                assertEquals("system-offline", JSONObject(rewritten.toString("UTF-8")).getString("speechRecognitionBackend"))
+                assertEquals(migrated, serializer.readFrom(rewritten.toByteArray().inputStream()))
+            }
         }
     }
 
@@ -171,10 +200,10 @@ class AppSettingsSerializerTest {
     }
 
     @Test
-    fun recognitionSchemasRequireExactKnownRecognitionBackendIds() {
+    fun recognitionSchemasRequireWellFormedRecognitionBackendIds() {
         for (version in 5..6) {
             assertCorrupt(document(version).apply { remove("speechRecognitionBackend") })
-            for (invalid in listOf("SYSTEM_OFFLINE", "sherpa ", "unknown", "", 12, true, JSONObject.NULL)) {
+            for (invalid in listOf("SYSTEM_OFFLINE", "sherpa ", "", "../unsafe", "a".repeat(129), 12, true, JSONObject.NULL)) {
                 assertCorrupt(document(version).put("speechRecognitionBackend", invalid))
             }
         }

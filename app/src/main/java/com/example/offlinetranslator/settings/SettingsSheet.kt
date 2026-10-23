@@ -96,7 +96,6 @@ fun SettingsSheet(
                         Choice(stringResource(R.string.settings_recognition_backend), draft.speechRecognitionBackend.persistedId, listOf(
                             SpeechRecognitionBackend.SYSTEM_OFFLINE.persistedId to stringResource(R.string.settings_recognition_system),
                             SpeechRecognitionBackend.SHERPA.persistedId to stringResource(R.string.settings_recognition_sherpa),
-                            SpeechRecognitionBackend.NEMO.persistedId to stringResource(R.string.settings_recognition_nemo),
                             SpeechRecognitionBackend.WHISPER.persistedId to stringResource(R.string.settings_recognition_whisper),
                         ), enabled, SettingsTestTags.RECOGNITION_BACKEND) { selected ->
                             onDraftChanged(draft.copy(speechRecognitionBackend = SpeechRecognitionBackend.entries.first { it.persistedId == selected }))
@@ -148,8 +147,11 @@ fun SettingsSheet(
                         Text(stringResource(R.string.settings_about_translation), style = MaterialTheme.typography.titleMedium)
                         for (provider in providers) {
                             if (provider.id == draft.textEngineId || provider.id == draft.conversationEngineId) {
-                                Text(if (provider.id == "mlkit" && providers.size == 1) stringResource(R.string.settings_mlkit_summary)
-                                    else stringResource(R.string.settings_provider_summary, provider.displayName))
+                                Text(when (provider.id) {
+                                    "mlkit" -> stringResource(R.string.settings_mlkit_summary)
+                                    "tencent" -> stringResource(R.string.tencent_model_explanation)
+                                    else -> stringResource(R.string.settings_provider_summary, provider.displayName)
+                                })
                             }
                         }
                         Text(stringResource(R.string.settings_advanced_reset_explanation), style = MaterialTheme.typography.bodySmall)

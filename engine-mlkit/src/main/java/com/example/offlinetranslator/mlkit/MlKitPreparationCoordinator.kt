@@ -41,7 +41,7 @@ class MlKitPreparationCoordinator internal constructor(
         return if (ready) ModelAvailability.READY else ModelAvailability.MISSING
     }
 
-    internal suspend fun prepare(languages: Set<LanguageId>): ModelAvailability {
+    internal suspend fun prepare(languages: Set<LanguageId>, downloading: () -> Unit = {}): ModelAvailability {
         try {
             val missing = linkedSetOf<LanguageId>()
             for (language in languages) {
@@ -50,6 +50,7 @@ class MlKitPreparationCoordinator internal constructor(
             }
             if (missing.isEmpty()) return ModelAvailability.READY
             if (!wifi.isValidatedWifi()) throw PreparationFailure.WifiRequired()
+            downloading()
 
             // Retain the actual SDK operation, not a cancellable coroutine proxy.
             // Every owner preparing this language joins it until its own completion.

@@ -9,6 +9,9 @@ import com.example.offlinetranslator.core.TranslationCapability
 import com.example.offlinetranslator.core.TranslationEngine
 import com.example.offlinetranslator.core.TranslationProviderDescriptor
 import com.example.offlinetranslator.core.requireSupported
+import com.example.offlinetranslator.core.PreparationFailure
+import com.example.offlinetranslator.core.TranslationPreparationState
+import com.example.offlinetranslator.core.TranslationPreparationPhase
 import com.google.mlkit.nl.translate.Translation
 import com.google.mlkit.nl.translate.Translator
 import com.google.mlkit.nl.translate.TranslatorOptions
@@ -17,6 +20,11 @@ import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlin.coroutines.coroutineContext
 
 class MlKitTranslationEngine internal constructor(
@@ -38,6 +46,10 @@ class MlKitTranslationEngine internal constructor(
     private var inFlightTranslations = 0
     private var clientsClosed = false
     private val clients: Map<LanguagePair, TranslationClient> = createClients(clientFactory)
+    private val mutablePreparation = MutableStateFlow(TranslationPreparationState())
+    override val preparation = mutablePreparation.asStateFlow()
+    private val preparationSlot = Mutex()
+    private var warmed = false
 
     constructor(
         @Suppress("UNUSED_PARAMETER") context: Context,
@@ -47,18 +59,37 @@ class MlKitTranslationEngine internal constructor(
 
     override suspend fun modelAvailability(): ModelAvailability {
         ensureOpen()
-        return coordinator.modelAvailability(requiredLanguages)
+        return coordinator.modelAvailability(requiredLanguages).also {
+            if (!warmed && !preparationSlot.isLocked) {
+                mutablePreparation.value = TranslationPreparationState(
+                    if (it == ModelAvailability.READY) TranslationPreparationPhase.LOADING else TranslationPreparationPhase.MISSING,
+                )
+            }
+        }
     }
 
-    override suspend fun prepare(): ModelAvailability {
+    override suspend fun prepare(): ModelAvailability = preparationSlot.withLock {
         ensureOpen()
-        val availability = coordinator.prepare(requiredLanguages)
-        // Metadata-only warmup loads exactly the selected SDK inference paths.
-        // Uncatalogued SDK sources receive neutral digits; user input is never rewritten.
-        for (pair in pairs) {
-            translate(pair, LanguageCatalog.find(pair.source)?.warmUpText ?: "1")
+        if (warmed) return@withLock ModelAvailability.READY
+        mutablePreparation.value = TranslationPreparationState(TranslationPreparationPhase.CHECKING)
+        try {
+            val availability = coordinator.prepare(requiredLanguages) {
+                mutablePreparation.value = TranslationPreparationState(TranslationPreparationPhase.DOWNLOADING)
+            }
+            mutablePreparation.value = TranslationPreparationState(TranslationPreparationPhase.LOADING)
+            // Warm only selected SDK paths; never rewrite user input.
+            for (pair in pairs) translate(pair, LanguageCatalog.find(pair.source)?.warmUpText ?: "1")
+            warmed = true
+            mutablePreparation.value = TranslationPreparationState(TranslationPreparationPhase.READY)
+            availability
+        } catch (cancelled: CancellationException) {
+            mutablePreparation.value = TranslationPreparationState(TranslationPreparationPhase.MISSING)
+            throw cancelled
+        } catch (error: Exception) {
+            val failure = error as? PreparationFailure ?: PreparationFailure.ProviderFailure(error)
+            mutablePreparation.value = TranslationPreparationState(TranslationPreparationPhase.FAILED, lastFailure = failure)
+            throw failure
         }
-        return availability
     }
 
     override suspend fun translate(pair: LanguagePair, text: String): String {

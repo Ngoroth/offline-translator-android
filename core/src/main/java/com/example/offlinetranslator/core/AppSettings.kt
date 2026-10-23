@@ -8,7 +8,6 @@ enum class SpeechOutputBackend(val persistedId: String) {
 enum class SpeechRecognitionBackend(val persistedId: String) {
     SYSTEM_OFFLINE("system-offline"),
     SHERPA("sherpa"),
-    NEMO("nemo"),
     WHISPER("whisper"),
 }
 

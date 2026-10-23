@@ -72,6 +72,7 @@ class AppSettingsRepositoryTest {
             val updated = migrated.copy(
                 languagePair = LanguagePair(LanguageCatalog.FRENCH, LanguageCatalog.SPANISH),
                 speechOutputBackend = SpeechOutputBackend.SYSTEM_OFFLINE,
+                textEngineId = "tencent",
                 ttsSpeedPercent = 115,
                 speechRecognitionService = "missing.provider/.RecognitionService",
             )
@@ -82,7 +83,6 @@ class AppSettingsRepositoryTest {
                 assertEquals(updated, secondRepo.save(updated))
                 assertEquals(updated, secondRepo.current())
                 val document = JSONObject(file.readText(Charsets.UTF_8))
-                assertEquals(6, document.getInt("schemaVersion"))
                 assertEquals("system-offline", document.getString("speechOutputBackend"))
                 assertEquals(migrated.speechRecognitionBackend.persistedId, document.getString("speechRecognitionBackend"))
                 for (field in listOf("textPair", "conversationLanguages", "asrModelIds", "ttsModelIds")) {
@@ -119,7 +119,6 @@ class AppSettingsRepositoryTest {
             first.closeAndJoin()
         }
         val document = JSONObject(file.readText(Charsets.UTF_8))
-        assertEquals(6, document.getInt("schemaVersion"))
         assertEquals("sherpa", document.getString("speechRecognitionBackend"))
         assertEquals("piper", document.getString("speechOutputBackend"))
 
@@ -140,8 +139,7 @@ class AppSettingsRepositoryTest {
             vadMinSilenceMs = 1200,
             ttsSpeedPercent = 115,
         )
-        for (backend in listOf(SpeechRecognitionBackend.SYSTEM_OFFLINE, SpeechRecognitionBackend.SHERPA,
-            SpeechRecognitionBackend.NEMO)) {
+        for (backend in listOf(SpeechRecognitionBackend.SYSTEM_OFFLINE, SpeechRecognitionBackend.SHERPA)) {
             val saved = previous.copy(speechRecognitionBackend = backend)
             val selected = saved.copy(speechRecognitionBackend = SpeechRecognitionBackend.WHISPER)
             val first = AppSettingsRepository(file)

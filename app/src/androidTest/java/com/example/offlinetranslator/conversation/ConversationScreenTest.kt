@@ -63,6 +63,7 @@ import com.example.offlinetranslator.core.SpeechModelInstallState
 import com.example.offlinetranslator.core.SpeechModelStatus
 import com.example.offlinetranslator.core.ConfigurationProblem
 import com.example.offlinetranslator.mlkit.MlKitTranslationEngine
+import com.example.offlinetranslator.tencent.TencentTranslationEngine
 import com.example.offlinetranslator.ui.pressSystemBack
 import com.example.offlinetranslator.ui.TranslatorHelpTestTags
 import org.junit.Assert.assertEquals
@@ -72,6 +73,7 @@ import org.junit.Test
 
 class ConversationScreenTest {
     @get:Rule val compose = createComposeRule()
+
 
     @Test fun recognitionInstallerIsReachableAtLargeFontButNeverEnablesStaleStartOrIncompatibleLaunch() {
         val fontScale = mutableStateOf(1f)
@@ -105,7 +107,6 @@ class ConversationScreenTest {
         compose.onNodeWithTag(ConversationTestTags.PREPARE).performScrollTo().assertIsNotEnabled()
         compose.onNodeWithTag(ConversationTestTags.SESSION_ACTION).assertIsNotEnabled()
     }
-
     @Test fun outputRecoveryKeepsInstallAvailableForEverySelectedPairWithoutStarting() {
         val pair = mutableStateOf(LanguagePair(LanguageCatalog.RUSSIAN, LanguageCatalog.ENGLISH))
         compose.setContent { MaterialTheme {
@@ -673,11 +674,9 @@ class ConversationScreenTest {
         }
         compose.runOnIdle { provider.value = null }
         compose.onAllNodesWithContentDescription(attribution, useUnmergedTree = true).assertCountEquals(0)
-        compose.runOnIdle { provider.value = MlKitTranslationEngine.descriptor.copy(
-            id = "isolated-descriptor", displayName = "Other translator", provider = "Other",
-            attribution = "Other translator attribution", termsUrl = "https://example.test/terms") }
+        compose.runOnIdle { provider.value = TencentTranslationEngine.descriptor }
         compose.onAllNodesWithContentDescription(attribution, useUnmergedTree = true).assertCountEquals(0)
-        compose.onNodeWithText("Other translator attribution", useUnmergedTree = true).assertDoesNotExist()
+        compose.onNodeWithText(TencentTranslationEngine.descriptor.attribution, useUnmergedTree = true).assertIsDisplayed()
         compose.onNodeWithText("Новый запрос").assertExists()
         compose.onNodeWithText(requireNotNull(previous.translation)).assertExists()
         compose.runOnIdle { provider.value = MlKitTranslationEngine.descriptor }

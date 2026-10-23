@@ -2,8 +2,6 @@
 
 **Two people. One Android phone. A conversation across languages — with recognition, translation and speech running on the device.**
 
-Created by **[Daniil Sterkhov · Ngoroth](https://github.com/Ngoroth)** as a showcase of human-directed software development with AI agents.
-
 > **Status:** working development project, not a production-qualified release. Language resources must be prepared online before offline use. Available speech languages depend on the device and its installed services.
 
 ## See it working
@@ -18,36 +16,17 @@ Created by **[Daniil Sterkhov · Ngoroth](https://github.com/Ngoroth)** as a sho
 
 ![Recorded offline conversation using a committed test-audio fixture](docs/media/offline-conversation.gif)
 
-This is the actual app on an emulator with networking disabled and languages already prepared. Recorded test audio enters the real microphone/VAD/recognition path; it is not a live human microphone demonstration. The observed translation and speech output are preserved, including the displayed wording. Only idle waiting before the audio input was trimmed; no inference was sped up. [Capture details, attribution and limits](docs/media/README.md).
+Recorded on an emulator with networking disabled and languages prepared. Test audio passes through the real recognition, translation and speech pipeline—not a live human microphone demo. [Capture details and limits](docs/media/README.md).
 
 ## The experience
 
-Choose two languages, prepare their resources, and start a conversation. Either person can speak a turn. The app recognizes the speech, determines its source within the selected pair, translates it, and reads the result aloud. Listening pauses during playback and resumes afterward.
+Choose two languages, prepare their resources, and start a conversation. Either person can speak a turn; the app recognizes, translates and reads it aloud. Listening resumes after playback. **Text** uses the same language pair without the microphone.
 
-For situations where speaking is inconvenient, **Text** uses the same language pair without starting the microphone or speech pipeline.
+- **Local processing:** ML Kit translation and Android on-device speech by default, with no automatic cloud or other-provider fallback.
+- **Optional engines:** Tencent Hy-MT2 translation; selected-pair multilingual Whisper recognition; legacy Sherpa recognition and Piper speech for the curated Russian/English setup.
+- **17 languages:** a shared language pair across Conversation and Text, with a localized interface.
 
-- **On-device processing:** the conversation path uses local recognition, ML Kit translation and local speech output. Missing resources do not trigger a cloud fallback.
-- **Explicit preparation:** download the required resources before use. Missing, unavailable or failed preparation stays visible rather than being presented as ready.
-- **One shared language pair:** change or swap the pair in either Conversation or Text.
-- **Replaceable speech backends:** Android on-device recognition and speech output remain the defaults. Explicitly select **Whisper · offline recognition** for one shared multilingual model that selects between the two participants within recognition. NeMo/Parakeet keeps its text-first strategy; legacy Sherpa recognition and Piper output remain available for the curated Russian/English setup.
-- **A multilingual interface:** app-owned interface text is localized for the same 17-language catalog.
-
-The catalog is `en`, `vi`, `es`, `id`, `it`, `zh`, `ko`, `de`, `pl`, `pt`, `ru`, `th`, `tr`, `fr`, `hi`, `ja`, `nl`. Chinese means Mainland Simplified Mandarin. Dutch uses `nl` for ML Kit and `nl-NL` for Android recognition/output. Whisper covers the current 17 recognition codes through one shared Small INT8 download; it does not expand Piper voices or install System voices. Parakeet covers `en`, `es`, `fr`, `de`, `it`, `ru`, `nl`, `pl`, `pt` through its own shared model. Coverage is not quality qualification or proof of installed Android resources. Earlier Parakeet NL↔EN, NL↔RU and RU↔EN functional conversations and uncertainty recovery passed on an 8 GiB-configured emulator; its earlier 4 GiB run lost Google TTS to low memory. Those observations do not qualify Whisper or erase known recognition and translation-meaning errors.
-
-## Why this is an AI-agent showcase
-
-The project explores how to take an Android application beyond a generated demo: define the product, integrate real on-device engines, handle resource ownership and cancellation, and check the resulting behavior.
-
-**The author directs the work.** Product goals, constraints and decisions belong to the human; AI agents assist with repository research, implementation, independent review and verification. Current capabilities and unresolved limitations are documented below; internal development journals are kept locally.
-
-Concrete engineering concerns include:
-
-- keeping one conversation pipeline while replacing recognition and speech-output implementations;
-- coordinating model preparation, settings changes and engine lifetimes;
-- verifying downloaded archives and bounding audio, queues and transcript history;
-- distinguishing unit/build checks from actual Android, speech-quality and performance evidence.
-
-Lifecycle, bounded-work and input-limit fixes are summarized in the [changelog](docs/CHANGELOG.md). See the [Android verification guide](docs/testing/verify-translator.md) for current checks.
+The catalog is `en`, `vi`, `es`, `id`, `it`, `zh`, `ko`, `de`, `pl`, `pt`, `ru`, `th`, `tr`, `fr`, `hi`, `ja`, `nl`. Chinese means Mainland Simplified Mandarin. Dutch uses `nl` for ML Kit and `nl-NL` for Android recognition/output. Whisper covers the current 17 recognition codes through one shared Small INT8 download; it does not expand Piper voices or install System voices. Coverage is not quality qualification or proof of installed Android resources.
 
 ## How it works
 
@@ -55,18 +34,11 @@ Lifecycle, bounded-work and input-limit fixes are summarized in the [changelog](
 flowchart LR
     A[Microphone] --> B[Voice activity detection]
     B --> C["On-device recognition<br/>and selected-pair language resolution"]
-    C --> D[ML Kit translation]
+    C --> D[Selected local translation]
     D --> E[Local speech output]
 ```
 
 ML Kit can use English as an intermediary for non-English pairs. Source-language resolution follows the explicitly selected recognition backend's policy. Downloads are a separate, explicit preparation step—not part of inference.
-
-Parakeet does not need a separate acoustic language detector or a language hint.
-Its recognized text goes to bundled ML Kit Language Identification. Only a
-sufficiently confident global result matching one selected language determines
-the direction; otherwise the app retains the text, asks for repetition and does
-not translate or speak that turn. Unsupported pairs remain unavailable rather
-than silently using another provider.
 
 Whisper uses one multilingual Small INT8 model and one encoder per utterance.
 The same encoder output feeds a language-token comparison restricted to the two
@@ -80,9 +52,9 @@ silence, is not by itself proof that someone spoke.
 | --- | --- |
 | `app` | Compose UI, settings, Android speech adapters and runtime ownership |
 | `core` | Language/configuration types, engine contracts and conversation processing |
-| `engine-mlkit` | On-device text translation and independent bundled text-language identification |
+| `engine-mlkit` | On-device text translation and actual Google Task lifetimes |
 | `speech-models` | Shared strict catalog, verified package storage, download and installation |
-| `engine-nemo` | Pinned CPU JNI/Parakeet unconditioned multilingual transcription |
+| `engine-tencent` | Shared pinned GGUF preparation and owner-scoped embedded CPU llama.cpp JNI inference |
 | `engine-sherpa` | Native VAD, joint selected-pair Whisper, retained legacy ASR/LID and Piper synthesis |
 | `translator-test-kit` | Shared evaluation inputs and utilities |
 | `engine-sherpa-model-smoke` | Isolated Android/JNI model-evaluation runner |
@@ -92,24 +64,24 @@ See the [architecture and extension guide](docs/EXTENSIBILITY.md) for the actual
 
 ## Build and run
 
-### Requirements
-
 - **JDK 17**, with `JAVA_HOME` configured.
 - **Android SDK platform 37.0** (`platforms;android-37.0`), Build Tools **36.0.0** and current SDK command-line tools; set `ANDROID_HOME`.
 - An Android **14 / API 34+** emulator or device. The app targets API 36 and packages `arm64-v8a` and `x86_64`.
-- **Python 3.12+** and explicitly prepared Sherpa and NeMo native distributions. Native compilation requires Linux x86_64 (including WSL) and the pinned toolchains below; ordinary Gradle builds only verify the prepared distributions.
+- **Python 3.12+** and explicitly prepared paired Sherpa and Tencent native distributions. Native compilation requires Linux x86_64 (including WSL) and the pinned toolchains below; ordinary Gradle builds only verify the prepared distributions.
 
-The checked-in Gradle wrapper supplies Gradle. Building requires network access for build dependencies, but does not download speech models.
+Native preparation needs network access but does not download language models. It requires Linux x86_64; on Windows use PowerShell 7 and WSL Ubuntu with Python 3 and Git. See [environment setup](CONTRIBUTING.md#development-environment) for full prerequisites.
 
 **Windows — PowerShell**
 
 ```powershell
+pwsh -File tools/android/prepare-tencent-native.ps1
 .\gradlew.bat :engine-sherpa:prepareSherpaArchive --console=plain
 ```
 
-**Linux / macOS**
+**Linux**
 
 ```bash
+python3 tools/android/prepare-tencent-native.py
 bash ./gradlew :engine-sherpa:prepareSherpaArchive --console=plain
 ```
 
@@ -140,29 +112,18 @@ back to the official AAR or invoke native compilation. Read-only verification:
 python tools/android/prepare-sherpa-native.py --verify --output engine-sherpa/.native-cache/android --abis arm64-v8a x86_64
 ```
 
-Prepare NeMo separately on Linux x86_64, from the repository root, before app
-assembly:
-
-```bash
-python3 tools/android/prepare-nemo-native.py \
-  --tools-root /absolute/path/to/verified-nemo-tools \
-  --source-cache engine-nemo/.native-cache/sources \
-  --output engine-nemo/.native-cache/android \
-  --abis arm64-v8a x86_64 --download
-```
-
-The read-only tool root must contain the exact NDK r29 beta1, CMake 4.2.3 and
-Ninja 1.13.2 directories pinned in
-[`native-build.json`](engine-nemo/native-build.json). The
-[host workflow's native preparation step](.github/workflows/host-checks.yml)
-downloads the official tool archives, verifies their hashes and lays them out.
-The helper independently verifies tool-tree identities; `--download` permits
-only missing pinned SDK source archives, never tool or model installation.
+The read-only Sherpa tool root must contain the exact NDK r29 beta1, CMake 4.2.3
+and Ninja 1.13.2 directories pinned in
+[`native-build.json`](engine-sherpa/native-build.json). The
+[host workflow's preparation step](.github/workflows/host-checks.yml) downloads
+the official tool archives, verifies their hashes and lays them out. The helper
+independently verifies tool-tree identities; `--download` permits only missing
+pinned SDK source archives, never tool or model installation.
 Windows can prepare through WSL; macOS/Windows Gradle builds need the complete
-verified Linux-prepared distribution at the path above. Copy its generated
-receipt and payload together without editing the receipt. Missing, stale,
-extra or corrupt artifacts fail closed. See
-[NeMo provenance and licenses](engine-nemo/THIRD_PARTY.md).
+verified Linux-prepared distribution. Copy its receipt and payload together
+without editing the receipt. Missing, stale, extra or corrupt artifacts fail
+closed. See [Sherpa provenance and licenses](engine-sherpa/THIRD_PARTY.md) and
+[Tencent preparation](CONTRIBUTING.md#baseline-host-checks).
 
 After both distributions are prepared, assemble with `.\gradlew.bat :app:assembleDebug`
 on Windows or `bash ./gradlew :app:assembleDebug` on Linux/macOS.
@@ -176,54 +137,42 @@ temporary headroom. It needs neither Android recognition-language packs nor the
 legacy independent language-ID model. System output still needs genuine offline
 voices for both participants. No model menu or per-turn speaker action is added.
 
-Fresh-install defaults, Reset, settings schemas and previously saved recognition,
-output, service and language-ID choices remain unchanged. Selecting Whisper does
-not silently replace a saved System, Sherpa or NeMo selection.
+Fresh-install defaults, Reset and settings schemas remain unchanged. Selecting
+Whisper does not silently replace a saved System or Sherpa selection. A saved
+removed backend ID uses the unknown-backend System fallback; other
+well-formed preferences remain intact.
 
 After installation:
 
 1. Choose the two languages.
 2. Use **Prepare languages** while online and resolve any missing system recognition or voice resources.
 3. Wait for readiness, then start Conversation and grant microphone permission—or use Text.
-4. To verify offline use, disconnect networking after preparation. Build compatibility alone does not establish device speech-service support.
+4. Disconnect networking to use the prepared app offline.
 
-### Multilingual Parakeet recognition
-
-Select NeMo/Parakeet in the recognition backend settings, apply, and explicitly
-prepare the selected pair. This installs one verified 714 MB GGUF for all covered
-pairs; it does not depend on Android recognition-language packs. System speech
-output is still a separate choice and requires genuinely installed offline
-voices in Android's default TTS engine for both selected languages. A usable
-text translator does not make an uncovered voice pair ready.
-
-The installed weights occupy about 714 MB. A fresh verified installation needs
-about **1.46 GB of free storage** for the download, staged file and safety reserve,
-plus the other selected VAD/translation/voice resources. This temporary disk
-headroom is separate from the combined inference RAM limit described below.
+<details>
+<summary>Optional provider setup: Android recognition and Tencent</summary>
 
 ### Explicit Android recognition service
 
-Advanced **Settings → Recognition service** keeps **Android on-device service** as the default. You can instead select an installed service without relying on the ROM's designated on-device component. Apply saves the choice; Close discards the draft; Reset returns to the designated service without changing the language pair.
+**Settings → Recognition service** defaults to **Android on-device service**. You can explicitly select the supported Google **Speech Recognition and Synthesis** service instead. Both selected recognition languages must be installed; use **Install recognition language data** on Conversation when needed. See [service requirements and offline-policy boundaries](docs/EXTENSIBILITY.md#selected-recognition-and-request-local-routing).
 
-Listing a service does not establish readiness for offline conversation. The explicit route accepts only Google **Speech Recognition and Synthesis** component `com.google.android.tts/com.google.android.apps.speech.tts.googletts.service.GoogleTTSRecognitionService`, enabled/exported, with exactly one current signer matching `d22cc500299fb22873a01a010de1c82fbe4d061119b94814dd301dab50cb7678` or `7ce83c1b71f3d572fed04c8d40c5cb10ff75e6d87d9df6fbd53f0468c2905053`. There is no version allowlist. Unknown current signers or other components remain incompatible; removed/disabled saved services stay unavailable without substitution. An update invalidates cached readiness and active operations through the full version/update-time/signer identity; fresh checks are required.
+Recognition and speech output are separate choices. **System offline speech** uses Android's default TTS engine and needs offline voices for both languages. For the reported GrapheneOS RU/EN setup, keep Google selected in Android's **Text-to-speech output → Preferred engine** as well as in the app's recognition setting. Switching the TTS default back to GrapheneOS Speech Services was reported to break Conversation; the exact error was not captured. There is no in-app TTS-engine selector.
 
-For an admitted Google service, use **Install recognition language data** on Conversation when a selected language is missing. The app opens Google's public confirmation for one missing selected locale. Cancel or return only causes a fresh readiness check; it never starts recording, assumes installation succeeded, or automatically installs the next language. Prepare translation, VAD and local speech output separately with **Prepare languages**. Both recognition languages must actually be installed before Start.
+### Tencent model preparation and boundaries
 
-**Recognition and speech output are separate choices.** Selecting Google under **Recognition service** does not select a text-to-speech engine. **System offline speech** still uses Android's default TTS engine, which must provide installed offline voices for both selected languages. For the reported GrapheneOS RU/EN setup, keep Google selected in Android's **Text-to-speech output → Preferred engine** as well as in the app's recognition-service setting. Returning the Android TTS default to GrapheneOS Speech Services was reported to break the conversation; the exact resulting error was not captured. This release does not add an independent in-app TTS-engine selector.
+Choose **Tencent Hy-MT2** independently for Text or Conversation in Settings, then use **Prepare** over Wi-Fi to download the **1.13 GB** model. After reopening, Prepare initializes the verified local model without downloading it again. No model is bundled in the APK.
 
-This is a trusted-Google-provider offline-request policy: both selected local languages must be installed, and explicit recognition requests prefer offline processing. Language inventory and `PREFER_OFFLINE` do not attest every requested capability or enforce network isolation inside the provider. The app trusts the authentic Google service to honor that contract; runtime errors or unavailable installer activities fail visibly without app-selected cloud/provider fallback or same-audio retry. Historical binary inspection covered ARM64 210683481 and x86_64 210683483; emulator execution does not prove actual ARM64/GrapheneOS behavior, universal future compatibility, provider-wide telemetry isolation or version-atomic attestation of Android's asynchronously bound process.
+Tencent is experimental; ML Kit remains the default. Conversation targets **8 GiB or more RAM**, with phone performance still unqualified. Known output errors affect meaning, including dates and negation—verify important details. See the [pinned model identity](engine-tencent/THIRD_PARTY.md) and [results, resource limits and verification boundaries](docs/testing/verify-translator.md#tencent-specific-preparation-and-native-checks).
 
-
-The [contributor guide](CONTRIBUTING.md) contains environment setup, the complete host checks and the separate build-logic test command. [Android verification guidance](docs/testing/verify-translator.md) covers opt-in device checks. The [host workflow](.github/workflows/host-checks.yml) runs unit tests, lint and debug APK assembly; its presence is not evidence of a completed GitHub Actions run.
+</details>
 
 ## Known limitations
 
-- **Speech and translation quality are not release-qualified.** Known recognition and meaning errors remain; successful fixtures do not establish all-language or all-direction quality.
-- **Conversation is turn-based.** Reliable speech-driven interruption and simultaneous spoken translation are not implemented.
-- **Phone performance is not qualified.** Emulator evidence does not establish real microphone/speaker acoustics, sustained-call behavior or the two-second latency target.
-- **Memory requirements are not generally qualified.** The same full-pipeline cohort passed on an 8 GiB-configured emulator after the 4 GiB setup killed Google TTS for low memory. This is neither a minimum-RAM guarantee nor phone/resource-pressure qualification; an ASR-only measurement does not budget all prepared components.
-- **Offline is not a complete privacy guarantee.** Historical checks found recognized/translated text in ML Kit native logs; this remains unresolved. Do not submit real conversation recordings or raw logs in public reports.
-- **Third-party distribution questions remain.** The project license does not automatically cover native binaries, audio fixtures, model/voice weights, datasets or provider branding.
+- **Quality is not release-qualified.** Recognition and translation can change meaning; verify important details.
+- **Conversation is turn-based.** Simultaneous translation and reliable interruption by speaking are not implemented.
+- **Phone performance is unqualified.** Emulator checks do not establish real microphone/speaker behavior, sustained use or the two-second latency target.
+- **Offline does not guarantee privacy.** Recognized/translated text was found in ML Kit native logs; this remains unresolved. Do not post private recordings or raw logs.
+- **Third-party terms still apply.** The project license does not automatically cover runtimes, recordings, models, voices or provider branding.
 
 See [native distribution conditions](engine-sherpa/THIRD_PARTY.md#conditions-before-redistributing-this-aar-or-an-apk-containing-it) before redistributing the runtime or an APK containing it.
 
@@ -234,6 +183,11 @@ See [native distribution conditions](engine-sherpa/THIRD_PARTY.md#conditions-bef
 - [Contributing](CONTRIBUTING.md) — setup, checks and safe bug reports.
 - [Security policy](SECURITY.md) — reporting guidance and current channel availability.
 - [Changelog](docs/CHANGELOG.md) — repository changes.
+- [Android verification](docs/testing/verify-translator.md) — device checks and the limits of existing evidence.
+
+## Development
+
+Created by **[Daniil Sterkhov · Ngoroth](https://github.com/Ngoroth)** with AI-agent assistance in research, implementation, review and verification. Product direction and decisions remain human-led.
 
 ## License and attribution
 

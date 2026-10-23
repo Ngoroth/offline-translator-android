@@ -139,39 +139,6 @@ class SharedLanguagePairNativeTest {
         }
     }
 
-    @Test fun parakeetUsesRealOfflineVoicesAndBothDirectionsForDutchEnglishRussian() {
-        val nlEn = LanguagePair(LanguageCatalog.DUTCH, LanguageCatalog.ENGLISH)
-        runBlocking { commitNativeSettings(runtime, original.copy(languagePair = nlEn,
-            speechRecognitionBackend = SpeechRecognitionBackend.NEMO,
-            speechOutputBackend = SpeechOutputBackend.SYSTEM_OFFLINE)) }
-        showHome()
-        val cases = listOf(
-            Triple(nlEn, "conversation/nl-fleurs-test-0.wav", "short-human-en-right.wav"),
-            Triple(LanguagePair(LanguageCatalog.DUTCH, LanguageCatalog.RUSSIAN),
-                "conversation/nl-fleurs-test-1.wav", "short-human-ru-timer.wav"),
-            Triple(ruEn, "short-human-ru-come.wav", "short-human-en-wait.wav"),
-        )
-        for ((pair, forward, reverse) in cases) {
-            val current = runBlocking { runtime.settings.current().languagePair }
-            if (current.target != pair.target) choose(ConversationTestTags.LANGUAGE_SECOND, pair.target)
-            if (current.source != pair.source) choose(ConversationTestTags.LANGUAGE_FIRST, pair.source)
-            awaitPair(pair)
-            awaitConversationReady()
-            startCapture()
-            for ((asset, direction) in listOf(forward to pair, reverse to pair.reverse())) {
-                replayAndAwaitComplete(asset, direction)
-                val tree = recordRecognitionSurface(SpeechRecognitionBackend.NEMO, "${direction.source.value}-${direction.target.value}")
-                Log.i(TAG, "recognition=nemo fixture=$asset direction=${direction.id} complete=true microphoneEvidence=false\n$tree")
-            }
-            compose.onNodeWithTag(ConversationTestTags.SESSION_ACTION).performClick()
-            compose.waitUntil(120_000) { capture?.running == false }
-        }
-        reopenHomeAndRuntime()
-        awaitConversationReady()
-        assertFalse("Reopen must remain idle", requireNotNull(capture).running)
-        assertEquals(SpeechRecognitionBackend.NEMO, runBlocking { runtime.settings.current().speechRecognitionBackend })
-    }
-
     @Test fun whisperUsesSelectedPairAndRealOfflineVoicesInBothDirectionsForDutchEnglishRussian() {
         val backend = SpeechRecognitionBackend.WHISPER
         val nlEn = LanguagePair(LanguageCatalog.DUTCH, LanguageCatalog.ENGLISH)
@@ -240,40 +207,6 @@ class SharedLanguagePairNativeTest {
         compose.onNodeWithTag(ConversationTestTags.CURRENT_TURN).assertDoesNotExist()
         assertEquals(backend, runBlocking { runtime.settings.current().speechRecognitionBackend })
         assertTrue("Whisper lost fixture meaning: ${failures.joinToString("; ")}", failures.isEmpty())
-    }
-
-    @Test fun parakeetUndeterminedHumanTurnRequestsRepeatThenResumesSelectedDirection() {
-        val pair = LanguagePair(LanguageCatalog.DUTCH, LanguageCatalog.ENGLISH)
-        runBlocking { commitNativeSettings(runtime, original.copy(languagePair = pair,
-            speechRecognitionBackend = SpeechRecognitionBackend.NEMO,
-            speechOutputBackend = SpeechOutputBackend.SYSTEM_OFFLINE)) }
-        showHome()
-        awaitConversationReady()
-        startCapture()
-        // This unchanged Russian control is deliberately outside the selected Dutch/English pair.
-        runBlocking { requireNotNull(capture).replay(loadPcm("short-human-ru-timer.wav")) }
-        val repeatRequest = hasTestTag(ConversationTestTags.CURRENT_TURN) and
-            hasAnyDescendant(hasText(context.getString(R.string.conversation_failure_undetermined_language)))
-        awaitFixtureState(120_000, "A real foreign human turn must request repetition without a guessed direction") {
-            compose.onAllNodes(repeatRequest).fetchSemanticsNodes().isNotEmpty()
-        }
-        compose.onNode(repeatRequest and hasAnyDescendant(hasText("таймер", substring = true, ignoreCase = true))).assertExists()
-        compose.onNode(hasTestTag(ConversationTestTags.CURRENT_TURN) and
-            hasAnyDescendant(hasText(context.getString(R.string.conversation_speaking)))).assertDoesNotExist()
-        assertTrue("Undetermined input must not stop capture", requireNotNull(capture).running)
-        Log.i(TAG, "realUndeterminedTurn=true microphoneEvidence=false\n${recordRecognitionSurface(SpeechRecognitionBackend.NEMO, "undetermined")}")
-        runBlocking { requireNotNull(capture).awaitReplay() }
-        replayAndAwaitComplete("short-human-en-right.wav", pair.reverse())
-        recordRecognitionSurface(SpeechRecognitionBackend.NEMO, "recovered-en-nl")
-        compose.onNodeWithTag(ConversationTestTags.SESSION_ACTION).performClick()
-        awaitFixtureState(120_000, "Stop must reach the idle ready action, not merely stop its capture source") {
-            capture?.running == false && compose.onAllNodes(hasTestTag(ConversationTestTags.SESSION_ACTION) and
-                hasText(context.getString(R.string.conversation_start)) and isEnabled()).fetchSemanticsNodes().isNotEmpty()
-        }
-        reopenHomeAndRuntime()
-        awaitConversationReady()
-        assertFalse("Reopen after recovery must remain idle", requireNotNull(capture).running)
-        compose.onNodeWithTag(ConversationTestTags.CURRENT_TURN).assertDoesNotExist()
     }
 
     private fun recordRecognitionSurface(backend: SpeechRecognitionBackend, name: String): String {

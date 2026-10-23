@@ -79,6 +79,14 @@ than treating COMPLETE as a translation-quality or physical-audio assertion.
 Use the existing System TTS proof with `systemTtsLanguageIds=en,ru,nl` for genuine
 offline voice/non-silent PCM/completion/interruption evidence.
 
+```powershell
+& $adb -s emulator-5554 shell am instrument -w -r -e class 'com.example.offlinetranslator.speech.SystemSpeechOutputNativeTest#allSelectedLocalesHaveGenuineInstalledOfflineVoiceAndCompletedPcm' -e systemTtsLanguageIds 'en,ru,nl' com.example.offlinetranslator.test/androidx.test.runner.AndroidJUnitRunner
+```
+
+The optional argument selects only those fixed fixtures and rejects unknown or
+missing fixture IDs. Without it, the existing full-catalog gate is unchanged.
+Do not advertise this selected three-language run as full-catalog qualification.
+
 The isolated model-smoke boundary case is
 `com.example.offlinetranslator.modelsmoke.WhisperLanguagePairNativeTest#selectedPairProducesItsOwnTranscriptAndRejectsInvalidConfiguration`.
 Build **both** APKs with
@@ -140,75 +148,53 @@ remains phase-only. Neither those intervals nor ASR-only timing establish the
 overall six-direction2000ms goal.
 
 
-## NeMo/Parakeet production checks
+## Tencent-specific preparation and native checks
 
-Prepare both native distributions before assembly, following
-[the explicit Linux/WSL build instructions](../../README.md#build-and-run).
-Ordinary Gradle builds only verify local NeMo artifacts; they never acquire tools,
-SDK sources or model weights. Device inference requires the separately installed
-pinned 714 MB GGUF, real Silero VAD, selected ML Kit translation data and local
-System TTS voices. Record guest RAM/CPU/API, APK identities and provider versions;
-an ASR-only footprint is not a budget for their coexistence.
+Run explicit Tencent native preparation before the host gate; see [CONTRIBUTING](../../CONTRIBUTING.md). No host/CI gate downloads the 1,133,080,448-byte model. On the actual app, select Tencent independently in Text and Conversation, press Prepare over validated Wi-Fi, and record missing/downloading byte progress/verifying/loading/ready. Reopen and explicitly initialize verified installed bytes locally. Readiness must never adopt corrupt bytes or enable Conversation before the selected recognition/output stages are ready. Missing/corrupt/storage/load/memory/limit/Unicode/Wi-Fi/timeout outcomes must stay localized and must not fall back to ML Kit.
 
-First select **Parakeet · multilingual offline recognition** in actual Settings,
-apply, choose the pair and exercise **Prepare languages** in Conversation.
-Observe missing → downloading → ready without a helper import or a substituted
-provider. Parakeet does not require Android recognition-language packs; System
-output still requires genuinely installed offline voices in the default engine.
-The following production installer check is additional evidence, not a replacement
-for consumer UI preparation:
-
-```powershell
-& $adb -s emulator-5554 shell am instrument -w -r -e class 'com.example.offlinetranslator.runtime.NemoRecognitionNativeTest#prepareSelectedLanguagesThroughProductionInstaller' com.example.offlinetranslator.test/androidx.test.runner.AndroidJUnitRunner
-```
-
-After disconnecting and verifying complete connectivity absence, run the real
-packaged JNI controls and the unchanged frozen text-policy cohort:
-
-```powershell
-& $adb -s emulator-5554 shell am instrument -w -r -e class 'com.example.offlinetranslator.runtime.NemoRecognitionNativeTest#packagedJniPreservesHumanControlMeaningAndRejectsForeignPairAndSilence,com.example.offlinetranslator.runtime.NemoRecognitionNativeTest#bundledIdentifierMaintainsFrozenHeldOutCoverageWithoutWrongAcceptedSources' com.example.offlinetranslator.test/androidx.test.runner.AndroidJUnitRunner
-```
-
-The six human inputs combine the unchanged approved EN/RU controls and two
-attributed Dutch FLEURS recordings in `test-data/conversation/`. They establish
-bounded integration evidence, not accent/conversational representativeness. Keep
-known Dutch transcript discrepancies; do not correct references or treat successful
-source routing as preserved meaning. The 68-text gate independently requires zero
-wrong accepted sources, at least 90% correct acceptance per source and rejected
-foreign-pair controls, without threshold tuning.
-
-Exercise the actual Conversation surface, all three pairs in both directions,
-foreign-language uncertainty, subsequent recovery, Stop and idle restart:
+After real UI preparation, verify no active networks and restart the app. The new app instrumentation selectors are:
 
 ```powershell
 pwsh -File tools/android/run-device-gate.ps1 `
   -Adb $adb -Device emulator-5554 `
-  -CaseList 'com.example.offlinetranslator.runtime.SharedLanguagePairNativeTest#parakeetUsesRealOfflineVoicesAndBothDirectionsForDutchEnglishRussian,com.example.offlinetranslator.runtime.SharedLanguagePairNativeTest#parakeetUndeterminedHumanTurnRequestsRepeatThenResumesSelectedDirection' `
-  -EvidenceDir "$env:TEMP/nemo-ui-$([Guid]::NewGuid().ToString('N'))"
+  -CaseList 'com.example.offlinetranslator.runtime.TencentTranslationNativeTest,com.example.offlinetranslator.runtime.AndroidConversationRecognitionNativeTest#preparedOfflineTencentRussianEnglishConversation' `
+  -EvidenceDir "$env:TEMP/tencent-app-$([Guid]::NewGuid().ToString('N'))"
 ```
 
-These methods use paced public PCM through real production VAD/ASR/text-ID/MT and
-System output, not a microphone or fabricated transcript. They retain actual
-screenshots/semantics under app-private `files/nemo-recognition-proof/`; inspect
-rendered default and increased-font states. UI completion and a phase-only TTS
-callback are not themselves non-silent PCM evidence. Run the existing genuine
-System-output mechanism for the selected languages as a separate proof:
+The Text scenarios use the real selected registry/owner/JNI with a runtime restart, cancelled request join, owner replacement and no late delivered text. A runtime reconstruction is not itself OS force-stop/process-restart evidence: additionally force-stop/reopen through the actual app. The Tencent Conversation selector explicitly creates the Tencent provider, real selected System recognition and observed non-silent local System speech for fixed RU/EN synthetic functional input. It is not an ML Kit result, natural-speech claim, full semantic qualification or a substitute for rendered Stop-mid-generation evidence. Retained Sherpa/Piper combinations need their actual installed readiness and separate execution; no speech inventory expansion is implied.
 
-```powershell
-& $adb -s emulator-5554 shell am instrument -w -r -e class 'com.example.offlinetranslator.speech.SystemSpeechOutputNativeTest#allSelectedLocalesHaveGenuineInstalledOfflineVoiceAndCompletedPcm' -e systemTtsLanguageIds 'en,ru,nl' com.example.offlinetranslator.test/androidx.test.runner.AndroidJUnitRunner
-```
+`engine-tencent/src/androidTest/.../TencentNativeRuntimeTest.kt` adds real JNI request isolation, approved newline equivalence, Unicode/NUL/literal-marker input, persistent cancellation/reset and original input-limit coverage. Its `frozenChineseToThaiCompletesWithStrictUnicodeAndRetainsNameTimeAndPrice` regression uses the exact frozen Chinese fixture that failed with InvalidEncoding under unconstrained greedy. It requires a successful complete strictly decoded Thai result and tolerant Anna/08:30/25-euro fact checks, allowing Thai digits, common name transliterations and numeric time formatting rather than a sentence snapshot. Successful native return requires the allowed EOS, not partial output. Script/fact checks do not certify target-language confidence or full semantics, including the platform question, price basis or negation.
 
-The optional argument selects only those fixed fixtures and rejects unknown or
-missing fixture IDs. Without it, the existing full-catalog gate is unchanged.
-Keep its voice identity, non-silent PCM, completion and interruption records;
-do not advertise a selected three-language pass as full-catalog qualification.
+Assemble the separate library instrumentation APK with `:engine-tencent:assembleDebugAndroidTest`, install it under the same exclusive owner and pass `-e modelPath <absolute readable pinned GGUF path>` using the [pinned model identity](../../README.md#tencent-model-preparation-and-boundaries). Select `com.example.offlinetranslator.tencent.TencentNativeRuntimeTest#frozenChineseToThaiCompletesWithStrictUnicodeAndRetainsNameTimeAndPrice` for the regression or the whole class for all native checks. This suite never downloads weights; invalid/missing model or incomplete instrumentation fails rather than assuming PASS. It does not alone prove in-decode cancellation; retain actual native callback and app Stop evidence for that claim.
 
-Report model creation plus real warmup, ASR, first/warmed text-ID and output
-timing boundaries separately. System phase-only output has no measured first
-non-silent presentation timestamp and cannot prove the two-second physical target.
-If Android kills a provider for low memory, preserve process-exit evidence and the
-failed gate. A later pass on a larger-RAM emulator does not erase that failure,
-establish minimum RAM, repair model meaning or qualify a physical phone.
+Record exact model/runtime/native-AAR/APK identities, both packaged ABIs and 16-KiB LOAD alignment. Separate all-240 execution/target-language evidence from the fixed 34-direction semantic sample. Freeze source fixtures before generation, retain failed/UNKNOWN outputs without replacement, and use a separately pinned host-only FastText lid.176 evaluator (target top1 confidence at least 0.80 and margin at least 0.20); do not bundle it or equate language identification with meaning. Semantic checks need bilingual reasoning for negation, invented names, numbers, prices, times and role relationships. Chinese target assessment also needs Simplified-script checks beyond a `zh` classifier label.
+
+The pinned runtime uses deterministic strict UTF-8-prefix-constrained greedy decoding, not the earlier unconstrained greedy policy. Preserve eligible greedy maxima/ties; otherwise choose the highest-logit eligible token before commitment without retrying inference. Valid split scalars/NUL remain supported, invalid/impossible prefixes are ineligible, and EOS120020 is allowed only at a complete scalar boundary. No output repair, replacement decoding, byte dropping, model/prompt change or provider fallback is involved. Bounded context and explicit token/output/no-eligible-candidate failures remain; no truncated success is permitted. Original source remains displayed unchanged; only Tencent inference normalizes CRLF/CR to LF.
+
+Corrected revision4's actual-app run completed **all 240 distinct directed pairs with zero execution failures**, using the unchanged 16 source fixtures and pinned Q4_K_M bytes. The unchanged FastText control yields **236 PASS / 4 FAIL**: es/it/th/tr→id all have Indonesian top1, but confidence below 0.80 despite sufficient runner-up margins. These remain failed confidence checks, not proven wrong-language outputs. The frozen 34-direction semantic sample remains **26 PASS / 8 FAIL** with actual source/output bytes and bilingual reasoning retained. Separately, hi→zh changed tomorrow to yesterday. The disclosed model-fidelity and confidence limitations are accepted only for experimental additional-provider use; they are not technical PASS or whole-iteration/phone acceptance.
+
+Retain revision3's **239 completed / one zh→th InvalidEncoding execution failure** as historical evidence, not the current execution count. Corrected revision4's actual x86_64 JNI suite passed all three methods, including the frozen zh→th regression; its Android C++ smoke passed canonical prefix boundaries, real EOS output, reuse, abort/join and reset. The completed current raw corpus has SHA-256 `c4870d289219fc75a2613017aee4f39d5636ec610a613ebc6ca7f6140f5c653b`. Record source/build identities and final qualification in the [continuing review/validation artifact](../workflow/archive/2026-10-20-0230-tencent-local-translation/reviews/tencent-local-translation.md), keeping older failures and scoped acceptance separate.
+
+Keep memory and interruption environments distinct:
+
+| Observed emulator profile | Retained observation | Qualification boundary |
+| --- | --- | --- |
+| Original 4-GiB, Tencent + Sherpa/Piper | Android LOW_MEMORY during instrumentation and visible foreground startup | That complete speech combination remains unqualified on this profile. |
+| Original 4-GiB, system speech + Tencent | Earlier output initialization failure; corrected-build synthetic ASR→MT Stop probe later reached native translation and joined with an INTERRUPTED turn and no delivered translation | The Stop probe does not establish completed system TTS on this profile or erase the earlier failure. |
+| Explicit 8-GiB cold boot, corrected-build bounded no-interruptions DND diagnostic | Synthetic RU/EN system recognition/Tencent/local system output completed in both directions; Sherpa/Tencent/Piper completed RU→EN | Not ordinary-notification behavior, 4-GiB compatibility, phone acoustics or a sole-cause diagnosis. Original DND policy/access was captured and restored exactly. |
+| Selected 8-GiB cold boot, ordinary DND-off and verified network absence | System RU↔EN ASR→Tencent→local TTS completed with actual non-silent synthesis; installed-ready Sherpa/Tencent/Piper completed RU→EN. After parent-observed OS force-stop/PID termination, one new process completed new Text and full System-speech Conversation in the same real MainActivity. | Fixed synthetic PCM capture only; no notification/focus override, real-microphone, acoustic, all-16-spoken-language, 4-GiB or phone claim. Raw helper failures and earlier diagnostics remain retained. |
+
+Keep the original sampled-entry-only Stop probe separate from corrected revision4's actual native-entry/exit, blank interrupted result and awaited join evidence. Corrected Text HOME/reentry positively observed the Activity STOPPED, retained the original source and delivered no old result; the older unconfirmed-background attempt is not that proof. Finishing during translation and reopening removed the GGUF mapping without delivering the old Text result. The Text footer is disabled Translate while busy, not Stop: only the actual Conversation Stop action supports that claim.
+
+Revision5 also passed actual-playing Conversation Stop, HOME/whole-Activity STOPPED and reentry, and language disposal through the real MainActivity/root. A bounded external SDK debugger observer recorded the non-silent/head-progress-guarded Piper start and public AudioTrack playing/positive head before the actual lifecycle action, then interruption, pause/flush and normal release return. No natural full drain preceded the action and no AudioTrack.play on any owned process track appeared through the bounded quiet interval. Busy provider Apply was refused; joined idle Tencent→prepared ML Kit→Tencent replacement and subsequent real healthy turns passed. The observer detached before healthy-turn checks. This is causal functional evidence, not acoustic, latency or uninstrumented-scheduling qualification. Earlier overflowing/nonmonotonic full-METHOD traces remain diagnostic history and do not establish temporal PASS.
+
+Revision5 exercised real model-file read denial on both routes: cold app-UID hashing produced Storage, while a verified unchanged identity followed by native open denial produced ModelMissing, **not RuntimeLoad or native OOM**. Original mode/bytes were restored, actual Retry/Prepare recovered, and real translation completed; actual Conversation Wi-Fi refusal/download/progress and Help/Terms were inspected separately.
+
+The exceptional consumer checks control only typed TranslationEngine failures while mounting real owners/ViewModels/pipeline/screens. Text accepted 4,096 UTF-16 units, rejected 4,097 without replacing the accepted source/result, disabled the action and recovered through editing. Memory/RuntimeLoad/TokenLimit/OutputLimit retained source, localized errors and no partial success; Conversation produced no SDK speech request or synthesis on failed turns, then actual pinned JNI and non-silent local System speech completed all four recoveries. Memory/RuntimeLoad needed explicit Prepare plus the visible System **Recheck** when real output readiness reported INITIALIZATION_FAILED; do not claim Prepare alone fixed that independent refusal. Limit errors recovered on a new turn in the same session. These are consumer-contract failures, **not induced native allocator/default-cap failures**, and the fixed recognition/model-readiness fixtures do not qualify actual ASR or installed speech inventory.
+
+
+Qualify actual Android resource use separately from file size or host feasibility RSS. Arm64 packaging/link evidence is not arm64 phone execution, sustained latency, heat, microphone/speaker or memory-pressure qualification. Those phone checks remain pending for the user.
+
 
 ## Prepared offline conversation checks
 
@@ -239,20 +225,20 @@ Additional existing boundaries can be checked independently:
 & $adb -s emulator-5554 shell am instrument -w -r -e class 'com.example.offlinetranslator.speech.AndroidSpeechPcmWriterNativeTest' com.example.offlinetranslator.test/androidx.test.runner.AndroidJUnitRunner
 ```
 
-The whole `SharedLanguagePairNativeTest` class now includes the NeMo cases above;
-its full-class invocation requires those actual prepared resources too. Select
+The whole `SharedLanguagePairNativeTest` class includes the Whisper checks above;
+its full-class invocation requires the actual prepared resources. Select
 individual methods when qualifying only an existing System/Sherpa boundary.
 
 These focused commands are not an exhaustive or release-qualifying device suite.
 
 ## Focused Dutch verification
 
-Dutch source integration adds `nl` to the 17-language catalog and maps system recognition/output to `nl-NL`. Catalog integration alone is not a passing device result; this section describes the System/text procedure, while the NeMo gates above exercise a separate selected backend. Keep functional, semantic, memory and physical-device qualification distinct.
+Dutch source integration adds `nl` to the 17-language catalog and maps system recognition/output to `nl-NL`. Catalog integration alone is not a passing device result; this section describes the System/text procedure, while the Whisper gates above exercise a separate selected backend. Keep functional, semantic, memory and physical-device qualification distinct.
 
 - After all source/localization edits settle and host-build access is granted, run the relevant existing host gate once and check Dutch translatable-key/format-signature parity with a throwaway script. Do not add permanent resource-copy tests or duplicate old per-language matrices.
 - After explicit device handoff, preserve current APK identities, private settings/packs, grants, connectivity, app locale, font scale and rotation. Through the actual UI, select Dutch in both ordered pair positions on Conversation and Text, swap, and relaunch. Select the Dutch interface (`Nederlands`) and inspect Conversation, Text, Settings, Help, dialogs, preparation and errors in portrait, landscape and increased font scale. Existing shared-pair/interface tests do not automatically exercise Dutch.
 - Prepare selected English↔Dutch and Russian↔Dutch resources online through the actual app UI, then disconnect, verify connectivity absence and force-stop/reopen. Execute fixed invented text in all four directions with negation, `Anna`, two tickets, tomorrow/yesterday and 15:00 versus 16:00. Retain exact unchanged inputs/outputs and independently assess meaning; do not retry modified inputs or promote method metadata based on fluent text. English↔Dutch is executable `Unknown`; Russian↔Dutch is SDK-managed `Pivot(en)`.
-- Check actual installed local `nl-NL` recognition and voice readiness through the selected System backends, using the provider's public installer explicitly when missing. Unsupported/missing System resources must stay non-ready; Dutch does not gain Sherpa/Piper coverage. Selecting NeMo is an explicit separate action, not a way to relabel a failed System gate. With genuine selected-backend readiness, run fixed Dutch↔English and Dutch↔Russian audio through production VAD/ASR/source resolution/ML Kit/output. Retain detected source, transcript, translation, non-silent output evidence and unchanged errors.
+- Check actual installed local `nl-NL` recognition and voice readiness through the selected System backends, using the provider's public installer explicitly when missing. Unsupported/missing System resources must stay non-ready; Dutch does not gain Sherpa/Piper coverage. Selecting Whisper is an explicit separate action, not a way to relabel a failed System gate. With genuine selected-backend readiness, run fixed Dutch↔English and Dutch↔Russian audio through production VAD/ASR/source resolution/ML Kit/output. Retain detected source, transcript, translation, non-silent output evidence and unchanged errors.
 - Keep temporary production-runtime smoke code and captured outputs outside the permanent source changes; remove temporary source afterward. Narrow Dutch evidence does not require running all-language preparation/cohorts. Synthetic functional success is not human-audio, GrapheneOS, ARM64 or phone-acoustic qualification; finish with the state-restoration procedure below.
 
 ## UI, lifecycle and evidence

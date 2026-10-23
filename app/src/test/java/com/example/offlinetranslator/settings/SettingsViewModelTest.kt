@@ -254,11 +254,11 @@ class SettingsViewModelTest {
             { repo.save(it); true }, MutableStateFlow(false), { discoveries++; inventory })
         try {
             runCurrent()
-            repo.save(AppSettings(speechRecognitionBackend = SpeechRecognitionBackend.NEMO))
+            repo.save(AppSettings(speechRecognitionBackend = SpeechRecognitionBackend.WHISPER))
             runCurrent()
             vm.beginEditing()
             assertTrue(vm.state.value.recognitionServices.isEmpty())
-            assertEquals("NeMo settings must not probe Android services", 0, discoveries)
+            assertEquals("Whisper settings must not probe Android services", 0, discoveries)
 
             vm.reset()
             runCurrent()

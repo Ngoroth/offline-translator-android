@@ -129,7 +129,6 @@
     <string name="settings_recognition_backend">Spracherkennung</string>
     <string name="settings_recognition_system">Spracherkennung auf dem Gerät durch Android</string>
     <string name="settings_recognition_sherpa">Lokale Sherpa-Erkennung · Russisch/Englisch</string>
-    <string name="settings_recognition_nemo">Parakeet · mehrsprachige Offline-Erkennung</string>
     <string name="settings_recognition_whisper">Whisper · Offline-Erkennung</string>
     <string name="conversation_recognition_ready">Die ausgewählten Offline-Erkennungsmodelle sind bereit.</string>
     <string name="conversation_recognition_missing_model">Ein Offline-Erkennungsmodell fehlt. Bereite die ausgewählten Sprachen vor.</string>
@@ -145,7 +144,7 @@
     <string name="settings_interface_language_immediate">Wird sofort angewendet</string>
     <string name="settings_interface_language_error">Die Oberflächensprache konnte nicht geändert werden. Wähle sie erneut, um es noch einmal zu versuchen.</string>
     <string name="settings_about_translation">Über die Übersetzung</string>
-    <string name="settings_mlkit_summary">ML Kit setzt auf schnelle Übersetzung auf dem Gerät, kann aber den Sinn falsch erfassen. Andere Übersetzer mit Schwerpunkt auf Qualität sind geplant, aber noch nicht verfügbar.</string>
+    <string name="settings_mlkit_summary">ML Kit setzt auf schnelle Übersetzung auf dem Gerät, kann aber den Sinn falsch erfassen.</string>
     <string name="settings_provider_summary">Ausgewählter Übersetzer: %1$s</string>
     <string name="help_google_translation">ML Kit verwendet Google Translate für Übersetzungen auf dem Gerät. Der folgende Link beschreibt die Anforderungen an die Google-Quellenangabe.</string>
     <string name="google_attribution_requirements_link">Anforderungen an die Google-Quellenangabe</string>
@@ -174,6 +173,17 @@
     <string name="model_asr_whisper_small_multilingual">Whisper Small INT8 · mehrsprachig · offline</string>
     <string name="model_tts_irina">Piper Irina medium · Russisch</string>
     <string name="model_tts_lessac">Piper Lessac medium · Englisch</string>
+    <string name="translation_verifying">Integrität des Übersetzungsmodells wird geprüft…</string>
+    <string name="translation_loading">Lokale Übersetzung wird geladen und aufgewärmt…</string>
+    <string name="translation_download_bytes">%1$d / %2$d Byte</string>
+    <string name="translation_model_repair">Das Übersetzungsmodell fehlt oder ist beschädigt. Offline-Übersetzung erneut vorbereiten.</string>
+    <string name="translation_storage_error">Das Modell konnte nicht gespeichert oder geladen werden. Speicherplatz und WLAN prüfen, dann erneut vorbereiten.</string>
+    <string name="translation_runtime_error">Die lokale Übersetzungsengine konnte nicht laden. Erneut vorbereiten; bei weiterem Fehler die App neu starten.</string>
+    <string name="translation_memory_error">Nicht genug Arbeitsspeicher. Andere Apps schließen und erneut vorbereiten oder den Text kürzen.</string>
+    <string name="translation_limit_error">Kontext- oder Ausgabelimit überschritten. Ausgangstext kürzen; keine Teilübersetzung wurde gespeichert.</string>
+    <string name="translation_encoding_error">Der Ausgangstext enthält ungültiges Unicode. Text korrigieren und erneut versuchen.</string>
+    <string name="translation_timeout">Die Übersetzungsvorbereitung dauerte zu lange. Status prüfen und erneut versuchen.</string>
+    <string name="tencent_model_explanation">Tencent Hy-MT2 verwendet ein 1,13-GB-Modell für alle Sprachen. Download nur über Vorbereiten im WLAN; nach erneutem Öffnen ist lokale Vorbereitung nötig. Mehrere GB Arbeitsspeicher können nötig sein. Übersetzungsqualität und Telefonleistung sind nicht qualifiziert.</string>
     <string name="settings_recognition_service">Spracherkennungsdienst</string>
     <string name="recognition_service_on_device">Lokaler Android-Dienst</string>
     <string name="conversation_recognition_incompatible_service">Der ausgewählte Erkennungsdienst wurde nicht für Offline-Gespräche qualifiziert. Wähle in den erweiterten Einstellungen einen kompatiblen Dienst.</string>

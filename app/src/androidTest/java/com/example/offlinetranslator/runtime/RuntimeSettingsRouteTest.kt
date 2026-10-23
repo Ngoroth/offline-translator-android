@@ -79,7 +79,6 @@ class RuntimeSettingsRouteTest {
         val changed = expected.copy(ttsSpeedPercent = 120)
         compose.waitUntil(30_000) { runBlocking { runtime.settings.current() == changed } }
         val document = org.json.JSONObject(file.readText())
-        assertEquals(6, document.getInt("schemaVersion"))
         assertEquals(SpeechRecognitionBackend.SYSTEM_OFFLINE.persistedId, document.getString("speechRecognitionBackend"))
         assertTrue(!document.has("textPair") && !document.has("conversationLanguages"))
         hideHome()

@@ -11,7 +11,7 @@ val generateLicenseAssets = tasks.register<Sync>("generateLicenseAssets") {
     from(rootProject.layout.projectDirectory.file("THIRD_PARTY_NOTICES.md"))
     from(rootProject.layout.projectDirectory.dir("LICENSES")) { into("LICENSES") }
     from(rootProject.layout.projectDirectory.file("engine-sherpa/THIRD_PARTY.md")) { into("engine-sherpa") }
-    from(rootProject.layout.projectDirectory.file("engine-nemo/THIRD_PARTY.md")) { into("engine-nemo") }
+    from(rootProject.layout.projectDirectory.file("engine-tencent/THIRD_PARTY.md")) { into("engine-tencent") }
     into(licenseAssets.map { it.dir("licenses") })
 }
 tasks.matching { it.name == "preBuild" }.configureEach { dependsOn(generateLicenseAssets) }
@@ -36,7 +36,7 @@ val generateDebugAndroidTestOfficialFixtureAliases = tasks.register<Sync>("gener
         rename("common_voice_en_1282109.wav", "short-human-en-wait.wav")
     }
     from(rootProject.layout.projectDirectory.dir("test-data/conversation")) {
-        include("nl-fleurs-test-0.wav", "nl-fleurs-test-1.wav", "manifest.json", "parakeet-heldout-texts.json")
+        include("nl-fleurs-test-0.wav", "nl-fleurs-test-1.wav", "manifest.json")
         into("conversation")
     }
     into(fixtureAliases)
@@ -69,10 +69,14 @@ android {
         applicationId = "com.example.offlinetranslator"
         minSdk = 34
         targetSdk = 36
-        versionCode = 2
-        versionName = "0.1.1"
+        versionCode = 3
+        versionName = "0.1.2"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         ndk { abiFilters += setOf("arm64-v8a", "x86_64") }
+    }
+
+    buildTypes.getByName("debug") {
+        versionNameSuffix = "-debug"
     }
 
     buildFeatures { compose = true }
@@ -103,9 +107,9 @@ configurations.configureEach {
 dependencies {
     implementation(project(":core"))
     implementation(project(":engine-mlkit"))
+    implementation(project(":engine-tencent"))
     implementation(project(":engine-sherpa"))
     implementation(project(":speech-models"))
-    implementation(project(":engine-nemo"))
     // `:engine-sherpa` owns the runtime through the root's local verified artifact repo.
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.activity.compose)

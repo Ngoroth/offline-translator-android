@@ -192,16 +192,18 @@ fun ConversationRoute(
     val permissionDenied = shown?.permissionDenied?.collectAsStateWithLifecycle()?.value ?: false
     val outputReadiness = shown?.outputReadiness?.collectAsStateWithLifecycle()?.value
     val recognitionReadiness = shown?.recognitionReadiness?.collectAsStateWithLifecycle()?.value
+    val translationPreparation = shown?.translationPreparation?.collectAsStateWithLifecycle()?.value
+    val preparationFailure = shown?.preparationFailure?.collectAsStateWithLifecycle()?.value
     val localRecognitionEligible = remember(settings) {
         settings.speechRecognitionBackend == SpeechRecognitionBackend.SYSTEM_OFFLINE &&
-            (runtime.conversationProblems(settings.copy(speechRecognitionBackend = SpeechRecognitionBackend.NEMO)).isEmpty() ||
-                runtime.conversationProblems(settings.copy(speechRecognitionBackend = SpeechRecognitionBackend.SHERPA)).isEmpty() ||
+            (runtime.conversationProblems(settings.copy(speechRecognitionBackend = SpeechRecognitionBackend.SHERPA)).isEmpty() ||
                 runtime.conversationProblems(settings.copy(speechRecognitionBackend = SpeechRecognitionBackend.WHISPER)).isEmpty())
     }
     ConversationScreen(
         state = state, models = statuses, preparation = preparation,
         ready = ready && installRequest == null && !changing && !teardownFailed, permissionDenied = permissionDenied,
         ownerAvailable = shown != null,
+        translationPreparation = translationPreparation, preparationFailure = preparationFailure,
         onPrepare = { if (installRequest == null && !changing && !teardownFailed) shown?.prepareLanguages() },
         onSessionAction = {
             if (shown?.state?.value?.sessionActive == true) { pendingStart = null; shown.stop() }

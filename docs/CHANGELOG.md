@@ -4,6 +4,19 @@ Notable capability, behavior and developer-facing compatibility changes. Entries
 
 ## Unreleased
 
+### Integrate main with Whisper and Parakeet removal — 2026-10-22
+
+- Combined Tencent Hy-MT2 translation from main with selected-pair Whisper recognition and the complete Parakeet removal. Existing recognition defaults and independently saved text/conversation translation choices are preserved.
+- Restored Dutch coverage for the incoming translation preparation/error messages and included Tencent in the isolated UI smoke target's test dependencies.
+- Integrated module unit tests, app lint, app/test APKs, isolated model-smoke APKs, build-logic tests and native-preparation helper tests passed. The combined emulator build persisted Whisper with Tencent, reported its missing model honestly, preserved all original settings after restoring ML Kit, and completed Whisper conversation Start → Listening → Stop. Full Hy-MT2 inference was not exercised because its weights were not installed; these checks do not qualify translation quality or phone performance.
+
+### Remove Parakeet recognition — 2026-10-22
+
+- Removed the selectable Parakeet/NeMo backend, its native module/preparation tool, model catalog, heldout-only corpus, packaging and CI dependencies. System, selected-pair Whisper and legacy Sherpa recognition remain; Tencent and ML Kit translation are preserved.
+- Removed the exclusively Parakeet text-first recognition owner and bundled ML Kit text-language identification. Legacy Sherpa `nemoCtcOffline`/GigaAM is a separate retained adapter.
+- Well-formed unknown or removed saved recognition IDs fall back to System without resetting other preferences; malformed IDs remain rejected. Selecting Whisper keeps unrelated output, service and language-ID preferences intact.
+- The removal's pre-integration verification remains historical evidence, not proof of this merged candidate; integrated host and device qualification must use the final combined tree.
+
 ### Joint selected-pair Whisper recognition — 2026-10-22
 
 - Added an explicit Whisper recognition choice using one shared Small INT8 model for the current17 language codes. Fresh-install defaults, Reset, schemas1–6 and saved System/Sherpa/NeMo/output/advanced choices remain unchanged.
@@ -34,6 +47,16 @@ Notable capability, behavior and developer-facing compatibility changes. Entries
 - Added the complete Dutch interface pack (177 translatable strings); independent source/localization review found no blocking issues. Actual Conversation, Text, Settings and Help surfaces were inspected in portrait and landscape at 130% font scale; Conversation and Text were also inspected at 100%.
 - The bounded host gate passed: 373 tests executed, 19 test-kit results reused, lint completed with 20 warnings and no errors, and both debug APKs assembled. Actual app-UI preparation and network-disconnected English↔Dutch and Russian↔Dutch text checks preserved the fixed name, negation, yesterday/tomorrow, ticket-count and departure-time controls.
 - Dutch conversation remains device-dependent: the API 37 x86_64 verification setup reported unsupported selected-pair recognition and a missing local voice, with Start disabled. Provider language installation was not authorized in that shared-device window, so Dutch ASR/source-routing/audio completion remains unqualified; no general translation-quality, GrapheneOS or real-phone claim is made.
+### 0.1.2 development prerelease — 2026-10-21
+
+- Normalized native compiler source/build paths so distributed binaries do not expose local workspace paths.
+- Added selectable Tencent Hy-MT2 on-device text translation independently for Text and Conversation, with pinned 1.13-GB Q4_K_M weights, embedded CPU llama.cpp JNI, all distinct catalog-pair capabilities and no provider fallback. ML Kit defaults and independent speech choices are preserved on the published schema6 baseline; Tencent requires no further settings schema. Catalog support is not semantic or phone qualification, and measured detail/price-basis/negation losses remain documented model limitations.
+- Added provider-neutral preparation StateFlow, typed artifact/storage/runtime/memory/limit failures, all-16-locale progress/repair guidance, explicit Wi-Fi-only verified/atomic model preparation, cold attestation and joined native cancellation/release. Original source is preserved while Tencent inference normalizes CRLF/CR to LF. Trusted private-root aliases are resolved before enforcing provider-owned path safety; storage errors are reported by provider operations rather than during metadata construction.
+- Added explicit pinned Linux/Windows-WSL Tencent native preparation to contributor/CI gates, current-source/recipe/AAR verification, provider regression/instrumentation scenarios and packaged runtime/model notices. Device execution, multilingual semantic assessment and phone performance remain separately evidenced checks, not consequences of a successful build.
+- Changed Tencent generation from unconstrained greedy to deterministic strict UTF-8-prefix-constrained greedy selection before token commitment, preserving eligible greedy winners/ties and allowing EOS only at complete scalar boundaries. No output repair, retries, prompt/model changes or provider fallback. The corrected x86_64 real-JNI suite passed, including the frozen Chinese-to-Thai Unicode/name/time/price regression; the current Android C++ smoke also passed actual abort/join/reset on the original 4-GiB profile. These are not sentence-level or full-semantic certificates: unchanged all-direction language and fixed semantic controls remain mandatory, and prior language-confidence, meaning and speech failures are retained.
+- Completed corrected-build generation for all 240 directed catalog pairs with zero execution failures. The unchanged independent target-language control remains 236 PASS / four low-confidence Indonesian-target FAIL, and the frozen 34-direction semantic control remains 26 PASS / eight FAIL. A separate Hindi-to-Chinese tomorrow/yesterday inversion is retained. Tencent remains an experimental additional provider: disclosed model limitations are not reclassified as passing checks or phone qualification.
+- Qualified synthetic functional Tencent speech on the selected ordinary DND-off 8-GiB emulator: System RU↔EN and installed-ready Sherpa/Piper RU→EN completed; a parent-observed new process completed Text plus full System-speech Conversation in the same real MainActivity. Actual storage/native-open refusals and four controlled typed consumer-error recoveries are separately evidenced. This does not erase 4-GiB failures, certify all 16 spoken languages or phone/acoustic/thermal performance, or claim actual native OOM/default-cap induction.
+- Verified actual-playing Conversation Stop, HOME/reentry and language disposal with targeted causal SDK observation, joined release, bounded no-restart checks and subsequent healthy turns. Busy provider changes remain refused; legal idle Tencent→prepared ML Kit→Tencent replacement passed. Earlier overflowing or nonmonotonic full-method profiler captures are retained as diagnostics, not temporal qualification.
 
 ### 0.1.1 development prerelease — 2026-10-20
 
