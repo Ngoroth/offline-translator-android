@@ -120,7 +120,7 @@
       "directory": "android-ndk-r29-beta1",
       "url": "https://dl.google.com/android/repository/android-ndk-r29-beta1-linux.zip",
       "archiveSha256": "0bbaf4d0632152dcdcf3d0a5d385c760949898c88488375b18971dd669094388",
-      "treeSha256": "31afe9830b7e5659a69ba9304189e0bbf8734545749a047931865d210c64b03f"
+      "treeSha256": "727b9b5b2a4ddaf5d0cb4d4d366b220315c1c6e29c0584fea1c1fce856503a5d"
     },
     "cmake": {
       "version": "4.2.3",

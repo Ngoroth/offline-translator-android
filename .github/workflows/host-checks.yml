@@ -85,6 +85,17 @@ jobs:
           python3 tools/android/prepare-sherpa-native.py --verify \
             --output engine-sherpa/.native-cache/android --abis arm64-v8a x86_64
 
+      - name: Retain verified paired Sherpa runtime
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: paired-sherpa-native-${{ github.sha }}
+          retention-days: 7
+          if-no-files-found: error
+          include-hidden-files: true
+          path: |
+            engine-sherpa/.native-cache/android/sherpa-onnx-1.13.8-pair-v1.aar
+            engine-sherpa/.native-cache/android/receipt.json
+
       - name: Test paired Sherpa preparation boundaries
         shell: bash
         run: python3 -m unittest discover -s tools/android -p 'test_prepare_sherpa_native.py'
