@@ -3,3 +3,8 @@
 *.bat text eol=crlf
 *.jar binary
 *.png binary
+
+# Native provenance checks bind the exact bytes across Windows and Linux.
+engine-sherpa/native-build.json text eol=lf
+engine-sherpa/native/whisper-language-pair.patch text eol=lf
+tools/android/prepare-sherpa-native.py text eol=lf
