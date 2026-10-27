@@ -4,10 +4,18 @@ Notable capability, behavior and developer-facing compatibility changes. Entries
 
 ## Unreleased
 
+### Tencent and Whisper defaults — 2026-10-26
+
+- Fresh installs and **Reset advanced settings** now select Tencent Hy-MT2 independently for Text and Conversation, Whisper recognition and unchanged System offline output.
+- Valid saved provider/backend choices survive update/restart. Settings schemas 1–6, historical legacy recognition migration and the unknown/removed-recognition-ID System fallback remain unchanged; there is no forced settings migration.
+- Reset immediately saves the advanced defaults while preserving the selected language pair and interface language. Opening or resetting does not download models or start recording; preparation remains explicit and offline voices remain independently required.
+- Updated the Reset explanation in all 17 interface languages. Changing defaults does not qualify Tencent/Whisper quality, combined offline inference, phone performance or a release; existing semantic failures and model warnings remain applicable.
+
+
 ### Development prerelease 0.1.3
 
 - Increased the app version to 0.1.3 / versionCode 4 for the combined Whisper and Tencent build, with Parakeet removed.
-- Dutch conversation requires explicitly selecting Whisper and preparing recognition, translation and offline voice resources. Automatic recognition-backend selection remains deferred; existing defaults are unchanged.
+- Dutch conversation requires Whisper recognition and prepared recognition, translation and offline voice resources. Fresh installs and Reset now select Whisper; older saved choices require explicit selection. Automatic recognition-backend selection remains deferred.
 - This remains an experimental prerelease: known Dutch recognition errors, translation-quality limitations, ML Kit native content logging and unqualified phone/end-to-output performance remain applicable.
 
 ### Integrate main with Whisper and Parakeet removal — 2026-10-22

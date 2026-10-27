@@ -39,6 +39,7 @@ class AutomaticLanguageVoicesNativeTest {
         val expected = AppSettings(
             languagePair = LanguagePair(LanguageCatalog.ENGLISH, LanguageCatalog.RUSSIAN),
             speechOutputBackend = SpeechOutputBackend.PIPER,
+            speechRecognitionBackend = SpeechRecognitionBackend.SYSTEM_OFFLINE,
             textEngineId = "mlkit",
             conversationEngineId = "mlkit",
             vadModelId = "vad-silero-6.2.2",

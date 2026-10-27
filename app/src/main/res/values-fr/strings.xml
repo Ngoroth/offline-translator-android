@@ -121,7 +121,7 @@
     <string name="system_install_voices">Installer les données vocales système</string>
     <string name="system_recheck">Revérifier les voix hors connexion</string>
     <string name="system_voice_install_error">Le moteur vocal sélectionné n’a pas pu ouvrir son écran d’installation des voix. Vérifiez à nouveau le moteur et ses données vocales locales.</string>
-    <string name="settings_advanced_reset_explanation">Rétablit la reconnaissance Android sur l’appareil et la sortie vocale système hors connexion. Vos langues de traduction et la langue de l’interface restent inchangées.</string>
+    <string name="settings_advanced_reset_explanation">Rétablit la traduction Tencent pour Texte et Conversation, la reconnaissance vocale Whisper et la sortie vocale système hors connexion. Vos langues de traduction et la langue de l’interface restent inchangées.</string>
     <string name="settings_output_backend">Sortie vocale</string>
     <string name="settings_output_system">Voix système hors connexion</string>
     <string name="settings_output_piper">Voix locales Piper</string>

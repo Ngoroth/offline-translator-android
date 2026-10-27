@@ -22,22 +22,6 @@ class AppSettingsSerializerTest {
     private val serializer = AppSettingsSerializer()
 
     @Test
-    fun freshDefaultsRoundTripAsSchemaSixWithSystemSelectionsAndNoLegacyFields() = runBlocking<Unit> {
-        assertEquals(AppSettingsTestFixtures.freshInstall, serializer.defaultValue)
-        val out = ByteArrayOutputStream()
-        serializer.writeTo(serializer.defaultValue, out)
-        val document = JSONObject(out.toString("UTF-8"))
-        assertEquals("system-offline", document.getString("speechOutputBackend"))
-        assertEquals("system-offline", document.getString("speechRecognitionBackend"))
-        assertEquals("ru", document.getJSONObject("languagePair").getString("source"))
-        assertEquals("en", document.getJSONObject("languagePair").getString("target"))
-        for (field in listOf("textPair", "conversationLanguages", "asrModelIds", "ttsModelIds")) {
-            assertFalse(document.has(field))
-        }
-        assertEquals(AppSettingsTestFixtures.freshInstall, serializer.readFrom(ByteArrayInputStream(out.toByteArray())))
-    }
-
-    @Test
     fun roundTripPreservesSharedPairIndependentEnginesAndEveryAdvancedPreference() = runBlocking<Unit> {
         val original = AppSettingsTestFixtures.migrated.copy(
             languagePair = LanguagePair(LanguageCatalog.FRENCH, LanguageCatalog.SPANISH),

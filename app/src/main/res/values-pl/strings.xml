@@ -121,7 +121,7 @@
     <string name="system_install_voices">Zainstaluj dane głosów systemowych</string>
     <string name="system_recheck">Sprawdź ponownie głosy offline</string>
     <string name="system_voice_install_error">Wybrany silnik mowy nie mógł otworzyć ekranu instalacji głosów. Sprawdź ponownie silnik i jego lokalne dane głosów.</string>
-    <string name="settings_advanced_reset_explanation">Przywraca rozpoznawanie na urządzeniu przez Android i systemowe odczytywanie mowy offline. Języki tłumaczenia i język interfejsu nie ulegają zmianie.</string>
+    <string name="settings_advanced_reset_explanation">Przywraca tłumaczenie Tencent dla tekstu i rozmowy, rozpoznawanie mowy Whisper i systemowe odczytywanie mowy offline. Języki tłumaczenia i język interfejsu nie ulegają zmianie.</string>
     <string name="settings_output_backend">Odczytywanie mowy</string>
     <string name="settings_output_system">Systemowa mowa offline</string>
     <string name="settings_output_piper">Lokalne głosy Piper</string>

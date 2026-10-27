@@ -121,7 +121,7 @@
     <string name="system_install_voices">ติดตั้งข้อมูลเสียงของระบบ</string>
     <string name="system_recheck">ตรวจสอบเสียงออฟไลน์อีกครั้ง</string>
     <string name="system_voice_install_error">เอนจินเสียงพูดที่เลือกเปิดหน้าติดตั้งเสียงไม่ได้ ตรวจสอบเอนจินและข้อมูลเสียงในเครื่องอีกครั้ง</string>
-    <string name="settings_advanced_reset_explanation">คืนค่าเป็นการรู้จำบนอุปกรณ์ของ Android และการอ่านเสียงออฟไลน์ของระบบ ภาษาที่ใช้แปลและภาษาอินเทอร์เฟซของคุณจะไม่เปลี่ยน</string>
+    <string name="settings_advanced_reset_explanation">คืนค่าเป็นการแปลด้วย Tencent สำหรับข้อความและการสนทนา การรู้จำเสียงพูดด้วย Whisper และการอ่านเสียงออฟไลน์ของระบบ ภาษาที่ใช้แปลและภาษาอินเทอร์เฟซของคุณจะไม่เปลี่ยน</string>
     <string name="settings_output_backend">การอ่านออกเสียง</string>
     <string name="settings_output_system">เสียงระบบออฟไลน์</string>
     <string name="settings_output_piper">เสียงในเครื่องของ Piper</string>

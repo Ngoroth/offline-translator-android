@@ -121,7 +121,7 @@
     <string name="system_install_voices">Systeemstemgegevens installeren</string>
     <string name="system_recheck">Offline stemmen opnieuw controleren</string>
     <string name="system_voice_install_error">De geselecteerde spraakengine kon het installatiescherm voor stemmen niet openen. Controleer de engine en de bijbehorende lokale stemgegevens opnieuw.</string>
-    <string name="settings_advanced_reset_explanation">Herstelt Android-spraakherkenning op het apparaat en offline spraakuitvoer via het systeem. Je vertaaltalen en interfacetaal blijven ongewijzigd.</string>
+    <string name="settings_advanced_reset_explanation">Herstelt Tencent-vertaling voor Tekst en Gesprek, Whisper-spraakherkenning en offline spraakuitvoer via het systeem. Je vertaaltalen en interfacetaal blijven ongewijzigd.</string>
     <string name="settings_output_backend">Spraakuitvoer</string>
     <string name="settings_output_system">Offline systeemspraak</string>
     <string name="settings_output_piper">Lokale Piper-stemmen</string>

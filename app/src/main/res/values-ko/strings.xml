@@ -121,7 +121,7 @@
     <string name="system_install_voices">시스템 음성 데이터 설치</string>
     <string name="system_recheck">오프라인 음성 다시 확인</string>
     <string name="system_voice_install_error">선택한 음성 엔진의 음성 설치 화면을 열지 못했습니다. 엔진과 로컬 음성 데이터를 다시 확인하세요.</string>
-    <string name="settings_advanced_reset_explanation">Android 기기 내 인식과 시스템 오프라인 음성 출력으로 복원합니다. 번역 언어와 인터페이스 언어는 바뀌지 않습니다.</string>
+    <string name="settings_advanced_reset_explanation">텍스트와 대화 번역을 Tencent로, 음성 인식을 Whisper로, 음성 출력을 시스템 오프라인 음성으로 복원합니다. 번역 언어와 인터페이스 언어는 바뀌지 않습니다.</string>
     <string name="settings_output_backend">음성 출력</string>
     <string name="settings_output_system">시스템 오프라인 음성</string>
     <string name="settings_output_piper">Piper 로컬 음성</string>

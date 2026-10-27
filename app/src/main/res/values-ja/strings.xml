@@ -121,7 +121,7 @@
     <string name="system_install_voices">システム音声データをインストール</string>
     <string name="system_recheck">オフライン音声を再確認</string>
     <string name="system_voice_install_error">選択した音声エンジンの音声インストール画面を開けませんでした。エンジンとローカル音声データを再確認してください。</string>
-    <string name="settings_advanced_reset_explanation">Androidの端末内音声認識とシステムのオフライン読み上げに戻します。翻訳言語と表示言語は変更されません。</string>
+    <string name="settings_advanced_reset_explanation">テキストと会話の翻訳をTencentに、音声認識をWhisperに、音声出力をシステムのオフライン読み上げに戻します。翻訳言語と表示言語は変更されません。</string>
     <string name="settings_output_backend">音声出力</string>
     <string name="settings_output_system">システムのオフライン読み上げ</string>
     <string name="settings_output_piper">Piperのローカル音声</string>

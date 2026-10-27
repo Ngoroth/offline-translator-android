@@ -50,6 +50,7 @@ class RuntimeConfigurationTest {
     @Test fun systemRecognitionDoesNotRequireCuratedNativeModels() {
         val settings = AppSettings(
             languagePair = LanguagePair(LanguageCatalog.ENGLISH, LanguageCatalog.GERMAN),
+            speechRecognitionBackend = SpeechRecognitionBackend.SYSTEM_OFFLINE,
         )
         val system = settings.conversationConfig()
         assertEquals(SpeechRecognitionBackend.SYSTEM_OFFLINE, system.speechRecognitionBackend)
@@ -64,7 +65,8 @@ class RuntimeConfigurationTest {
     }
 
     @Test fun sharedPairKeepsRecognitionAndOutputSelectionsIndependent() {
-        val settings = AppSettings(languagePair = LanguagePair(LanguageCatalog.ENGLISH, LanguageCatalog.RUSSIAN))
+        val settings = AppSettings(languagePair = LanguagePair(LanguageCatalog.ENGLISH, LanguageCatalog.RUSSIAN),
+            speechRecognitionBackend = SpeechRecognitionBackend.SYSTEM_OFFLINE)
         assertEquals(settings.languagePair, settings.textConfig().pair)
         val system = settings.conversationConfig()
         assertEquals(listOf(settings.languagePair.source, settings.languagePair.target), system.languages)

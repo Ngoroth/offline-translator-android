@@ -22,9 +22,11 @@ Recorded on an emulator with networking disabled and languages prepared. Test au
 
 Choose two languages, prepare their resources, and start a conversation. Either person can speak a turn; the app recognizes, translates and reads it aloud. Listening resumes after playback. **Text** uses the same language pair without the microphone.
 
-- **Local processing:** ML Kit translation and Android on-device speech by default, with no automatic cloud or other-provider fallback.
-- **Optional engines:** Tencent Hy-MT2 translation; selected-pair multilingual Whisper recognition; legacy Sherpa recognition and Piper speech for the curated Russian/English setup.
+- **Local processing:** fresh installs and **Reset advanced settings** select Tencent Hy-MT2 translation for both Text and Conversation, selected-pair multilingual Whisper recognition and System offline speech output, with no automatic cloud or other-provider fallback.
+- **Alternative engines:** ML Kit translation and Android on-device recognition; legacy Sherpa recognition and Piper speech for the curated Russian/English setup.
 - **17 languages:** a shared language pair across Conversation and Text, with a localized interface.
+
+Updating or restarting preserves valid saved engine and speech choices; older installations may still use ML Kit or System recognition until explicitly changed. Reset applies the new advanced defaults immediately while preserving the selected language pair and interface language. Opening the app or resetting settings does not download models or start recording.
 
 The catalog is `en`, `vi`, `es`, `id`, `it`, `zh`, `ko`, `de`, `pl`, `pt`, `ru`, `th`, `tr`, `fr`, `hi`, `ja`, `nl`. Chinese means Mainland Simplified Mandarin. Dutch uses `nl` for ML Kit and `nl-NL` for Android recognition/output. Whisper covers the current 17 recognition codes through one shared Small INT8 download; it does not expand Piper voices or install System voices. Coverage is not quality qualification or proof of installed Android resources.
 
@@ -130,17 +132,17 @@ on Windows or `bash ./gradlew :app:assembleDebug` on Linux/macOS.
 
 ### Multilingual Whisper recognition
 
-For Dutch Conversation, open Settings, explicitly choose **Whisper · offline
-recognition**, Apply, and prepare the selected languages. The shared model has
+For Dutch Conversation, confirm **Whisper · offline recognition** in Settings.
+Fresh installs and Reset already select it; with older saved settings, explicitly
+select it and Apply before preparing the selected languages. The shared model has
 375,485,327 bytes across three verified raw packages; installation also requires
 temporary headroom. It needs neither Android recognition-language packs nor the
 legacy independent language-ID model. System output still needs genuine offline
 voices for both participants. No model menu or per-turn speaker action is added.
 
-Fresh-install defaults, Reset and settings schemas remain unchanged. Selecting
-Whisper does not silently replace a saved System or Sherpa selection. A saved
-removed backend ID uses the unknown-backend System fallback; other
-well-formed preferences remain intact.
+Settings schemas remain unchanged. Updating does not silently replace saved
+System or Sherpa selections. A saved unknown or removed backend ID still uses
+the System fallback, not Whisper; other well-formed preferences remain intact.
 
 After installation:
 
@@ -150,19 +152,19 @@ After installation:
 4. Disconnect networking to use the prepared app offline.
 
 <details>
-<summary>Optional provider setup: Android recognition and Tencent</summary>
+<summary>Provider preparation and Android recognition</summary>
 
 ### Explicit Android recognition service
 
-**Settings → Recognition service** defaults to **Android on-device service**. You can explicitly select the supported Google **Speech Recognition and Synthesis** service instead. Both selected recognition languages must be installed; use **Install recognition language data** on Conversation when needed. See [service requirements and offline-policy boundaries](docs/EXTENSIBILITY.md#selected-recognition-and-request-local-routing).
+To use System recognition instead of Whisper, explicitly select it in Settings and Apply. Its **Recognition service** preference defaults to **Android on-device service**; you can explicitly select the supported Google **Speech Recognition and Synthesis** service instead. Both selected recognition languages must be installed; use **Install recognition language data** on Conversation when needed. See [service requirements and offline-policy boundaries](docs/EXTENSIBILITY.md#selected-recognition-and-request-local-routing).
 
 Recognition and speech output are separate choices. **System offline speech** uses Android's default TTS engine and needs offline voices for both languages. For the reported GrapheneOS RU/EN setup, keep Google selected in Android's **Text-to-speech output → Preferred engine** as well as in the app's recognition setting. Switching the TTS default back to GrapheneOS Speech Services was reported to break Conversation; the exact error was not captured. There is no in-app TTS-engine selector.
 
 ### Tencent model preparation and boundaries
 
-Choose **Tencent Hy-MT2** independently for Text or Conversation in Settings, then use **Prepare** over Wi-Fi to download the **1.13 GB** model. After reopening, Prepare initializes the verified local model without downloading it again. No model is bundled in the APK.
+Confirm **Tencent Hy-MT2** independently for Text and Conversation in Settings. Fresh installs and Reset select it for both; older saved choices remain unchanged until explicitly changed and applied. Use **Prepare** over Wi-Fi to download the **1.13 GB** model. After reopening, Prepare initializes the verified local model without downloading it again. No model is bundled in the APK.
 
-Tencent is experimental; ML Kit remains the default. Conversation targets **8 GiB or more RAM**, with phone performance still unqualified. Known output errors affect meaning, including dates and negation—verify important details. See the [pinned model identity](engine-tencent/THIRD_PARTY.md) and [results, resource limits and verification boundaries](docs/testing/verify-translator.md#tencent-specific-preparation-and-native-checks).
+Tencent remains experimental despite becoming the default. Conversation targets **8 GiB or more RAM**, with phone performance still unqualified. Known output errors affect meaning, including dates and negation—verify important details. See the [pinned model identity](engine-tencent/THIRD_PARTY.md) and [results, resource limits and verification boundaries](docs/testing/verify-translator.md#tencent-specific-preparation-and-native-checks).
 
 </details>
 

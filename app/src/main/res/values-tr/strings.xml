@@ -121,7 +121,7 @@
     <string name="system_install_voices">Sistem ses verilerini yükle</string>
     <string name="system_recheck">Çevrimdışı sesleri yeniden kontrol et</string>
     <string name="system_voice_install_error">Seçilen konuşma motoru ses yükleme ekranını açamadı. Motoru ve yerel ses verilerini yeniden kontrol edin.</string>
-    <string name="settings_advanced_reset_explanation">Android cihaz içi tanımayı ve sistemin çevrimdışı sesli okumasını geri yükler. Çeviri dilleriniz ve arayüz diliniz değişmez.</string>
+    <string name="settings_advanced_reset_explanation">Metin ve Konuşma için Tencent çevirisini, Whisper konuşma tanımayı ve sistemin çevrimdışı sesli okumasını geri yükler. Çeviri dilleriniz ve arayüz diliniz değişmez.</string>
     <string name="settings_output_backend">Sesli okuma</string>
     <string name="settings_output_system">Sistemin çevrimdışı konuşması</string>
     <string name="settings_output_piper">Piper yerel sesleri</string>

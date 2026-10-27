@@ -43,8 +43,9 @@ class ExtensibleRuntimeIntegrationTest {
         val original = runtime.settings.current()
         try {
             for (language in addedTextReverseInputs.keys) {
-                val selected = original.copy(languagePair = LanguagePair(LanguageCatalog.ENGLISH, language))
+                val selected = original.copy(languagePair = LanguagePair(LanguageCatalog.ENGLISH, language), textEngineId = "mlkit")
                 selectPair(runtime, selected.languagePair)
+                assertTrue("Apply prepared text provider", runtime.applySettings(selected))
                 val owner = runtime.createTextOwner(selected.textConfig())
                 try {
                     assertEquals(
@@ -88,8 +89,9 @@ class ExtensibleRuntimeIntegrationTest {
             for ((language, reverseInput) in addedTextReverseInputs) {
                 val forward = LanguagePair(LanguageCatalog.ENGLISH, language)
                 for ((pair, input) in listOf(forward to forwardInput, forward.reverse() to reverseInput)) {
-                    val selected = original.copy(languagePair = pair)
+                    val selected = original.copy(languagePair = pair, textEngineId = "mlkit")
                     selectPair(runtime, pair)
+                    assertTrue("Apply prepared text provider", runtime.applySettings(selected))
                     val owner = runtime.createTextOwner(selected.textConfig())
                     try {
                         // Offline execution deliberately never calls prepare or any model installer.

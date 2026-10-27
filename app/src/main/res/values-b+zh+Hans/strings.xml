@@ -121,7 +121,7 @@
     <string name="system_install_voices">安装系统语音数据</string>
     <string name="system_recheck">重新检查离线语音</string>
     <string name="system_voice_install_error">所选语音引擎无法打开语音安装页面。请重新检查引擎及其本地语音数据。</string>
-    <string name="settings_advanced_reset_explanation">恢复 Android 设备端识别和系统离线语音输出。翻译语言和界面语言保持不变。</string>
+    <string name="settings_advanced_reset_explanation">将文本和对话翻译恢复为 Tencent，语音识别恢复为 Whisper，语音输出恢复为系统离线语音。翻译语言和界面语言保持不变。</string>
     <string name="settings_output_backend">语音输出</string>
     <string name="settings_output_system">系统离线语音</string>
     <string name="settings_output_piper">Piper 本地语音</string>

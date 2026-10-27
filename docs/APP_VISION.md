@@ -16,15 +16,15 @@ The initial quality scope is everyday communication: travel, meeting people, sho
 
 ## First Release Strategy and Work Order
 
-The near-term priority is a simple, working first version with **ML Kit as the main translation path**, not replacing the translator before the product is usable. Release is the development goal, not authorization to publish immediately. The first release's language set is not fixed to English/Russian.
+The near-term priority is a simple, working first version. **Fresh installs and Reset select Tencent for Text and Conversation, Whisper recognition and System offline speech output.** Valid saved selections remain unchanged on update or restart; Reset preserves the selected pair and interface language. These defaults are product choices, not model-quality or release qualification. Release is the development goal, not authorization to publish immediately. The first release's language set is not fixed to English/Russian.
 
 - Make preparation, supported pairs, understandable errors, offline operation after restart, and correct stopping/resource release reliable. Intermediate-English translation is allowed; directness is not a product-wide gate.
-- Prefer built-in offline Android speech capabilities where their actual availability and behavior satisfy the conversation scenario. Evaluate system `TextToSpeech`, then on-device recognition; neither an API nor a Google service name guarantees local resources for every language/device.
-- **Retain Piper and Sherpa as supported options.** Adding system speech is not authorization to delete their working implementations or required resources. Retaining them also retains their model-management and licensing obligations.
-- Keep one conversation pipeline with shared preparation, lifecycle, stopping and presentation. Later, an actually integrated and checked alternative translation approach can be selected through Settings; starting a conversation must not require model expertise. Do not add a placeholder provider switch.
-- First complete the functional ML Kit path; dedicated speed measurements and engine comparisons follow afterward. Functional offline/lifecycle checks remain required now. The latency target below remains a goal, not a measured claim or a reason to skip later device qualification.
+- Use Whisper as the default recognition path while retaining explicit Android on-device recognition. System offline output still requires genuine installed voices for both participants; neither an API nor a Google service name guarantees local resources for every language/device.
+- **Retain ML Kit, System recognition, legacy Sherpa recognition and Piper speech as supported options.** Changing defaults is not authorization to delete their working implementations or required resources. Retaining them also retains their model-management and licensing obligations.
+- Keep one conversation pipeline with shared preparation, lifecycle, stopping and presentation. Translation, recognition and output remain independently selectable through Settings; starting a conversation must not require model expertise. Do not add a placeholder provider switch.
+- Complete functional preparation, offline and lifecycle checks for the selected path before dedicated speed measurements and engine comparisons. Opening the app or resetting settings must not initiate downloads or recording. The latency target below remains a goal, not a measured claim or a reason to skip later device qualification.
 
-Research into larger ASR models or alternative NMT engines is not a prerequisite for this work. Known meaning failures remain evidence and must not be hidden; making the SDK integration reliable does not mean fixing its closed weights or qualifying an unchecked conversation pair. Privacy, attribution, model rights and public-release requirements remain applicable.
+Research into larger ASR models or alternative NMT engines is not a prerequisite for this work. Known meaning failures remain evidence and must not be hidden; reliable integration or promotion to a default does not fix model weights or qualify an unchecked conversation pair. Privacy, attribution, model rights and public-release requirements remain applicable.
 
 ## Primary Conversation Experience
 
@@ -69,7 +69,7 @@ The long-term goal is offline conversation between arbitrary languages. Reach th
 
 English is not a mandatory participant language. Translation through an intermediate language is allowed; there is no product-wide direct-only rule. Translation method, actual provider support, and verified quality are separate concerns.
 
-No particular recognition, translation, or synthesis model is permanent. ML Kit and Sherpa are current implementation choices, not mandatory product dependencies forever. Use a single composable conversation pipeline with replaceable speech recognition, translation, and speech output stages rather than duplicating conversation management for each engine.
+No particular recognition, translation, or synthesis model is permanent. Tencent, ML Kit, Whisper and the retained speech backends are current implementation choices, not mandatory product dependencies forever. Use a single composable conversation pipeline with replaceable speech recognition, translation, and speech output stages rather than duplicating conversation management for each engine.
 
 Adding a language on an already supported model family should primarily involve resource registration, localization, and quality verification, not rewriting conversation orchestration or screens. New model families may require adapters. Neither configuration nor an adapter removes the need to verify the resulting conversation.
 

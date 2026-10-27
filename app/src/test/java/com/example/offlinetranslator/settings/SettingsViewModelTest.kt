@@ -74,9 +74,9 @@ class SettingsViewModelTest {
             assertEquals(repo.current(), vm.state.value.draft)
             vm.reset()
             runCurrent()
-            assertEquals(AppSettings(languagePair = frenchSpanish), repo.current())
+            assertEquals(AppSettingsTestFixtures.freshInstall.copy(languagePair = frenchSpanish), repo.current())
             assertEquals(SpeechOutputBackend.SYSTEM_OFFLINE, vm.state.value.draft.speechOutputBackend)
-            assertEquals(SpeechRecognitionBackend.SYSTEM_OFFLINE, vm.state.value.draft.speechRecognitionBackend)
+            assertEquals(SpeechRecognitionBackend.WHISPER, vm.state.value.draft.speechRecognitionBackend)
             assertFalse(vm.state.value.usesSherpaRecognition)
         } finally { repo.closeAndJoin(); Dispatchers.resetMain() }
     }
@@ -147,7 +147,8 @@ class SettingsViewModelTest {
         try {
             runCurrent()
             val reversed = LanguagePair(LanguageCatalog.ENGLISH, LanguageCatalog.RUSSIAN)
-            repo.save(repo.current().copy(languagePair = reversed))
+            repo.save(repo.current().copy(languagePair = reversed,
+                speechRecognitionBackend = SpeechRecognitionBackend.SYSTEM_OFFLINE))
             runCurrent()
             vm.beginEditing()
             val originalLid = vm.state.value.draft.languageIdModelId
@@ -184,12 +185,15 @@ class SettingsViewModelTest {
         } finally { repo.closeAndJoin(); Dispatchers.resetMain() }
     }
 
-    @Test fun explicitWhisperHidesButRetainsLegacyChoicesAndResetStillRestoresSystemDefaults() = runTest {
+    @Test fun explicitWhisperHidesButRetainsLegacyChoicesAndResetPersistsFreshDefaults() = runTest {
         val dispatcher = StandardTestDispatcher(testScheduler)
         Dispatchers.setMain(dispatcher)
-        val repo = AppSettingsRepository(File(temp.root, "whisper-draft.json"), dispatcher)
+        val file = File(temp.root, "whisper-draft.json")
+        val repo = AppSettingsRepository(file, dispatcher)
         val selected = AppSettings(languagePair = LanguagePair(LanguageCatalog.DUTCH, LanguageCatalog.ENGLISH),
             speechRecognitionBackend = SpeechRecognitionBackend.SHERPA,
+            speechOutputBackend = SpeechOutputBackend.PIPER,
+            textEngineId = "mlkit", conversationEngineId = "mlkit",
             speechRecognitionService = "installed.provider/.RecognitionService",
             languageIdModelId = "saved-lid", vadMinSilenceMs = 1200, ttsSpeedPercent = 115)
         var discoveries = 0
@@ -227,14 +231,24 @@ class SettingsViewModelTest {
             assertTrue(vm.state.value.usesSherpaRecognition)
             assertEquals(selected.languageIdModelId, vm.state.value.draft.languageIdModelId)
             vm.cancelDraft()
+            val discoveriesBeforeReset = discoveries
             vm.reset()
             runCurrent()
-            assertEquals(AppSettings(languagePair = selected.languagePair), repo.current())
+            val reset = AppSettingsTestFixtures.freshInstall.copy(languagePair = selected.languagePair)
+            assertEquals(reset, repo.current())
             assertEquals(repo.current(), vm.state.value.draft)
-            assertTrue(vm.state.value.usesSystemRecognition)
+            assertFalse(vm.state.value.usesSystemRecognition)
             assertFalse(vm.state.value.usesSherpaRecognition)
             assertEquals(null, vm.state.value.draft.speechRecognitionService)
-            assertTrue(vm.state.value.recognitionServices.any { it.first == selected.speechRecognitionService })
+            assertTrue(vm.state.value.recognitionServices.isEmpty())
+            assertEquals("Reset to Whisper must not probe Android services", discoveriesBeforeReset, discoveries)
+            vm.viewModelScope.cancel()
+            repo.closeAndJoin()
+            val reopened = AppSettingsRepository(file, dispatcher)
+            try {
+                runCurrent()
+                assertEquals(reset, reopened.current())
+            } finally { reopened.closeAndJoin() }
         } finally {
             vm.viewModelScope.cancel()
             repo.closeAndJoin()
@@ -242,7 +256,7 @@ class SettingsViewModelTest {
         }
     }
 
-    @Test fun nativeResetRestoresCurrentSystemServiceChoices() = runTest {
+    @Test fun explicitSystemSelectionRefreshesCurrentServiceChoicesAfterNativeBackends() = runTest {
         val dispatcher = StandardTestDispatcher(testScheduler)
         Dispatchers.setMain(dispatcher)
         val repo = AppSettingsRepository(File(temp.root, "native-reset-services.json"), dispatcher)
@@ -260,10 +274,10 @@ class SettingsViewModelTest {
             assertTrue(vm.state.value.recognitionServices.isEmpty())
             assertEquals("Whisper settings must not probe Android services", 0, discoveries)
 
-            vm.reset()
+            vm.updateDraft(vm.state.value.draft.copy(speechRecognitionBackend = SpeechRecognitionBackend.SYSTEM_OFFLINE))
             runCurrent()
             assertTrue(vm.state.value.usesSystemRecognition)
-            assertTrue("Reset must immediately offer the installed provider",
+            assertTrue("Selecting System must immediately offer the installed provider",
                 vm.state.value.recognitionServices.any { it.first == firstService })
             vm.updateDraft(vm.state.value.draft.copy(speechRecognitionService = firstService))
             vm.apply()
@@ -278,10 +292,10 @@ class SettingsViewModelTest {
             assertEquals("Sherpa settings must not probe Android services", discoveriesBeforeSherpa, discoveries)
             inventory = listOf(replacementService to "Replacement service")
 
-            vm.reset()
+            vm.updateDraft(vm.state.value.draft.copy(speechRecognitionBackend = SpeechRecognitionBackend.SYSTEM_OFFLINE))
             runCurrent()
             assertTrue(vm.state.value.usesSystemRecognition)
-            assertTrue("A later Reset must offer the current, not cached, installed provider",
+            assertTrue("Selecting System again must offer the current, not cached, installed provider",
                 vm.state.value.recognitionServices.any { it.first == replacementService })
             assertFalse(vm.state.value.recognitionServices.any { it.first == firstService })
             vm.updateDraft(vm.state.value.draft.copy(speechRecognitionService = replacementService))
@@ -304,6 +318,8 @@ class SettingsViewModelTest {
         val vm = SettingsViewModel(repo, MutableStateFlow(true), { emptyList() },
             { repo.save(it); true }, MutableStateFlow(false), { inventory })
         try {
+            runCurrent()
+            repo.save(AppSettings(speechRecognitionBackend = SpeechRecognitionBackend.SYSTEM_OFFLINE))
             runCurrent()
             vm.beginEditing()
             vm.updateDraft(vm.state.value.draft.copy(speechRecognitionService = selected))

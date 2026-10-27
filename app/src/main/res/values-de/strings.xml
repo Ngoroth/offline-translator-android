@@ -121,7 +121,7 @@
     <string name="system_install_voices">System-Sprachdaten installieren</string>
     <string name="system_recheck">Offline-Stimmen erneut prüfen</string>
     <string name="system_voice_install_error">Die ausgewählte Sprachausgabe-Engine konnte ihren Installationsbildschirm für Stimmen nicht öffnen. Prüfe die Engine und ihre lokalen Sprachdaten erneut.</string>
-    <string name="settings_advanced_reset_explanation">Stellt die Spracherkennung auf dem Gerät durch Android und die Offline-Systemsprachausgabe wieder her. Deine Übersetzungssprachen und die Oberflächensprache bleiben unverändert.</string>
+    <string name="settings_advanced_reset_explanation">Stellt die Tencent-Übersetzung für Text und Konversation, die Whisper-Spracherkennung und die Offline-Systemsprachausgabe wieder her. Deine Übersetzungssprachen und die Oberflächensprache bleiben unverändert.</string>
     <string name="settings_output_backend">Sprachausgabe</string>
     <string name="settings_output_system">Offline-Systemsprachausgabe</string>
     <string name="settings_output_piper">Lokale Piper-Stimmen</string>

@@ -623,6 +623,7 @@ class AndroidRecognitionPreparationIntegrationTest {
         }
         fun build(platform: Platform, pair: LanguagePair, nativeReady: Boolean): Fixture {
             val config = AppSettings(languagePair = pair,
+                speechRecognitionBackend = SpeechRecognitionBackend.SYSTEM_OFFLINE,
                 speechRecognitionService = if (platform.explicit) AndroidRecognitionServices.GOOGLE_COMPONENT else null).conversationConfig()
             val native = NativeResources(nativeReady)
             val capture = Capture()

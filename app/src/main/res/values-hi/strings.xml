@@ -121,7 +121,7 @@
     <string name="system_install_voices">सिस्टम आवाज़ डेटा इंस्टॉल करें</string>
     <string name="system_recheck">ऑफ़लाइन आवाज़ें दोबारा जाँचें</string>
     <string name="system_voice_install_error">चुना हुआ वाक् इंजन आवाज़ इंस्टॉल करने की स्क्रीन नहीं खोल सका। इंजन और उसके स्थानीय आवाज़ डेटा को दोबारा जाँचें।</string>
-    <string name="settings_advanced_reset_explanation">Android की डिवाइस पर वाक् पहचान और सिस्टम का ऑफ़लाइन वाक् आउटपुट बहाल करता है। आपकी अनुवाद भाषाएँ और इंटरफ़ेस भाषा नहीं बदलतीं।</string>
+    <string name="settings_advanced_reset_explanation">टेक्स्ट और बातचीत के लिए Tencent अनुवाद, Whisper वाक् पहचान और सिस्टम का ऑफ़लाइन वाक् आउटपुट बहाल करता है। आपकी अनुवाद भाषाएँ और इंटरफ़ेस भाषा नहीं बदलतीं।</string>
     <string name="settings_output_backend">वाक् आउटपुट</string>
     <string name="settings_output_system">सिस्टम का ऑफ़लाइन वाक् आउटपुट</string>
     <string name="settings_output_piper">Piper की स्थानीय आवाज़ें</string>

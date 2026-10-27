@@ -121,7 +121,7 @@
     <string name="system_install_voices">Cài dữ liệu giọng đọc hệ thống</string>
     <string name="system_recheck">Kiểm tra lại giọng đọc ngoại tuyến</string>
     <string name="system_voice_install_error">Bộ máy giọng nói đã chọn không thể mở màn hình cài đặt giọng đọc. Hãy kiểm tra lại bộ máy và dữ liệu giọng đọc cục bộ.</string>
-    <string name="settings_advanced_reset_explanation">Khôi phục nhận dạng trên thiết bị của Android và đầu ra giọng nói ngoại tuyến của hệ thống. Ngôn ngữ dịch và ngôn ngữ giao diện của bạn không thay đổi.</string>
+    <string name="settings_advanced_reset_explanation">Khôi phục bản dịch Tencent cho Văn bản và Hội thoại, nhận dạng giọng nói Whisper và đầu ra giọng nói ngoại tuyến của hệ thống. Ngôn ngữ dịch và ngôn ngữ giao diện của bạn không thay đổi.</string>
     <string name="settings_output_backend">Đầu ra giọng nói</string>
     <string name="settings_output_system">Giọng đọc ngoại tuyến của hệ thống</string>
     <string name="settings_output_piper">Giọng đọc cục bộ Piper</string>

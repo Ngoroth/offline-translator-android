@@ -304,10 +304,16 @@ internal object AppSettingsTestFixtures {
     val freshInstall = AppSettings(
         languagePair = LanguagePair(LanguageCatalog.RUSSIAN, LanguageCatalog.ENGLISH),
         speechOutputBackend = SpeechOutputBackend.SYSTEM_OFFLINE,
+        speechRecognitionBackend = SpeechRecognitionBackend.WHISPER,
+        textEngineId = "tencent",
+        conversationEngineId = "tencent",
     )
     val migrated = AppSettings(
         languagePair = LanguagePair(LanguageCatalog.ENGLISH, LanguageCatalog.RUSSIAN),
         speechOutputBackend = SpeechOutputBackend.PIPER,
+        speechRecognitionBackend = SpeechRecognitionBackend.SYSTEM_OFFLINE,
+        textEngineId = "mlkit",
+        conversationEngineId = "mlkit",
         vadMinSilenceMs = 900,
         ttsSpeedPercent = 110,
     )

@@ -79,6 +79,7 @@ class SharedLanguagePairNativeTest {
     @Test fun pivotPairsUseMainControlsAndRealOfflineSdkInBothDirections() {
         val frEs = LanguagePair(LanguageCatalog.FRENCH, LanguageCatalog.SPANISH)
         runBlocking { commitNativeSettings(runtime, original.copy(languagePair = frEs,
+            textEngineId = "mlkit", conversationEngineId = "mlkit",
             speechRecognitionBackend = SpeechRecognitionBackend.SHERPA,
             speechOutputBackend = SpeechOutputBackend.SYSTEM_OFFLINE)) }
         showHome()
@@ -110,6 +111,7 @@ class SharedLanguagePairNativeTest {
 
     @Test fun selectedSystemAndPiperCompleteOfficialBothDirectionsStopAndReopenIdle() {
         runBlocking { commitNativeSettings(runtime, original.copy(languagePair = ruEn,
+            textEngineId = "mlkit", conversationEngineId = "mlkit",
             speechRecognitionBackend = SpeechRecognitionBackend.SHERPA,
             speechOutputBackend = SpeechOutputBackend.SYSTEM_OFFLINE)) }
         showHome()
@@ -143,6 +145,7 @@ class SharedLanguagePairNativeTest {
         val backend = SpeechRecognitionBackend.WHISPER
         val nlEn = LanguagePair(LanguageCatalog.DUTCH, LanguageCatalog.ENGLISH)
         runBlocking { commitNativeSettings(runtime, original.copy(languagePair = nlEn,
+            textEngineId = "mlkit", conversationEngineId = "mlkit",
             speechRecognitionBackend = backend,
             speechOutputBackend = SpeechOutputBackend.SYSTEM_OFFLINE)) }
         showHome()

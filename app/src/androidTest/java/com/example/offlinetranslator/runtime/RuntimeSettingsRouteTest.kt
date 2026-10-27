@@ -1,5 +1,6 @@
 package com.example.offlinetranslator.runtime
 
+import android.net.ConnectivityManager
 import android.system.Os
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.CompositionLocalProvider
@@ -63,7 +64,8 @@ class RuntimeSettingsRouteTest {
         runBlocking { runtime.closeAndJoin() }
         file.writeText(legacy)
         runtime = AppRuntime.get(context)
-        val expected = AppSettings(languagePair = enRu, speechOutputBackend = SpeechOutputBackend.PIPER,
+        val expected = AppSettings(languagePair = enRu, textEngineId = "mlkit", conversationEngineId = "mlkit",
+            speechOutputBackend = SpeechOutputBackend.PIPER, speechRecognitionBackend = SpeechRecognitionBackend.SYSTEM_OFFLINE,
             vadMinSilenceMs = 900, ttsSpeedPercent = 110)
         runBlocking { assertEquals(expected, runtime.settings.current()); requirePreparedTranslation(enRu) }
         showText()
@@ -92,8 +94,8 @@ class RuntimeSettingsRouteTest {
     @Before fun saveSettings() = runBlocking {
         runtime = AppRuntime.get(context)
         original = runtime.settings.current()
-        assertTrue(runtime.applySettings(AppSettings(speechOutputBackend = SpeechOutputBackend.PIPER,
-            speechRecognitionBackend = SpeechRecognitionBackend.SHERPA)))
+        assertTrue(runtime.applySettings(AppSettings(textEngineId = "mlkit", conversationEngineId = "mlkit",
+            speechOutputBackend = SpeechOutputBackend.PIPER, speechRecognitionBackend = SpeechRecognitionBackend.SHERPA)))
         val pair = AppSettings().languagePair
         if (runtime.settings.current().languagePair != pair) assertTrue(runtime.updateLanguagePair(runtime.settings.current().languagePair, pair))
         requirePreparedTranslation(pair)
@@ -297,7 +299,10 @@ class RuntimeSettingsRouteTest {
         runBlocking { assertEquals(selected, runtime.settings.current()) }
     }
 
-    @Test fun advancedResetKeepsTextPairAndExplicitlySelectsSystem() {
+    @Test fun advancedResetKeepsTextPairAndSelectsTencentWhisperAndSystemOutput() {
+        val connectivity = context.getSystemService(ConnectivityManager::class.java)
+        assertTrue("Disconnect networking before explicit local Tencent preparation", connectivity.activeNetwork == null &&
+            connectivity.allNetworks.isEmpty())
         runBlocking {
             requirePreparedTranslation(enDe)
             assertTrue(runtime.updateLanguagePair(runtime.settings.current().languagePair, enDe))
@@ -306,10 +311,24 @@ class RuntimeSettingsRouteTest {
         openSettings()
         choose(SettingsTestTags.SPEED, "110")
         compose.onNodeWithTag(SettingsTestTags.RESET).performScrollTo().assertIsDisplayed().performClick()
-        val expected = AppSettings(languagePair = enDe)
+        val expected = AppSettings(languagePair = enDe, textEngineId = "tencent", conversationEngineId = "tencent",
+            speechRecognitionBackend = SpeechRecognitionBackend.WHISPER, speechOutputBackend = SpeechOutputBackend.SYSTEM_OFFLINE)
         compose.waitUntil(30_000) { runBlocking { runtime.settings.current() == expected && !runtime.busy.value } }
         compose.onNodeWithTag(SettingsTestTags.CLOSE).performClick()
         compose.onNodeWithTag(TranslationTestTags.LANGUAGE_SECOND).performScrollTo().assertTextContains(languageLabel(LanguageCatalog.GERMAN))
+        awaitTextCondition("Reset Tencent owner requires explicit preparation") {
+            compose.onAllNodes(hasTestTag(TranslationTestTags.PREPARE) and isEnabled()).fetchSemanticsNodes().isNotEmpty() &&
+                compose.onAllNodesWithTag(TranslationTestTags.PROGRESS).fetchSemanticsNodes().isEmpty()
+        }
+        compose.onNodeWithTag(TranslationTestTags.TRANSLATE).assertDoesNotExist()
+        // Use already-installed weights offline; Reset itself must not initialize or download them.
+        compose.onNodeWithTag(TranslationTestTags.PREPARE).assertIsDisplayed().assertIsEnabled().performClick()
+        compose.waitUntil(180_000) {
+            compose.onAllNodesWithTag(TranslationTestTags.TRANSLATE).fetchSemanticsNodes().isNotEmpty() ||
+                compose.onAllNodesWithTag(TranslationTestTags.RETRY).fetchSemanticsNodes().isNotEmpty()
+        }
+        compose.onNodeWithTag(TranslationTestTags.RETRY).assertDoesNotExist()
+        compose.onNodeWithTag(TranslationTestTags.PREPARE).assertDoesNotExist()
         translateSyntheticEnglish("Bus")
         runBlocking { assertEquals(expected, runtime.settings.current()) }
     }

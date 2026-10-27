@@ -122,7 +122,7 @@
     <string name="system_install_voices">Install system voice data</string>
     <string name="system_recheck">Recheck offline voices</string>
     <string name="system_voice_install_error">The selected speech engine could not open its voice installation screen. Recheck the engine and its local voice data.</string>
-    <string name="settings_advanced_reset_explanation">Restores Android on-device recognition and system offline speech output. Your translation languages and interface language stay unchanged.</string>
+    <string name="settings_advanced_reset_explanation">Restores Tencent translation for Text and Conversation, Whisper speech recognition, and system offline speech output. Your translation languages and interface language stay unchanged.</string>
     <string name="settings_output_backend">Speech output</string>
     <string name="settings_output_system">System offline speech</string>
     <string name="settings_output_piper">Piper local voices</string>

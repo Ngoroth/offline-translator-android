@@ -34,6 +34,34 @@ $adb = Join-Path $env:ANDROID_HOME 'platform-tools/adb'
 & $adb -s emulator-5554 install -r app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk
 ```
 
+### Fresh defaults, Reset and saved selections
+
+On a fresh settings state, verify Tencent in both Text and Conversation, Whisper
+recognition and System offline output. Do not clear shared application data to
+obtain that state: preserve the current settings externally before any approved
+temporary change. Opening the app and Reset must remain idle, without recording
+or model downloads.
+
+Verify **Reset advanced settings** persists those defaults immediately while
+preserving the committed pair and interface language; Close must not undo Reset.
+Inspect Settings, Text and Conversation in portrait and compact large-font/
+landscape layouts. Separately verify an update/restart preserves valid saved
+provider/backend selections, including older ML Kit/System choices. Unknown or
+removed well-formed recognition IDs must retain the historical System fallback,
+not select Whisper. Legacy schemas and explicit selections are not migrated to
+the new defaults.
+
+For an actual default-route check, confirm all selected providers, explicitly
+prepare the resources, disable connectivity and restart the process. Exercise
+Whisper → Tencent → genuine local System output in both RU/EN directions, Stop
+and idle reentry, plus one Tencent Text request. Inspect fixed input/output
+meaning and non-silent local synthesis; a completed label alone is insufficient.
+Existing System-recognition or ML Kit-specific cases below are separate checks,
+not proof of this combined route. Record UI, inference and restoration outcomes
+separately. Insufficient model storage is **BLOCKED**, not a passing inference
+check or permission to delete another owner's model packs.
+
+
 First exercise **Prepare languages through the actual app UI**. Record missing, unsupported, scheduled, failed and ready states; Start must not become ready merely because a download was scheduled. Open the actual selected engine's voice-data installer when necessary. Do not replace consumer preparation evidence with preinstalled resources from a helper.
 
 For explicit System recognition, select the installed service in advanced Settings and Apply. Admission requires the canonical Google component in `AndroidRecognitionServices` and a singleton CURRENT signer `d22cc500299fb22873a01a010de1c82fbe4d061119b94814dd301dab50cb7678` or `7ce83c1b71f3d572fed04c8d40c5cb10ff75e6d87d9df6fbd53f0468c2905053`; there is no version allowlist. Wrong components/unknown current signers must remain incompatible. Verify version-only, update-time-only and trusted-signer changes invalidate stale preparation/inventory and release no PCM before fresh readiness, including before package broadcasts arrive. Readiness requires both selected local languages actually installed, not merely online/supported/pending. Check that Close discards the draft, Reset restores the designated route, restart preserves Apply, and an unavailable saved component remains repairable. Inventory and offline request parameters do not certify future provider/network behavior; the signed Google implementation is trusted to honor its offline contract, not sandboxed by this app.
@@ -56,11 +84,14 @@ Prepare both native distributions before assembly as documented in
 missing/stale/stock native output, not repair it. Record unique APK filenames
 or SHA-256 and confirm the installed artifact before attributing runtime reports.
 
-In the actual app, select **Whisper · offline recognition**, Apply, choose the
-pair and use **Prepare languages**. Defaults and Reset must still select System.
-Whisper uses one shared375485327byte model, not Android recognition packs or
-the legacy independent LID. Prepare genuine local voices and ML Kit data
-separately; metadata coverage alone cannot enable a usable spoken conversation.
+In the actual app, confirm **Whisper · offline recognition**. Fresh installs and
+Reset select it; with older saved settings, explicitly select it and Apply.
+Choose the pair and use **Prepare languages**. Whisper uses one shared
+375,485,327-byte model, not Android recognition packs or the legacy independent
+LID. Prepare genuine local voices and the selected translation provider
+separately; Tencent is the fresh/Reset choice, while saved ML Kit selections
+still require ML Kit data. Metadata coverage alone cannot enable a usable spoken
+conversation.
 
 After verifying complete connectivity absence, run the Whisper-specific real
 production UI/VAD/recognition/MT/output case:
@@ -150,7 +181,7 @@ overall six-direction2000ms goal.
 
 ## Tencent-specific preparation and native checks
 
-Run explicit Tencent native preparation before the host gate; see [CONTRIBUTING](../../CONTRIBUTING.md). No host/CI gate downloads the 1,133,080,448-byte model. On the actual app, select Tencent independently in Text and Conversation, press Prepare over validated Wi-Fi, and record missing/downloading byte progress/verifying/loading/ready. Reopen and explicitly initialize verified installed bytes locally. Readiness must never adopt corrupt bytes or enable Conversation before the selected recognition/output stages are ready. Missing/corrupt/storage/load/memory/limit/Unicode/Wi-Fi/timeout outcomes must stay localized and must not fall back to ML Kit.
+Run explicit Tencent native preparation before the host gate; see [CONTRIBUTING](../../CONTRIBUTING.md). No host/CI gate downloads the 1,133,080,448-byte model. In the actual app, confirm Tencent independently in Text and Conversation: fresh installs and Reset select it for both, while older valid saved selections require an explicit change and Apply. Press Prepare over validated Wi-Fi, and record missing/downloading byte progress/verifying/loading/ready. Check available private storage before preparation; the model requires its full declared bytes plus installation headroom. Reopen and explicitly initialize verified installed bytes locally. Readiness must never adopt corrupt bytes or enable Conversation before the selected recognition/output stages are ready. Missing/corrupt/storage/load/memory/limit/Unicode/Wi-Fi/timeout outcomes must stay localized and must not fall back to ML Kit.
 
 After real UI preparation, verify no active networks and restart the app. The new app instrumentation selectors are:
 

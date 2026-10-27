@@ -121,7 +121,7 @@
     <string name="system_install_voices">Pasang data suara sistem</string>
     <string name="system_recheck">Periksa lagi suara offline</string>
     <string name="system_voice_install_error">Mesin suara yang dipilih tidak dapat membuka layar pemasangan suara. Periksa lagi mesin dan data suara lokalnya.</string>
-    <string name="settings_advanced_reset_explanation">Memulihkan pengenalan di perangkat Android dan keluaran suara sistem offline. Bahasa terjemahan dan bahasa antarmuka Anda tidak berubah.</string>
+    <string name="settings_advanced_reset_explanation">Memulihkan terjemahan Tencent untuk Teks dan Percakapan, pengenalan suara Whisper, dan keluaran suara sistem offline. Bahasa terjemahan dan bahasa antarmuka Anda tidak berubah.</string>
     <string name="settings_output_backend">Keluaran suara</string>
     <string name="settings_output_system">Suara sistem offline</string>
     <string name="settings_output_piper">Suara lokal Piper</string>

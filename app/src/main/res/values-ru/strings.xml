@@ -121,7 +121,7 @@
     <string name="system_install_voices">Установить системные голоса</string>
     <string name="system_recheck">Проверить офлайн-голоса</string>
     <string name="system_voice_install_error">Не удалось открыть экран установки голосов выбранного движка. Проверьте движок и локальные данные голосов.</string>
-    <string name="settings_advanced_reset_explanation">Возвращает распознавание Android на устройстве и системную офлайн-озвучку. Языки перевода и язык интерфейса сохраняются.</string>
+    <string name="settings_advanced_reset_explanation">Возвращает перевод Tencent для текста и разговора, распознавание речи Whisper и системную офлайн-озвучку. Языки перевода и язык интерфейса сохраняются.</string>
     <string name="settings_output_backend">Озвучка</string>
     <string name="settings_output_system">Системная офлайн-озвучка</string>
     <string name="settings_output_piper">Локальные голоса Piper</string>

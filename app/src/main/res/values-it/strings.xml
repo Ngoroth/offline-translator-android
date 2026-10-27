@@ -121,7 +121,7 @@
     <string name="system_install_voices">Installa dati vocali di sistema</string>
     <string name="system_recheck">Verifica di nuovo le voci offline</string>
     <string name="system_voice_install_error">Il motore vocale selezionato non ha potuto aprire la schermata di installazione delle voci. Verifica di nuovo il motore e i suoi dati vocali locali.</string>
-    <string name="settings_advanced_reset_explanation">Ripristina il riconoscimento Android sul dispositivo e la sintesi vocale di sistema offline. Le lingue di traduzione e la lingua dell’interfaccia rimangono invariate.</string>
+    <string name="settings_advanced_reset_explanation">Ripristina la traduzione Tencent per Testo e Conversazione, il riconoscimento vocale Whisper e la sintesi vocale di sistema offline. Le lingue di traduzione e la lingua dell’interfaccia rimangono invariate.</string>
     <string name="settings_output_backend">Sintesi vocale</string>
     <string name="settings_output_system">Sintesi vocale di sistema offline</string>
     <string name="settings_output_piper">Voci locali Piper</string>

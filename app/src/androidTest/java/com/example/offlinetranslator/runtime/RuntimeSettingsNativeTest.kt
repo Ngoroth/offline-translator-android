@@ -25,6 +25,8 @@ class RuntimeSettingsNativeTest {
         val config = AppSettings(
             speechOutputBackend = SpeechOutputBackend.PIPER,
             speechRecognitionBackend = SpeechRecognitionBackend.SHERPA,
+            textEngineId = "mlkit",
+            conversationEngineId = "mlkit",
         )
         commitNativeSettings(runtime, config)
     }

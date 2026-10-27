@@ -18,7 +18,9 @@ class SettingsValidatorTest {
     )
 
     @Test fun systemPairIsEligibleButNativeRecognitionAndOutputKeepTheirRealCoverage() {
-        val settings = AppSettings(languagePair = LanguagePair(LanguageCatalog.FRENCH, LanguageCatalog.SPANISH))
+        val settings = AppSettings(languagePair = LanguagePair(LanguageCatalog.FRENCH, LanguageCatalog.SPANISH),
+            textEngineId = "mlkit", conversationEngineId = "mlkit",
+            speechRecognitionBackend = SpeechRecognitionBackend.SYSTEM_OFFLINE)
         val validation = validator()
         assertTrue(validation.problems(settings).isEmpty())
         assertTrue(validation.textProblems(settings).isEmpty())
@@ -39,7 +41,9 @@ class SettingsValidatorTest {
             if (models.getJSONObject(index).getString("role") == SpeechModelRole.TTS.name) models.remove(index)
         }
         val validation = validator(document)
-        val system = AppSettings(speechOutputBackend = SpeechOutputBackend.SYSTEM_OFFLINE)
+        val system = AppSettings(speechOutputBackend = SpeechOutputBackend.SYSTEM_OFFLINE,
+            textEngineId = "mlkit", conversationEngineId = "mlkit",
+            speechRecognitionBackend = SpeechRecognitionBackend.SYSTEM_OFFLINE)
         assertTrue(validation.conversationProblems(system).isEmpty())
         assertEquals(LanguageCatalog.entries.map { it.id }.toSet(), validation.conversationLanguageCoverage(system))
         val piper = system.copy(speechOutputBackend = SpeechOutputBackend.PIPER)
@@ -48,7 +52,8 @@ class SettingsValidatorTest {
     }
 
     @Test fun wrongModelRoleBlocksAdvancedSettingsWithoutCorruptingTextPair() {
-        val settings = AppSettings(languageIdModelId = "asr-ru-gigaam-v1", speechRecognitionBackend = SpeechRecognitionBackend.SHERPA)
+        val settings = AppSettings(languageIdModelId = "asr-ru-gigaam-v1", speechRecognitionBackend = SpeechRecognitionBackend.SHERPA,
+            textEngineId = "mlkit", conversationEngineId = "mlkit")
         val validation = validator()
         assertTrue(validation.textProblems(settings).isEmpty())
         assertTrue(ConfigurationProblem.INCOMPATIBLE_MODEL in validation.problems(settings))
@@ -66,7 +71,8 @@ class SettingsValidatorTest {
             }
         }
         val validation = validator(document)
-        val settings = AppSettings(speechOutputBackend = SpeechOutputBackend.SYSTEM_OFFLINE, speechRecognitionBackend = SpeechRecognitionBackend.SHERPA)
+        val settings = AppSettings(speechOutputBackend = SpeechOutputBackend.SYSTEM_OFFLINE, speechRecognitionBackend = SpeechRecognitionBackend.SHERPA,
+            textEngineId = "mlkit", conversationEngineId = "mlkit")
         assertTrue(validation.problems(settings).isEmpty())
         assertTrue(validation.textProblems(settings).isEmpty())
         assertTrue(ConfigurationProblem.INCOMPATIBLE_MODEL in validation.conversationProblems(settings))
@@ -80,7 +86,9 @@ class SettingsValidatorTest {
             if (models.getJSONObject(index).getString("role") in listOf("ASR", "LANGUAGE_ID")) models.remove(index)
         }
         val validation = validator(document)
-        val system = AppSettings(languagePair = LanguagePair(LanguageCatalog.CHINESE, LanguageCatalog.JAPANESE))
+        val system = AppSettings(languagePair = LanguagePair(LanguageCatalog.CHINESE, LanguageCatalog.JAPANESE),
+            textEngineId = "mlkit", conversationEngineId = "mlkit",
+            speechRecognitionBackend = SpeechRecognitionBackend.SYSTEM_OFFLINE)
         assertTrue(validation.conversationProblems(system).isEmpty())
         assertEquals(LanguageCatalog.entries.map { it.id }.toSet(), validation.conversationLanguageCoverage(system))
         assertTrue(validation.conversationProblems(system.copy(speechRecognitionBackend = SpeechRecognitionBackend.SHERPA)).isNotEmpty())
@@ -101,6 +109,7 @@ class SettingsValidatorTest {
             LanguagePair(LanguageCatalog.RUSSIAN, LanguageCatalog.ENGLISH),
         ).flatMap { listOf(it, it.reverse()) }) {
             val settings = AppSettings(languagePair = pair,
+                textEngineId = "mlkit", conversationEngineId = "mlkit",
                 speechRecognitionBackend = SpeechRecognitionBackend.WHISPER,
                 languageIdModelId = "removed-lid",
                 speechRecognitionService = "missing.provider/.RecognitionService")
@@ -108,6 +117,7 @@ class SettingsValidatorTest {
             assertEquals(emptyList<ConfigurationProblem>(), validation.conversationProblems(settings))
         }
         val dutch = AppSettings(languagePair = LanguagePair(LanguageCatalog.DUTCH, LanguageCatalog.ENGLISH),
+            textEngineId = "mlkit", conversationEngineId = "mlkit",
             speechRecognitionBackend = SpeechRecognitionBackend.WHISPER)
         assertEquals(LanguageCatalog.entries.map { it.id }.toSet(), validation.conversationLanguageCoverage(dutch))
         val piper = dutch.copy(speechOutputBackend = SpeechOutputBackend.PIPER)
@@ -117,6 +127,7 @@ class SettingsValidatorTest {
 
     @Test fun missingOrWrongRoleWhisperMetadataBlocksRecognitionButNotIndependentText() {
         val settings = AppSettings(languagePair = LanguagePair(LanguageCatalog.DUTCH, LanguageCatalog.ENGLISH),
+            textEngineId = "mlkit", conversationEngineId = "mlkit",
             speechRecognitionBackend = SpeechRecognitionBackend.WHISPER)
         for (wrongRole in listOf(false, true)) {
             val document = catalogDocument()
@@ -159,6 +170,7 @@ class SettingsValidatorTest {
         }
         val validation = validator(document)
         val settings = AppSettings(languagePair = LanguagePair(LanguageCatalog.DUTCH, LanguageCatalog.ENGLISH),
+            textEngineId = "mlkit", conversationEngineId = "mlkit",
             speechRecognitionBackend = SpeechRecognitionBackend.WHISPER)
         assertEquals(emptyList<ConfigurationProblem>(), validation.textProblems(settings))
         assertEquals(emptyList<ConfigurationProblem>(), validation.problems(settings))

@@ -4,6 +4,7 @@ import com.example.offlinetranslator.core.AppSettings
 import com.example.offlinetranslator.core.LanguageCatalog
 import com.example.offlinetranslator.core.LanguageId
 import com.example.offlinetranslator.core.LanguagePair
+import com.example.offlinetranslator.core.SpeechRecognitionBackend
 import com.example.offlinetranslator.core.SpeechRecognitionReadiness
 import com.example.offlinetranslator.core.SpeechSegment
 import kotlinx.coroutines.CompletableDeferred
@@ -602,6 +603,7 @@ class AndroidConversationRecognitionEngineTest {
                     1, AndroidRecognitionServices.GOOGLE_SIGNER))
         }
         private val config = AppSettings(languagePair = LanguagePair(initial, if (initial == LanguageCatalog.RUSSIAN) LanguageCatalog.ENGLISH else LanguageCatalog.RUSSIAN),
+            speechRecognitionBackend = SpeechRecognitionBackend.SYSTEM_OFFLINE,
             speechRecognitionService = if (explicit) AndroidRecognitionServices.GOOGLE_COMPONENT else null).conversationConfig()
         private val dispatcher = StandardTestDispatcher(scope.testScheduler)
         val engine = AndroidConversationRecognitionEngine(config, platform, dispatcher, dispatcher)

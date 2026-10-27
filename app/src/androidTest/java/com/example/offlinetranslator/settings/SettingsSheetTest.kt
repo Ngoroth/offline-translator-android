@@ -25,7 +25,8 @@ import org.junit.Test
 
 class SettingsSheetTest {
     @get:Rule val compose = createComposeRule()
-    private val defaults = AppSettings()
+    private val defaults = AppSettings(textEngineId = "mlkit", conversationEngineId = "mlkit",
+        speechRecognitionBackend = SpeechRecognitionBackend.SYSTEM_OFFLINE)
     private val choices = listOf(
         SpeechModelChoice(defaults.vadModelId, SpeechModelRole.VAD, emptySet(), "Silero"),
         SpeechModelChoice(defaults.languageIdModelId, SpeechModelRole.LANGUAGE_ID, setOf(defaults.languagePair.source, defaults.languagePair.target), "Whisper language detection"),
@@ -37,7 +38,7 @@ class SettingsSheetTest {
     )
 
     @Test fun portraitSelectorsChangeOnlyDraftAndApplyReceivesActualSelections() {
-        val state = mutableStateOf(SettingsUiState(loading = false, editable = true))
+        val state = mutableStateOf(SettingsUiState(draft = defaults, loading = false, editable = true))
         val service = "installed.provider/.RecognitionService"
         state.value = state.value.copy(recognitionServices = listOf(service to "Installed recognition"))
         var applied: AppSettings? = null
@@ -105,7 +106,7 @@ class SettingsSheetTest {
         var reset = 0
         var closed = 0
         var retries = 0
-        val state = mutableStateOf(SettingsUiState(loading = false, editable = true, corruptionNotice = true,
+        val state = mutableStateOf(SettingsUiState(draft = defaults, loading = false, editable = true, corruptionNotice = true,
             saveError = true, problems = listOf(ConfigurationProblem.UNSUPPORTED_PAIR)))
         compose.setContent {
             val config = Configuration(LocalConfiguration.current).apply {
@@ -147,7 +148,7 @@ class SettingsSheetTest {
     }
 
     @Test fun loadingAndBusyDisableDraftButCloseStillCancels() {
-        val state = mutableStateOf(SettingsUiState())
+        val state = mutableStateOf(SettingsUiState(draft = defaults))
         var closed = false
         compose.setContent { MaterialTheme {
             Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
@@ -173,7 +174,7 @@ class SettingsSheetTest {
         var retries = 0
         compose.setContent { MaterialTheme {
             Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
-                SettingsSheet(SettingsUiState(loading = false, editable = true, loadError = true), choices,
+                SettingsSheet(SettingsUiState(draft = defaults, loading = false, editable = true, loadError = true), choices,
                     listOf(MlKitTranslationEngine.descriptor), {}, {}, {}, { retries++ }, {})
             }
         } }
@@ -228,7 +229,7 @@ class SettingsSheetTest {
     @Test fun registeredProviderSelectionsStayModeSpecificAndRemovedProviderIsRepairable() {
         val tencent = TencentTranslationEngine.descriptor
         val providers = mutableStateOf(listOf(MlKitTranslationEngine.descriptor, tencent))
-        val state = mutableStateOf(SettingsUiState(loading = false, editable = true))
+        val state = mutableStateOf(SettingsUiState(draft = defaults, loading = false, editable = true))
         compose.setContent { MaterialTheme {
             SettingsSheet(state.value, choices, providers.value, { state.value = state.value.copy(draft = it) },
                 {}, {}, {}, {})

@@ -46,6 +46,8 @@ class InterfaceLanguageNativeTest {
         val original = runtime.settings.current()
         commitNativeSettings(runtime, original.copy(
             languagePair = pair,
+            textEngineId = "mlkit",
+            conversationEngineId = "mlkit",
             speechRecognitionBackend = SpeechRecognitionBackend.SYSTEM_OFFLINE,
             speechOutputBackend = SpeechOutputBackend.SYSTEM_OFFLINE,
         ))

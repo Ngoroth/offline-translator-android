@@ -14,9 +14,9 @@ enum class SpeechRecognitionBackend(val persistedId: String) {
 data class AppSettings(
     val languagePair: LanguagePair = LanguagePair(LanguageCatalog.RUSSIAN, LanguageCatalog.ENGLISH),
     val speechOutputBackend: SpeechOutputBackend = SpeechOutputBackend.SYSTEM_OFFLINE,
-    val speechRecognitionBackend: SpeechRecognitionBackend = SpeechRecognitionBackend.SYSTEM_OFFLINE,
-    val textEngineId: String = "mlkit",
-    val conversationEngineId: String = "mlkit",
+    val speechRecognitionBackend: SpeechRecognitionBackend = SpeechRecognitionBackend.WHISPER,
+    val textEngineId: String = "tencent",
+    val conversationEngineId: String = "tencent",
     val vadModelId: String = "vad-silero-6.2.2",
     val languageIdModelId: String = "lid-whisper-tiny",
     val vadMinSilenceMs: Int = 700,
