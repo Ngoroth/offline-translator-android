@@ -4,6 +4,14 @@ Notable capability, behavior and developer-facing compatibility changes. Entries
 
 ## Unreleased
 
+### Development prerelease 0.1.4
+
+- Added a first-launch Fast (ML Kit) / Accurate (Tencent) choice shared by text and conversation.
+- Simplified Settings into basic controls and expandable Advanced options.
+- Made Tencent translation and Whisper recognition the fresh-install and Reset defaults.
+- Removed the legacy RU/EN recognizer and its separate language detector; System recognition and Piper remain available.
+- Previous-version settings are not compatible with this development prerelease.
+
 ### Compact translation setup and simplified settings — 2026-10-27
 
 - Added an explicit first-launch Fast (ML Kit) / Accurate (Tencent) choice shared by Text and Conversation. Engine selection and setup completion persist together before either route mounts; choosing does not download models or start capture.
