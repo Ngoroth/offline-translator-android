@@ -34,22 +34,27 @@ $adb = Join-Path $env:ANDROID_HOME 'platform-tools/adb'
 & $adb -s emulator-5554 install -r app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk
 ```
 
-### Fresh defaults, Reset and saved selections
+### Fresh translation choice, settings and Reset
 
-On a fresh settings state, verify Tencent in both Text and Conversation, Whisper
-recognition and System offline output. Do not clear shared application data to
-obtain that state: preserve the current settings externally before any approved
-temporary change. Opening the app and Reset must remain idle, without recording
-or model downloads.
+Use an explicitly authorized fresh current settings state. Before either route
+mounts, verify the compact Fast (ML Kit) / Accurate (Tencent) dialog. Choose each
+option in separate fresh-state checks; one committed choice must select both
+Text and Conversation, survive restart and dismiss setup only after save succeeds.
+Opening or choosing must not load models, download or request microphone permission.
+Exercise failed persistence and explicit retry with test-owned fault injection;
+engine selection and setup completion must remain atomic.
 
-Verify **Reset advanced settings** persists those defaults immediately while
-preserving the committed pair and interface language; Close must not undo Reset.
-Inspect Settings, Text and Conversation in portrait and compact large-font/
-landscape layouts. Separately verify an update/restart preserves valid saved
-provider/backend selections, including older ML Kit/System choices. Unknown or
-removed well-formed recognition IDs must retain the historical System fallback,
-not select Whisper. Legacy schemas and explicit selections are not migrated to
-the new defaults.
+Settings initially shows only the shared translation choice, interface language
+and voice speed. Expand Advanced for Whisper/System recognition, conditional
+System service, System/Piper output, silence and Reset. Recovery links must open
+Advanced directly. Verify Apply versus Close/Back, immediate locale changes,
+and reachable actions in portrait, landscape and font scale2.
+
+Reset immediately restores Tencent/Whisper/System while preserving pair, locale
+and completed setup; Close must not undo it or reopen setup. Schema7 is the
+current-only format; previous-version migration and replacement notifications
+are intentionally outside this iteration. Shared-device preservation remains
+required unless the resource owner explicitly grants disposable use.
 
 For an actual default-route check, confirm all selected providers, explicitly
 prepare the resources, disable connectivity and restart the process. Exercise
@@ -84,14 +89,12 @@ Prepare both native distributions before assembly as documented in
 missing/stale/stock native output, not repair it. Record unique APK filenames
 or SHA-256 and confirm the installed artifact before attributing runtime reports.
 
-In the actual app, confirm **Whisper · offline recognition**. Fresh installs and
-Reset select it; with older saved settings, explicitly select it and Apply.
+In the actual app, confirm **Whisper · offline recognition** in Advanced Settings.
 Choose the pair and use **Prepare languages**. Whisper uses one shared
-375,485,327-byte model, not Android recognition packs or the legacy independent
-LID. Prepare genuine local voices and the selected translation provider
-separately; Tencent is the fresh/Reset choice, while saved ML Kit selections
-still require ML Kit data. Metadata coverage alone cannot enable a usable spoken
-conversation.
+375,485,327-byte model, not Android recognition packs or a separate language-ID
+model. Prepare genuine local voices and the selected translation provider
+separately. The shared Fast choice uses ML Kit resources; Accurate uses Tencent.
+Metadata coverage alone cannot enable a usable spoken conversation.
 
 After verifying complete connectivity absence, run the Whisper-specific real
 production UI/VAD/recognition/MT/output case:

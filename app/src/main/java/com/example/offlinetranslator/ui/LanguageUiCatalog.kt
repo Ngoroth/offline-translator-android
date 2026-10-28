@@ -37,7 +37,6 @@ internal fun languageNameResource(id: LanguageId): Int? = when (id.value) {
 internal fun speechModelName(id: String, fallback: String): String {
     val resource = when (id) {
         "vad-silero-6.2.2" -> R.string.model_vad_silero
-        "lid-whisper-tiny" -> R.string.model_lid_whisper
         "asr-ru-gigaam-v1" -> R.string.model_asr_gigaam
         "asr-en-whisper-tiny.en" -> R.string.model_asr_whisper_en
         "asr-en-whisper-tiny" -> R.string.model_asr_whisper_multilingual

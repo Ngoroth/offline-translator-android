@@ -82,3 +82,7 @@ class SherpaSpeechRecognitionEngine(
         withContext(NonCancellable) { mutex.withLock { releaseRecognizers() } }
     }
 }
+
+internal interface NativeSpeechRecognizer : AutoCloseable {
+    suspend fun recognize(pcm: ShortArray, ensureActive: suspend () -> Unit, samples: FloatArray? = null): String
+}

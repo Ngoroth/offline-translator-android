@@ -25,6 +25,7 @@ import com.example.offlinetranslator.core.SpeechCaptureEngine
 import com.example.offlinetranslator.speechmodels.SpeechModelStore
 import com.example.offlinetranslator.settings.SettingsSheet
 import com.example.offlinetranslator.settings.SettingsViewModel
+import com.example.offlinetranslator.settings.TranslationSetupGate
 import com.example.offlinetranslator.translation.TranslationRoute
 import com.example.offlinetranslator.speech.AndroidRecognitionServices
 
@@ -41,6 +42,7 @@ fun TranslatorHome(
             repository = runtime.settings,
             canEdit = runtime.editable,
             validate = runtime::validationProblems,
+            completeSetup = runtime::completeTranslationSetup,
             persist = runtime::applySettings,
             teardownFailed = runtime.owners.teardownFailed,
             recognitionServices = { AndroidRecognitionServices.choices(discoveryContext).map { it.component to it.label } },
@@ -49,6 +51,7 @@ fun TranslatorHome(
     val settingsState by settingsVm.state.collectAsStateWithLifecycle()
     var conversation by rememberSaveable { mutableStateOf(true) }
     var settingsOpen by rememberSaveable { mutableStateOf(false) }
+    var advancedSettingsOpen by rememberSaveable { mutableStateOf(false) }
     var languageChanging by remember { mutableStateOf(false) }
     val configuration = LocalConfiguration.current
     val interfaceLanguage = remember(context, configuration) { InterfaceLanguage.current(context) }
@@ -57,18 +60,30 @@ fun TranslatorHome(
         if (settingsOpen) settingsVm.refreshRecognitionServices()
     }
 
+    TranslationSetupGate(
+        state = settingsState,
+        providers = runtime.registry.descriptors,
+        onComplete = settingsVm::completeTranslationSetup,
+        onRetry = settingsVm::retry,
+    ) {
     TranslatorHomeLayout(
         conversation = conversation,
         onConversationChanged = { conversation = it },
         onOpenSettings = {
             interfaceLanguageError = false
+            advancedSettingsOpen = false
             settingsVm.beginEditing()
             settingsOpen = true
         },
         conversationContent = {
             ConversationRoute(
                 captureFactory, onLanguageTransitionChanged = { languageChanging = it }, onOpenText = { conversation = false },
-                onOpenAdvancedSettings = { settingsVm.beginEditing(); settingsOpen = true },
+                onOpenAdvancedSettings = {
+                    interfaceLanguageError = false
+                    advancedSettingsOpen = true
+                    settingsVm.beginEditing()
+                    settingsOpen = true
+                },
             )
         },
         textContent = { homeControls ->
@@ -79,7 +94,6 @@ fun TranslatorHome(
     if (settingsOpen) {
         SettingsSheet(
             state = settingsState.copy(editable = settingsState.editable && !languageChanging),
-            modelChoices = runtime.modelChoices,
             providers = runtime.registry.descriptors,
             onDraftChanged = settingsVm::updateDraft,
             onApply = { if (!languageChanging) settingsVm.apply() },
@@ -99,7 +113,9 @@ fun TranslatorHome(
                 }
             },
             interfaceLanguageError = interfaceLanguageError,
+            initiallyExpanded = advancedSettingsOpen,
         )
+    }
     }
 }
 

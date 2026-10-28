@@ -18,6 +18,7 @@ class SettingsViewModel(
     private val persist: suspend (AppSettings) -> Boolean,
     private val teardownFailed: StateFlow<Boolean>,
     private val recognitionServices: () -> List<Pair<String?, String>> = { emptyList() },
+    private val completeSetup: suspend (String) -> Boolean,
 ) : ViewModel() {
     private val mutableState = MutableStateFlow(SettingsUiState())
     val state = mutableState.asStateFlow()
@@ -31,10 +32,14 @@ class SettingsViewModel(
             }.collect { (loaded, editable, notice, failed) ->
                     committed = loaded.settings
                     val draft = loaded.settings?.let {
-                        if (editing) mutableState.value.draft.copy(languagePair = it.languagePair) else it
+                        if (editing) mutableState.value.draft.copy(
+                            languagePair = it.languagePair,
+                            translationSetupComplete = it.translationSetupComplete,
+                        ) else it
                     } ?: mutableState.value.draft
                     mutableState.value = mutableState.value.copy(
                         draft = draft, loading = loaded.loading, loadError = loaded.loadError,
+                        translationSetupComplete = loaded.settings?.translationSetupComplete == true,
                         teardownError = failed,
                         editable = editable, corruptionNotice = notice, problems = validate(draft),
                     )
@@ -57,7 +62,10 @@ class SettingsViewModel(
     fun updateDraft(value: AppSettings) {
         val current = state.value
         if (!current.editable || current.loading || current.saving || current.loadError) return
-        val frozen = value.copy(languagePair = committed?.languagePair ?: current.draft.languagePair)
+        val frozen = value.copy(
+            languagePair = committed?.languagePair ?: current.draft.languagePair,
+            translationSetupComplete = committed?.translationSetupComplete ?: false,
+        )
         mutableState.value = current.copy(draft = frozen, saveError = false, problems = validate(frozen))
         if (current.draft.speechRecognitionBackend != frozen.speechRecognitionBackend) refreshRecognitionServices()
     }
@@ -69,13 +77,27 @@ class SettingsViewModel(
 
     fun reset() {
         if (!state.value.canReset) return
-        submit(AppSettings(languagePair = committed?.languagePair ?: state.value.draft.languagePair))
+        submit(AppSettings(
+            languagePair = committed?.languagePair ?: state.value.draft.languagePair,
+            translationSetupComplete = committed?.translationSetupComplete ?: false,
+        ))
+    }
+
+    fun completeTranslationSetup(engineId: String) {
+        val current = state.value
+        if (!current.canReset || current.translationSetupComplete) return
+        val latest = committed ?: return
+        submit(latest.copy(translationEngineId = engineId, translationSetupComplete = true)) {
+            completeSetup(engineId)
+        }
     }
 
     fun cancelDraft() {
         editing = false
+        val previousBackend = state.value.draft.speechRecognitionBackend
         val original = committed ?: state.value.draft
         mutableState.value = state.value.copy(draft = original, saveError = false, problems = validate(original))
+        if (previousBackend != original.speechRecognitionBackend) refreshRecognitionServices()
     }
 
     fun retry() {
@@ -84,8 +106,10 @@ class SettingsViewModel(
         repository.retry()
     }
 
-    private fun submit(value: AppSettings) {
-        if (state.value.saving || !canEdit.value) return
+    private fun submit(value: AppSettings, save: suspend () -> Boolean = {
+        persist(value.copy(translationSetupComplete = committed?.translationSetupComplete ?: false))
+    }) {
+        if (!state.value.canReset || !canEdit.value) return
         val problems = validate(value)
         if (problems.isNotEmpty()) {
             mutableState.value = state.value.copy(problems = problems)
@@ -94,13 +118,16 @@ class SettingsViewModel(
         mutableState.value = state.value.copy(saving = true, saveError = false)
         viewModelScope.launch {
             try {
-                val saved = persist(value)
+                val saved = save()
                 mutableState.value = state.value.copy(saving = false, saveError = !saved && !teardownFailed.value, teardownError = teardownFailed.value)
                 if (saved) {
                     val actual = repository.current()
                     committed = actual
                     val current = state.value
-                    mutableState.value = current.copy(draft = actual, problems = validate(actual), corruptionNotice = false)
+                    mutableState.value = current.copy(
+                        draft = actual, translationSetupComplete = actual.translationSetupComplete,
+                        problems = validate(actual), corruptionNotice = false,
+                    )
                     if (current.draft.speechRecognitionBackend != actual.speechRecognitionBackend) refreshRecognitionServices()
                 }
             } catch (cancelled: CancellationException) {

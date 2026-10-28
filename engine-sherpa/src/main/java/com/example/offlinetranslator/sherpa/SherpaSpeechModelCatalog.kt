@@ -54,11 +54,6 @@ object SherpaSpeechModelCatalog {
                     intRange("tailPaddings", 300..300), intRange("numThreads", 4..4), features(),
                 )
             }
-            "whisperLanguageId" -> {
-                fields("family", "encoder", "decoder", "numThreads")
-                require(role == SpeechModelRole.LANGUAGE_ID && languages.size >= 2 && sampleRateHz == 16_000) { "Invalid language identifier" }
-                SherpaSpeechModelAdapter.WhisperLanguageId(ref("encoder"), ref("decoder"), threads())
-            }
             "piperVits" -> {
                 fields("family", "model", "tokens", "dataDir", "noiseScale", "noiseScaleW", "lengthScale", "numThreads")
                 require(role == SpeechModelRole.TTS && languages.size == 1 && sampleRateHz == 22_050) { "Invalid Piper role/language/rate" }

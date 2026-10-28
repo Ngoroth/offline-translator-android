@@ -205,7 +205,7 @@ class AndroidConversationRecognitionNativeTest {
         service: String? = null,
         block: suspend (Proof) -> Unit,
     ) {
-        val config = selected(pair, service).copy(conversationEngineId = engineId).conversationConfig()
+        val config = selected(pair, service).copy(translationEngineId = engineId).conversationConfig()
         val store = SpeechModelStore(context, SherpaSpeechModelCatalog.fromAssets(context))
         val recognition = AndroidConversationRecognitionEngine(context, config)
         val translation = AppRuntime.get(context).registry.create(engineId, config.pairs)
@@ -220,7 +220,6 @@ class AndroidConversationRecognitionNativeTest {
             val state = recognition.readiness()
             logReadiness(pair, state, recognition)
             assertEquals("BLOCKED: exact selected request must have BOTH local models installed for ${pair.id}", SpeechRecognitionReadiness.READY, state)
-            assertTrue(config.asrModelIds.isEmpty())
             assertTrue(config.ttsModelIds.isEmpty())
             val resourcesReady = owner.models.isConversationReady()
             assertTrue("BLOCKED: selected native VAD and the owner's exact recognizer must be ready", resourcesReady)

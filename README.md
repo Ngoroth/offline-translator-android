@@ -22,11 +22,11 @@ Recorded on an emulator with networking disabled and languages prepared. Test au
 
 Choose two languages, prepare their resources, and start a conversation. Either person can speak a turn; the app recognizes, translates and reads it aloud. Listening resumes after playback. **Text** uses the same language pair without the microphone.
 
-- **Local processing:** fresh installs and **Reset advanced settings** select Tencent Hy-MT2 translation for both Text and Conversation, selected-pair multilingual Whisper recognition and System offline speech output, with no automatic cloud or other-provider fallback.
-- **Alternative engines:** ML Kit translation and Android on-device recognition; legacy Sherpa recognition and Piper speech for the curated Russian/English setup.
+- **Translation choice:** first launch offers Fast (Google ML Kit) or Accurate (Tencent Hy-MT2), with one saved choice for Text and Conversation. These labels describe priorities, not guaranteed speed or correctness.
+- **Speech alternatives:** Whisper is the recognition default; Android on-device recognition and System/Piper output remain in Advanced settings. Piper retains its curated Russian/English coverage.
 - **17 languages:** a shared language pair across Conversation and Text, with a localized interface.
 
-Updating or restarting preserves valid saved engine and speech choices; older installations may still use ML Kit or System recognition until explicitly changed. Reset applies the new advanced defaults immediately while preserving the selected language pair and interface language. Opening the app or resetting settings does not download models or start recording.
+Basic Settings contains translation choice, interface language and voice speed; Advanced contains recognition/service, output, end-of-speech silence and Reset. Reset immediately restores Tencent, Whisper and System output while preserving the language pair, interface language and completed setup. Opening, choosing or resetting does not download models or record. Current settings use schema 7 only; upgrading older settings is not supported in this development iteration.
 
 The catalog is `en`, `vi`, `es`, `id`, `it`, `zh`, `ko`, `de`, `pl`, `pt`, `ru`, `th`, `tr`, `fr`, `hi`, `ja`, `nl`. Chinese means Mainland Simplified Mandarin. Dutch uses `nl` for ML Kit and `nl-NL` for Android recognition/output. Whisper covers the current 17 recognition codes through one shared Small INT8 download; it does not expand Piper voices or install System voices. Coverage is not quality qualification or proof of installed Android resources.
 
@@ -57,7 +57,7 @@ silence, is not by itself proof that someone spoke.
 | `engine-mlkit` | On-device text translation and actual Google Task lifetimes |
 | `speech-models` | Shared strict catalog, verified package storage, download and installation |
 | `engine-tencent` | Shared pinned GGUF preparation and owner-scoped embedded CPU llama.cpp JNI inference |
-| `engine-sherpa` | Native VAD, joint selected-pair Whisper, retained legacy ASR/LID and Piper synthesis |
+| `engine-sherpa` | Native VAD, joint selected-pair Whisper, retained evaluator ASR and Piper synthesis |
 | `translator-test-kit` | Shared evaluation inputs and utilities |
 | `engine-sherpa-model-smoke` | Isolated Android/JNI model-evaluation runner |
 | `build-logic` | Gradle verification tooling, with its own JVM tests |
@@ -132,17 +132,17 @@ on Windows or `bash ./gradlew :app:assembleDebug` on Linux/macOS.
 
 ### Multilingual Whisper recognition
 
-For Dutch Conversation, confirm **Whisper · offline recognition** in Settings.
-Fresh installs and Reset already select it; with older saved settings, explicitly
-select it and Apply before preparing the selected languages. The shared model has
-375,485,327 bytes across three verified raw packages; installation also requires
-temporary headroom. It needs neither Android recognition-language packs nor the
-legacy independent language-ID model. System output still needs genuine offline
-voices for both participants. No model menu or per-turn speaker action is added.
+Whisper is selected by default and remains available in Advanced Settings alongside
+Android on-device recognition. The shared model has 375,485,327 bytes across three
+verified raw packages; installation also requires temporary headroom. It needs
+neither Android recognition-language packs nor a separate language-ID model.
+System output still needs genuine offline voices for both participants.
 
-Settings schemas remain unchanged. Updating does not silently replace saved
-System or Sherpa selections. A saved unknown or removed backend ID still uses
-the System fallback, not Whisper; other well-formed preferences remain intact.
+The legacy Russian/English Sherpa conversation recognizer and its separate
+language-ID path have been retired. The shared sherpa-onnx library, VAD, Piper
+and ASR resources used by the isolated evaluation harness remain. First-launch
+translation selection is saved atomically with setup completion before either
+main route opens; restart does not repeat completed setup.
 
 After installation:
 
@@ -162,7 +162,7 @@ Recognition and speech output are separate choices. **System offline speech** us
 
 ### Tencent model preparation and boundaries
 
-Confirm **Tencent Hy-MT2** independently for Text and Conversation in Settings. Fresh installs and Reset select it for both; older saved choices remain unchanged until explicitly changed and applied. Use **Prepare** over Wi-Fi to download the **1.13 GB** model. After reopening, Prepare initializes the verified local model without downloading it again. No model is bundled in the APK.
+Choose **Accurate · Tencent Hy-MT2** in the shared translation choice; Reset also selects it. Use **Prepare** over Wi-Fi to download the **1.13 GB** model. After reopening, Prepare initializes the verified local model without downloading it again. No model is bundled in the APK.
 
 Tencent remains experimental despite becoming the default. Conversation targets **8 GiB or more RAM**, with phone performance still unqualified. Known output errors affect meaning, including dates and negation—verify important details. See the [pinned model identity](engine-tencent/THIRD_PARTY.md) and [results, resource limits and verification boundaries](docs/testing/verify-translator.md#tencent-specific-preparation-and-native-checks).
 

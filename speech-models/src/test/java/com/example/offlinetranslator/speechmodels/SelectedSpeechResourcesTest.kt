@@ -37,7 +37,7 @@ class SelectedSpeechResourcesTest {
             exchange.sendResponseHeaders(200, bytes.size.toLong())
             exchange.responseBody.use { it.write(bytes) }
         }.use { https ->
-            val recognitionSelections = listOf(emptySet(), setOf("multilingual"), setOf("identifier", "asr-en", "asr-ru"))
+            val recognitionSelections = listOf(emptySet(), setOf("multilingual"), setOf("asr-en", "asr-ru"))
             for (backend in SpeechRecognitionBackend.entries) for (output in SpeechOutputBackend.entries) {
                 for (recognitionIds in recognitionSelections) {
                     requested.clear()
@@ -76,10 +76,10 @@ class SelectedSpeechResourcesTest {
         val config = AppSettings(speechOutputBackend = SpeechOutputBackend.SYSTEM_OFFLINE).conversationConfig()
         try {
             for (ids in listOf(setOf("missing"), setOf(config.vadModelId), setOf("tts-en-piper-lessac-medium"),
-                setOf("asr-en"), setOf("foreign"), setOf("identifier"), setOf("multilingual", "identifier-en"))) {
+                setOf("asr-en"), setOf("foreign"), setOf("multilingual", "foreign"))) {
                 assertThrows(IllegalArgumentException::class.java) { SelectedSpeechResources.forConversation(store, config, ids) }
             }
-            val wrongVad = AppSettings(vadModelId = "identifier", speechOutputBackend = SpeechOutputBackend.SYSTEM_OFFLINE).conversationConfig()
+            val wrongVad = AppSettings(vadModelId = "asr-en", speechOutputBackend = SpeechOutputBackend.SYSTEM_OFFLINE).conversationConfig()
             assertThrows(IllegalArgumentException::class.java) { SelectedSpeechResources.forConversation(store, wrongVad, emptySet()) }
             assertEquals(0, digests)
             assertTrue(store.packages.value.all { it.state == SpeechModelInstallState.MISSING })
@@ -141,8 +141,6 @@ class SelectedSpeechResourcesTest {
     private fun fixture(): Fixture {
         val specifications = listOf(
             Triple(VAD, "VAD", emptyList()),
-            Triple("identifier", "LANGUAGE_ID", listOf("en", "ru")),
-            Triple("identifier-en", "LANGUAGE_ID", listOf("en")),
             Triple("asr-en", "ASR", listOf("en")),
             Triple("asr-ru", "ASR", listOf("ru")),
             Triple("multilingual", "ASR", listOf("en", "ru", "nl")),

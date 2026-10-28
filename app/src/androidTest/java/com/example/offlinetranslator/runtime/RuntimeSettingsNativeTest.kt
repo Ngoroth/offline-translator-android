@@ -12,7 +12,7 @@ import org.junit.Before
 import org.junit.Test
 import java.io.File
 
-/** Real production VM and controller with official RU PCM through native VAD, LID, ASR, MT, TTS, playback. */
+/** Real production VM and controller with official RU PCM through native VAD, Whisper, MT, TTS, playback. */
 class RuntimeSettingsNativeTest {
     private val context = InstrumentationRegistry.getInstrumentation().targetContext
     private lateinit var runtime: AppRuntime
@@ -24,9 +24,8 @@ class RuntimeSettingsNativeTest {
         original = runtime.settings.current()
         val config = AppSettings(
             speechOutputBackend = SpeechOutputBackend.PIPER,
-            speechRecognitionBackend = SpeechRecognitionBackend.SHERPA,
-            textEngineId = "mlkit",
-            conversationEngineId = "mlkit",
+            speechRecognitionBackend = SpeechRecognitionBackend.WHISPER,
+            translationEngineId = "mlkit",
         )
         commitNativeSettings(runtime, config)
     }
@@ -103,7 +102,7 @@ class RuntimeSettingsNativeTest {
     @Test fun recognitionBackendCutoverReleasesOldOwnerAndRejectsStaleConfiguration() = runBlocking {
         val stale = runtime.settings.current().conversationConfig()
         val old = runtime.createConversationOwner(stale)
-        assertTrue(old.recognition is com.example.offlinetranslator.sherpa.SherpaConversationRecognitionEngine)
+        assertTrue(old.recognition is com.example.offlinetranslator.sherpa.WhisperConversationRecognitionEngine)
         val advanced = runtime.settings.current().copy(speechRecognitionBackend = SpeechRecognitionBackend.SYSTEM_OFFLINE)
         assertTrue(runtime.applySettings(advanced))
         assertEquals(SpeechOutputBackend.PIPER, runtime.settings.current().speechOutputBackend)
@@ -118,7 +117,6 @@ class RuntimeSettingsNativeTest {
         val fresh = runtime.createConversationOwner(runtime.settings.current().conversationConfig())
         try {
             assertTrue(fresh.recognition is com.example.offlinetranslator.speech.AndroidConversationRecognitionEngine)
-            assertTrue(fresh.config.asrModelIds.isEmpty())
             assertEquals(SpeechOutputBackend.PIPER, fresh.config.speechOutputBackend)
         } finally { runtime.release(fresh) }
     }
@@ -142,6 +140,33 @@ class RuntimeSettingsNativeTest {
         runtime.closeAndJoin()
         runtime = AppRuntime.get(context)
         assertEquals(selected, runtime.settings.current())
+    }
+
+    @Test fun setupCannotStealAnOwnerAndCommitsItsChoiceOnlyOnce() = runBlocking {
+        runtime.settings.save(runtime.settings.current().copy(translationSetupComplete = false))
+        var closed = false
+        val contender = object : RuntimeOwner {
+            override val isBusy = false
+            override val activity = kotlinx.coroutines.flow.MutableStateFlow(false)
+            override fun interrupt() = Unit
+            override suspend fun closeAndJoin(): Result<Unit> { closed = true; return Result.success(Unit) }
+        }
+        runtime.owners.replace { contender }
+        assertFalse(runtime.completeTranslationSetup("tencent"))
+        assertFalse(runtime.settings.current().translationSetupComplete)
+        assertTrue(runtime.owners.isCurrent(contender))
+        assertFalse(closed)
+        runtime.owners.release(contender)
+        assertTrue(runtime.completeTranslationSetup("tencent"))
+        val selected = runtime.settings.current()
+        assertTrue(selected.translationSetupComplete)
+        assertEquals("tencent", selected.translationEngineId)
+        assertFalse(runtime.completeTranslationSetup("mlkit"))
+        assertEquals(selected, runtime.settings.current())
+        assertTrue(runtime.applySettings(selected.copy(translationEngineId = "mlkit", translationSetupComplete = false)))
+        assertTrue(runtime.settings.current().translationSetupComplete)
+        assertTrue(runtime.updateLanguagePair(selected.languagePair, selected.languagePair.reverse()))
+        assertTrue(runtime.settings.current().translationSetupComplete)
     }
 
     private fun loadOfficialRussianPcm(): ShortArray {

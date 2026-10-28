@@ -41,11 +41,6 @@ sealed interface SherpaSpeechModelAdapter : SpeechModelAdapter {
         val featureDim: Int,
     ) : SherpaSpeechModelAdapter
 
-    data class WhisperLanguageId(
-        val encoder: SpeechModelRef,
-        val decoder: SpeechModelRef,
-        val numThreads: Int,
-    ) : SherpaSpeechModelAdapter
 
     data class PiperVits(
         val model: SpeechModelRef,

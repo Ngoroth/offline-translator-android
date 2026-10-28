@@ -66,6 +66,7 @@ skill: ubiquitous-language
 - **Translation preparation** `TranslationPreparationState` kind:state
 - **Translation preparation phase** `TranslationPreparationPhase` kind:state
 - **Translation provider** `TranslationProviderDescriptor` kind:value
+- **Translation setup** `TranslationSetup` kind:process
 - **Undetermined language** `UndeterminedLanguage` kind:state
 - **Utterance recognition** `ConversationRecognitionEngine` kind:service
 - **Utterance status** `ConversationTranscriptStatus` kind:state
@@ -73,8 +74,8 @@ skill: ubiquitous-language
 ## Terms
 
 ### App settings
-- **Definition**: Persisted user choices for the shared language pair, translation engines, speech output backend and speech-processing parameters.
-- **NOT**: Installed models or the current processing phase; recognition models and Piper voices are selected automatically from the languages.
+- **Definition**: Persisted user choices for the shared language pair, common translation engine, explicit Translation setup completion, speech output backend and speech-processing parameters.
+- **NOT**: Installed models or the current processing phase; Whisper handles the selected recognition pair and Piper voices are selected automatically from the languages.
 - **Related**: Language pair, Speech output backend.
 - **Evidence**: `core/src/main/java/com/example/offlinetranslator/core/AppSettings.kt:8-22`, `RuntimeConfiguration.kt:23-46` in the same directory.
 
@@ -158,7 +159,7 @@ skill: ubiquitous-language
 - **Evidence**: `core/src/main/java/com/example/offlinetranslator/core/TranslationEngine.kt` (`prepare`), `ConversationEngines.kt:49,66` in the same directory.
 
 ### Recognition backend
-- **Definition**: A choice between Android system offline, joint Whisper and legacy Sherpa recognition, independent of the Speech output backend.
+- **Definition**: A choice between Android system offline and joint Whisper recognition, independent of the Speech output backend.
 - **NOT**: Speech output backend or Translation engine; this choice neither replaces speech output nor enables automatic switching between backends.
 - **Related**: Utterance recognition, Speech output backend, Recognition readiness.
 - **Evidence**: `core/src/main/java/com/example/offlinetranslator/core/AppSettings.kt` (`SpeechRecognitionBackend`).
@@ -193,8 +194,8 @@ skill: ubiquitous-language
 - **Evidence**: `speech-models/src/main/java/com/example/offlinetranslator/speechmodels/SpeechModelDefinition.kt:9-17`.
 
 ### Speech model role
-- **Definition**: The purpose of a speech resource: voice activity detection (VAD), speech recognition (ASR), language identification (LANGUAGE_ID) or speech synthesis (TTS).
-- **NOT**: The model's language, family or installation status; a language identification model is not a Language identifier.
+- **Definition**: The purpose of a speech resource: voice activity detection (VAD), speech recognition (ASR) or speech synthesis (TTS).
+- **NOT**: The model's language, family or installation status; Whisper resolves the utterance language during joint recognition rather than through a separately selected role.
 - **Evidence**: `core/src/main/java/com/example/offlinetranslator/core/RuntimeConfiguration.kt:3`, `SpeechModelRepository.kt:14-24` in the same directory.
 
 ### Speech model status
@@ -274,6 +275,12 @@ skill: ubiquitous-language
 - **Definition**: An identifiable translation implementation with a name, provider and SDK information, attribution and terms of use.
 - **NOT**: Speech output backend: choosing a text or conversation translation provider does not choose recognition or a voice.
 - **Evidence**: `core/src/main/java/com/example/offlinetranslator/core/TranslationCapabilities.kt:25-32`. SDK information stays in the provider description, not ordinary Help.
+
+### Translation setup
+- **Definition**: The required explicit first choice of a common Translation engine, completed only when that choice and its completion are persisted together.
+- **NOT**: Translation preparation; completing setup does not install resources or start processing.
+- **Related**: App settings, Translation engine.
+- **Evidence**: `core/src/main/java/com/example/offlinetranslator/core/AppSettings.kt`, `app/src/main/java/com/example/offlinetranslator/runtime/AppRuntime.kt` (`completeTranslationSetup`).
 
 ### Undetermined language
 - **Definition**: A recognition outcome retaining any original text without a sufficiently supported language assignment within the selected pair.

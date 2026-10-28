@@ -36,7 +36,7 @@ class AppSettingsRepositoryTest {
         val repo = AppSettingsRepository(file)
         try {
             val settings = repo.current()
-            assertEquals(AppSettingsTestFixtures.freshInstall, settings)
+            assertFalse(settings.translationSetupComplete)
             assertFalse("Loading fresh defaults must not create a settings file", file.exists())
             assertFalse(repo.corruptionNotice.value)
         } finally {
@@ -45,101 +45,36 @@ class AppSettingsRepositoryTest {
     }
 
     @Test
-    fun legacyMigrationIsLazyNoOpPreservesBytesAndChangedSchemaSixSettingsSurviveRestart() = runBlocking {
-        for (version in 1..5) {
-            val file = File(temp.root, "schema-$version.json")
-            val source = when (version) {
-                5 -> AppSettingsTestFixtures.schemaFourDocument().put("schemaVersion", 5)
-                    .put("speechRecognitionBackend", "sherpa")
-                4 -> AppSettingsTestFixtures.schemaFourDocument()
-                else -> AppSettingsTestFixtures.legacyDocument(version)
-            }
-            val migrated = AppSettingsTestFixtures.migrated.copy(speechRecognitionBackend =
-                if (version == 5) SpeechRecognitionBackend.SHERPA else SpeechRecognitionBackend.SYSTEM_OFFLINE)
-            val originalBytes = (source.toString(2) + "\n").toByteArray(Charsets.UTF_8)
-            file.writeBytes(originalBytes)
-            val firstRepo = AppSettingsRepository(file)
+    fun explicitFirstChoicePersistsEngineAndCompletionTogetherAcrossRestart() = runBlocking {
+        for (engineId in listOf("mlkit", "tencent")) {
+            val file = File(temp.root, "$engineId-settings.json")
+            val first = AppSettingsRepository(file)
+            val selected: AppSettings
             try {
-                assertEquals(migrated, firstRepo.current())
-                assertArrayEquals(originalBytes, file.readBytes())
-                assertEquals(migrated, firstRepo.save(firstRepo.current()))
-                assertArrayEquals("A no-op save must not rewrite a legacy file", originalBytes, file.readBytes())
-                assertFalse(firstRepo.corruptionNotice.value)
-            } finally {
-                firstRepo.closeAndJoin()
-            }
-
-            val updated = migrated.copy(
-                languagePair = LanguagePair(LanguageCatalog.FRENCH, LanguageCatalog.SPANISH),
-                speechOutputBackend = SpeechOutputBackend.SYSTEM_OFFLINE,
-                textEngineId = "tencent",
-                ttsSpeedPercent = 115,
-                speechRecognitionService = "missing.provider/.RecognitionService",
-            )
-            val secondRepo = AppSettingsRepository(file)
-            try {
-                assertEquals(migrated, secondRepo.current())
-                assertArrayEquals(originalBytes, file.readBytes())
-                assertEquals(updated, secondRepo.save(updated))
-                assertEquals(updated, secondRepo.current())
-                val document = JSONObject(file.readText(Charsets.UTF_8))
-                assertEquals("system-offline", document.getString("speechOutputBackend"))
-                assertEquals(migrated.speechRecognitionBackend.persistedId, document.getString("speechRecognitionBackend"))
-                for (field in listOf("textPair", "conversationLanguages", "asrModelIds", "ttsModelIds")) {
-                    assertFalse(document.has(field))
-                }
-            } finally {
-                secondRepo.closeAndJoin()
-            }
-            val rewrittenBytes = file.readBytes()
+                val fresh = first.current()
+                assertFalse(fresh.translationSetupComplete)
+                selected = fresh.copy(translationEngineId = engineId, translationSetupComplete = true)
+                first.save(selected)
+            } finally { first.closeAndJoin() }
             val reopened = AppSettingsRepository(file)
             try {
-                assertEquals(updated, reopened.current())
+                assertEquals(selected, reopened.current())
+                assertEquals(engineId, reopened.current().textConfig().engineId)
+                assertEquals(engineId, reopened.current().conversationConfig().engineId)
                 assertFalse(reopened.corruptionNotice.value)
-                assertEquals(updated, reopened.save(reopened.current()))
-                assertArrayEquals(rewrittenBytes, file.readBytes())
-            } finally {
-                reopened.closeAndJoin()
-            }
-        }
-    }
-
-    @Test
-    fun selectedSherpaAndOutputChoiceSurviveRepositoryRestartIndependently() = runBlocking {
-        val file = File(temp.root, "settings.json")
-        val selected = AppSettingsTestFixtures.migrated.copy(
-            speechRecognitionBackend = SpeechRecognitionBackend.SHERPA,
-            speechOutputBackend = SpeechOutputBackend.PIPER,
-            speechRecognitionService = "missing.provider/.RecognitionService",
-        )
-        val first = AppSettingsRepository(file)
-        try {
-            assertEquals(selected, first.save(selected))
-        } finally {
-            first.closeAndJoin()
-        }
-        val document = JSONObject(file.readText(Charsets.UTF_8))
-        assertEquals("sherpa", document.getString("speechRecognitionBackend"))
-        assertEquals("piper", document.getString("speechOutputBackend"))
-
-        val reopened = AppSettingsRepository(file)
-        try {
-            assertEquals(selected, reopened.current())
-        } finally {
-            reopened.closeAndJoin()
+            } finally { reopened.closeAndJoin() }
         }
     }
 
     @Test
     fun explicitWhisperSurvivesRestartWithHiddenPreferencesAndCanReturnToEverySavedBackend() = runBlocking {
         val file = File(temp.root, "whisper-settings.json")
-        val previous = AppSettingsTestFixtures.migrated.copy(
+        val previous = AppSettingsTestFixtures.selected.copy(
             speechRecognitionService = "missing.provider/.RecognitionService",
-            languageIdModelId = "saved-lid",
             vadMinSilenceMs = 1200,
             ttsSpeedPercent = 115,
         )
-        for (backend in listOf(SpeechRecognitionBackend.SYSTEM_OFFLINE, SpeechRecognitionBackend.SHERPA)) {
+        for (backend in listOf(SpeechRecognitionBackend.SYSTEM_OFFLINE)) {
             val saved = previous.copy(speechRecognitionBackend = backend)
             val selected = saved.copy(speechRecognitionBackend = SpeechRecognitionBackend.WHISPER)
             val first = AppSettingsRepository(file)
@@ -147,9 +82,6 @@ class AppSettingsRepositoryTest {
                 first.save(saved)
                 assertEquals(selected, first.save(selected))
             } finally { first.closeAndJoin() }
-            val document = JSONObject(file.readText(Charsets.UTF_8))
-            assertEquals(6, document.getInt("schemaVersion"))
-            assertEquals("whisper", document.getString("speechRecognitionBackend"))
             val reopened = AppSettingsRepository(file)
             try {
                 assertEquals(selected, reopened.current())
@@ -260,7 +192,7 @@ class AppSettingsRepositoryTest {
     fun failedPartialWritePreservesCommittedSettingsAndBytesUntilExplicitSuccessfulSave() = runBlocking {
         val file = File(temp.root, "settings.json")
         val initial = AppSettingsTestFixtures.freshInstall.copy(vadMinSilenceMs = 1100, ttsSpeedPercent = 115)
-        val changed = AppSettingsTestFixtures.migrated
+        val changed = initial.copy(translationEngineId = "mlkit", translationSetupComplete = true)
         val shouldFail = AtomicBoolean(false)
         val delegate = AppSettingsSerializer()
         val faultingSerializer = object : Serializer<AppSettings> {
@@ -301,34 +233,18 @@ class AppSettingsRepositoryTest {
 }
 
 internal object AppSettingsTestFixtures {
-    val freshInstall = AppSettings(
-        languagePair = LanguagePair(LanguageCatalog.RUSSIAN, LanguageCatalog.ENGLISH),
-        speechOutputBackend = SpeechOutputBackend.SYSTEM_OFFLINE,
-        speechRecognitionBackend = SpeechRecognitionBackend.WHISPER,
-        textEngineId = "tencent",
-        conversationEngineId = "tencent",
-    )
-    val migrated = AppSettings(
+    val freshInstall = AppSettings()
+    val selected = AppSettings(
         languagePair = LanguagePair(LanguageCatalog.ENGLISH, LanguageCatalog.RUSSIAN),
         speechOutputBackend = SpeechOutputBackend.PIPER,
         speechRecognitionBackend = SpeechRecognitionBackend.SYSTEM_OFFLINE,
-        textEngineId = "mlkit",
-        conversationEngineId = "mlkit",
+        translationEngineId = "mlkit",
+        translationSetupComplete = true,
         vadMinSilenceMs = 900,
         ttsSpeedPercent = 110,
     )
 
-    fun schemaFourDocument(): JSONObject = JSONObject(
-        """{"schemaVersion":4,"languagePair":{"source":"en","target":"ru"},"speechOutputBackend":"piper","textEngineId":"mlkit","conversationEngineId":"mlkit","vadModelId":"vad-silero-6.2.2","languageIdModelId":"lid-whisper-tiny","vadMinSilenceMs":900,"ttsSpeedPercent":110}""",
+    fun document(): JSONObject = JSONObject(
+        """{"schemaVersion":7,"languagePair":{"source":"en","target":"ru"},"speechOutputBackend":"piper","speechRecognitionBackend":"system-offline","speechRecognitionService":null,"translationEngineId":"mlkit","translationSetupComplete":true,"vadModelId":"vad-silero-6.2.2","vadMinSilenceMs":900,"ttsSpeedPercent":110}""",
     )
-
-    fun legacyDocument(version: Int): JSONObject {
-        require(version in 1..3)
-        return JSONObject(
-            """{"schemaVersion":$version,"textPair":{"source":"en","target":"de"},"conversationLanguages":["en","ru"],"textEngineId":"mlkit","conversationEngineId":"mlkit","vadModelId":"vad-silero-6.2.2","languageIdModelId":"lid-whisper-tiny","vadMinSilenceMs":900,"ttsSpeedPercent":110}""",
-        ).apply {
-            if (version <= 2) put("asrModelIds", JSONObject().put("ru", "removed-ru-asr").put("en", "asr-en-whisper-tiny"))
-            if (version == 1) put("ttsModelIds", JSONObject().put("ru", "removed-ru-voice").put("en", "removed-en-voice"))
-        }
-    }
 }

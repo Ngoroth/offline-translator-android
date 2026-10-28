@@ -22,9 +22,6 @@ import com.k2fsa.sherpa.onnx.OnlineRecognizerConfig
 import com.k2fsa.sherpa.onnx.OnlineToneCtcModelConfig
 import com.k2fsa.sherpa.onnx.OnlineTransducerModelConfig
 import com.k2fsa.sherpa.onnx.SileroVadModelConfig
-import com.k2fsa.sherpa.onnx.SpokenLanguageIdentification
-import com.k2fsa.sherpa.onnx.SpokenLanguageIdentificationConfig
-import com.k2fsa.sherpa.onnx.SpokenLanguageIdentificationWhisperConfig
 import com.k2fsa.sherpa.onnx.VadModelConfig
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
@@ -102,14 +99,6 @@ object SherpaModelFactories {
         )
     }
 
-    fun languageIdConfig(definition: SpeechModelDefinition, paths: (SpeechModelRef) -> String): SpokenLanguageIdentificationConfig {
-        require(definition.role == SpeechModelRole.LANGUAGE_ID && definition.sampleRateHz == 16_000)
-        val adapter = definition.adapter as? SherpaSpeechModelAdapter.WhisperLanguageId ?: error("Model is not a language identifier")
-        return SpokenLanguageIdentificationConfig(
-            whisper = SpokenLanguageIdentificationWhisperConfig(encoder = paths(adapter.encoder), decoder = paths(adapter.decoder)),
-            numThreads = adapter.numThreads, provider = "cpu",
-        )
-    }
 
     fun vadConfig(definition: SpeechModelDefinition, paths: (SpeechModelRef) -> String, vadMinSilenceMs: Int): VadModelConfig {
         require(definition.role == SpeechModelRole.VAD && definition.sampleRateHz == SpeechSegment.SAMPLE_RATE_HZ)
@@ -148,12 +137,6 @@ object SherpaModelFactories {
         return vadConfig(definition, paths::getValue, silenceMs)
     }
 
-    internal suspend fun createIdentifier(store: SpeechModelStore, definition: SpeechModelDefinition): NativeLanguageIdentifier {
-        val paths = resolveFiles(store, definition)
-        val config = languageIdConfig(definition, paths::getValue)
-        currentCoroutineContext().ensureActive()
-        return WhisperIdentifier(SpokenLanguageIdentification(config = config))
-    }
 
     internal suspend fun createRecognizer(store: SpeechModelStore, definition: SpeechModelDefinition): NativeSpeechRecognizer {
         val paths = resolveFiles(store, definition)
@@ -266,18 +249,6 @@ private class PairedWhisperAsr(
     override fun close() = native.release()
 }
 
-private class WhisperIdentifier(private val native: SpokenLanguageIdentification) : NativeLanguageIdentifier {
-    override suspend fun identify(samples: FloatArray, ensureActive: suspend () -> Unit): String {
-        ensureActive()
-        val stream = native.createStream()
-        return try {
-            stream.acceptWaveform(samples, sampleRate = SpeechSegment.SAMPLE_RATE_HZ)
-            ensureActive()
-            native.compute(stream)
-        } finally { stream.release() }
-    }
-    override fun close() = native.release()
-}
 
 private class OnlineAsr(private val native: OnlineRecognizer, private val inputRate: Int) : NativeSpeechRecognizer {
     private val chunk = FloatArray(if (inputRate == 8_000) CHUNK_SAMPLES / 2 else CHUNK_SAMPLES)

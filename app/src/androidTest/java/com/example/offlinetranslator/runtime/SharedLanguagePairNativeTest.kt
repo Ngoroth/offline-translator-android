@@ -33,6 +33,11 @@ internal suspend fun commitNativeSettings(runtime: AppRuntime, selected: AppSett
     runtime.owners.closeAndJoin()
     val current = runtime.settings.current()
     assertTrue(runtime.updateLanguagePair(current.languagePair, selected.languagePair))
+    // Explicit test fixture setup/restoration; ordinary Apply must never change this marker.
+    assertTrue(runtime.owners.saveIfUnowned {
+        runtime.settings.save(runtime.settings.current().copy(translationSetupComplete = selected.translationSetupComplete))
+        true
+    })
     assertTrue(runtime.applySettings(selected))
     assertEquals(selected, runtime.settings.current())
 }
@@ -79,9 +84,9 @@ class SharedLanguagePairNativeTest {
     @Test fun pivotPairsUseMainControlsAndRealOfflineSdkInBothDirections() {
         val frEs = LanguagePair(LanguageCatalog.FRENCH, LanguageCatalog.SPANISH)
         runBlocking { commitNativeSettings(runtime, original.copy(languagePair = frEs,
-            textEngineId = "mlkit", conversationEngineId = "mlkit",
-            speechRecognitionBackend = SpeechRecognitionBackend.SHERPA,
-            speechOutputBackend = SpeechOutputBackend.SYSTEM_OFFLINE)) }
+            translationEngineId = "mlkit", translationSetupComplete = true,
+            speechRecognitionBackend = SpeechRecognitionBackend.WHISPER,
+            speechOutputBackend = SpeechOutputBackend.PIPER)) }
         showHome()
         // A valid text-only pair remains editable on Conversation without native capture construction.
         compose.onNodeWithTag(ConversationTestTags.LANGUAGE_FIRST).assertIsEnabled()
@@ -111,8 +116,8 @@ class SharedLanguagePairNativeTest {
 
     @Test fun selectedSystemAndPiperCompleteOfficialBothDirectionsStopAndReopenIdle() {
         runBlocking { commitNativeSettings(runtime, original.copy(languagePair = ruEn,
-            textEngineId = "mlkit", conversationEngineId = "mlkit",
-            speechRecognitionBackend = SpeechRecognitionBackend.SHERPA,
+            translationEngineId = "mlkit", translationSetupComplete = true,
+            speechRecognitionBackend = SpeechRecognitionBackend.WHISPER,
             speechOutputBackend = SpeechOutputBackend.SYSTEM_OFFLINE)) }
         showHome()
         for (backend in listOf(SpeechOutputBackend.SYSTEM_OFFLINE, SpeechOutputBackend.PIPER)) {
@@ -145,7 +150,7 @@ class SharedLanguagePairNativeTest {
         val backend = SpeechRecognitionBackend.WHISPER
         val nlEn = LanguagePair(LanguageCatalog.DUTCH, LanguageCatalog.ENGLISH)
         runBlocking { commitNativeSettings(runtime, original.copy(languagePair = nlEn,
-            textEngineId = "mlkit", conversationEngineId = "mlkit",
+            translationEngineId = "mlkit", translationSetupComplete = true,
             speechRecognitionBackend = backend,
             speechOutputBackend = SpeechOutputBackend.SYSTEM_OFFLINE)) }
         showHome()
@@ -343,6 +348,7 @@ class SharedLanguagePairNativeTest {
 
     private fun chooseBackend(backend: SpeechOutputBackend) {
         clickHomeControl(compose.onNodeWithTag("settings_button"))
+        compose.onNodeWithTag(SettingsTestTags.ADVANCED).performScrollTo().performClick()
         compose.onNodeWithTag(SettingsTestTags.OUTPUT_BACKEND).performScrollTo().performClick()
         compose.onNodeWithTag("${SettingsTestTags.OUTPUT_BACKEND}_option_${backend.persistedId}").performScrollTo().performClick()
         compose.onNodeWithTag(SettingsTestTags.APPLY).assertIsDisplayed().assertIsEnabled().performTouchInput { click() }

@@ -23,7 +23,7 @@ class TencentTranslationNativeTest {
         original = runtime.settings.current()
         commitNativeSettings(runtime, original.copy(
             languagePair = LanguagePair(LanguageCatalog.RUSSIAN, LanguageCatalog.ENGLISH),
-            textEngineId = "tencent", conversationEngineId = "tencent",
+            translationEngineId = "tencent",
         ))
     }
 
@@ -39,7 +39,7 @@ class TencentTranslationNativeTest {
         assertTrue(first.lowercase().contains("hello"))
         runtime.closeAndJoin()
         runtime = AppRuntime.get(context)
-        assertEquals("tencent", runtime.settings.current().textEngineId)
+        assertEquals("tencent", runtime.settings.current().translationEngineId)
         val reopened = translateSelected("Привет! Как ты?")
         assertEquals(first, reopened)
         assertOffline()

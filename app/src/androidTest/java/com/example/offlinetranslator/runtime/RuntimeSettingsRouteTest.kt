@@ -58,44 +58,12 @@ class RuntimeSettingsRouteTest {
     private val enRu = LanguagePair(LanguageCatalog.ENGLISH, LanguageCatalog.RUSSIAN)
     private val enDe = LanguagePair(LanguageCatalog.ENGLISH, LanguageCatalog.GERMAN)
 
-    @Test fun migratedDistinctLegacyPairsShowConversationOrderAndRetainPiperThroughChangedSave() {
-        val file = runtime.settings.file
-        val legacy = """{"schemaVersion":3,"textPair":{"source":"en","target":"de"},"conversationLanguages":["en","ru"],"textEngineId":"mlkit","conversationEngineId":"mlkit","vadModelId":"vad-silero-6.2.2","languageIdModelId":"lid-whisper-tiny","vadMinSilenceMs":900,"ttsSpeedPercent":110}"""
-        runBlocking { runtime.closeAndJoin() }
-        file.writeText(legacy)
-        runtime = AppRuntime.get(context)
-        val expected = AppSettings(languagePair = enRu, textEngineId = "mlkit", conversationEngineId = "mlkit",
-            speechOutputBackend = SpeechOutputBackend.PIPER, speechRecognitionBackend = SpeechRecognitionBackend.SYSTEM_OFFLINE,
-            vadMinSilenceMs = 900, ttsSpeedPercent = 110)
-        runBlocking { assertEquals(expected, runtime.settings.current()); requirePreparedTranslation(enRu) }
-        showText()
-        compose.onNodeWithTag(TranslationTestTags.LANGUAGE_FIRST).performScrollTo().assertTextContains(languageLabel(LanguageCatalog.ENGLISH))
-        compose.onNodeWithTag(TranslationTestTags.LANGUAGE_SECOND).performScrollTo().assertTextContains(languageLabel(LanguageCatalog.RUSSIAN))
-        openSettings()
-        compose.onNodeWithTag(SettingsTestTags.OUTPUT_BACKEND).performScrollTo().assertTextContains("Piper", substring = true)
-        compose.onNodeWithTag(SettingsTestTags.CLOSE).performClick()
-        assertEquals("Opening and closing must not rewrite migrated settings", legacy, file.readText())
-        openSettings()
-        choose(SettingsTestTags.SPEED, "120")
-        applyAndClose()
-        val changed = expected.copy(ttsSpeedPercent = 120)
-        compose.waitUntil(30_000) { runBlocking { runtime.settings.current() == changed } }
-        val document = org.json.JSONObject(file.readText())
-        assertEquals(SpeechRecognitionBackend.SYSTEM_OFFLINE.persistedId, document.getString("speechRecognitionBackend"))
-        assertTrue(!document.has("textPair") && !document.has("conversationLanguages"))
-        hideHome()
-        runBlocking {
-            runtime.closeAndJoin()
-            runtime = AppRuntime.get(context)
-            assertEquals(changed, runtime.settings.current())
-        }
-    }
 
     @Before fun saveSettings() = runBlocking {
         runtime = AppRuntime.get(context)
         original = runtime.settings.current()
-        assertTrue(runtime.applySettings(AppSettings(textEngineId = "mlkit", conversationEngineId = "mlkit",
-            speechOutputBackend = SpeechOutputBackend.PIPER, speechRecognitionBackend = SpeechRecognitionBackend.SHERPA)))
+        commitNativeSettings(runtime, AppSettings(translationEngineId = "mlkit", translationSetupComplete = true,
+            speechOutputBackend = SpeechOutputBackend.PIPER, speechRecognitionBackend = SpeechRecognitionBackend.WHISPER))
         val pair = AppSettings().languagePair
         if (runtime.settings.current().languagePair != pair) assertTrue(runtime.updateLanguagePair(runtime.settings.current().languagePair, pair))
         requirePreparedTranslation(pair)
@@ -120,11 +88,7 @@ class RuntimeSettingsRouteTest {
             }
             val restoring = AppRuntime.get(context)
             try {
-                assertTrue("Restore original settings", restoring.applySettings(original))
-                if (restoring.settings.current().languagePair != original.languagePair) {
-                    assertTrue(restoring.updateLanguagePair(restoring.settings.current().languagePair, original.languagePair))
-                }
-                assertEquals(original, restoring.settings.current())
+                commitNativeSettings(restoring, original)
             } finally {
                 restoring.closeAndJoin()
             }
@@ -244,7 +208,6 @@ class RuntimeSettingsRouteTest {
         val baseline = runBlocking { runtime.settings.current() }
         openSettings()
         choose(SettingsTestTags.RECOGNITION_BACKEND, SpeechRecognitionBackend.SYSTEM_OFFLINE.persistedId)
-        compose.onNodeWithTag(SettingsTestTags.LID).assertDoesNotExist()
         applyAndClose()
         val android = baseline.copy(speechRecognitionBackend = SpeechRecognitionBackend.SYSTEM_OFFLINE)
         compose.waitUntil(30_000) { runBlocking { runtime.settings.current() == android && !runtime.busy.value } }
@@ -255,10 +218,9 @@ class RuntimeSettingsRouteTest {
         val independent = android.copy(speechOutputBackend = SpeechOutputBackend.SYSTEM_OFFLINE)
         compose.waitUntil(30_000) { runBlocking { runtime.settings.current() == independent && !runtime.busy.value } }
         openSettings()
-        choose(SettingsTestTags.RECOGNITION_BACKEND, SpeechRecognitionBackend.SHERPA.persistedId)
-        compose.onNodeWithTag(SettingsTestTags.LID).performScrollTo().assertIsEnabled()
+        choose(SettingsTestTags.RECOGNITION_BACKEND, SpeechRecognitionBackend.WHISPER.persistedId)
         applyAndClose()
-        val final = independent.copy(speechRecognitionBackend = SpeechRecognitionBackend.SHERPA)
+        val final = independent.copy(speechRecognitionBackend = SpeechRecognitionBackend.WHISPER)
         compose.waitUntil(30_000) { runBlocking { runtime.settings.current() == final && !runtime.busy.value } }
         assertEquals(baseline.languagePair, final.languagePair)
         hideHome()
@@ -311,7 +273,7 @@ class RuntimeSettingsRouteTest {
         openSettings()
         choose(SettingsTestTags.SPEED, "110")
         compose.onNodeWithTag(SettingsTestTags.RESET).performScrollTo().assertIsDisplayed().performClick()
-        val expected = AppSettings(languagePair = enDe, textEngineId = "tencent", conversationEngineId = "tencent",
+        val expected = AppSettings(languagePair = enDe, translationEngineId = "tencent", translationSetupComplete = true,
             speechRecognitionBackend = SpeechRecognitionBackend.WHISPER, speechOutputBackend = SpeechOutputBackend.SYSTEM_OFFLINE)
         compose.waitUntil(30_000) { runBlocking { runtime.settings.current() == expected && !runtime.busy.value } }
         compose.onNodeWithTag(SettingsTestTags.CLOSE).performClick()
@@ -351,6 +313,7 @@ class RuntimeSettingsRouteTest {
         val buildsBeforeNoOp = captureBuilds.get()
         val completedText = currentTurnTexts()
         clickHomeControl(compose.onNodeWithTag("settings_button"))
+        compose.onNodeWithTag(SettingsTestTags.ADVANCED).performScrollTo().performClick()
         compose.onNodeWithTag(SettingsTestTags.APPLY).assertIsNotEnabled().performTouchInput { click() }
         compose.onNodeWithTag(SettingsTestTags.RESET).performScrollTo().assertIsNotEnabled().performTouchInput { click() }
         compose.onNodeWithTag(SettingsTestTags.OUTPUT_BACKEND).performScrollTo().assertIsNotEnabled()
@@ -580,7 +543,8 @@ class RuntimeSettingsRouteTest {
         val store = ViewModelStore()
         lateinit var vm: SettingsViewModel
         compose.runOnIdle {
-            vm = SettingsViewModel(runtime.settings, runtime.editable, runtime::validationProblems, runtime::applySettings, runtime.owners.teardownFailed)
+            vm = SettingsViewModel(runtime.settings, runtime.editable, runtime::validationProblems, runtime::applySettings,
+                runtime.owners.teardownFailed, completeSetup = runtime::completeTranslationSetup)
             store.put("draft-race", vm)
         }
         try {
@@ -611,7 +575,7 @@ class RuntimeSettingsRouteTest {
             hideHome()
             compose.waitUntil(30_000) { vm.state.value.canReset && !runtime.busy.value }
             compose.runOnIdle { vm.beginEditing(); vm.reset() }
-            val reset = AppSettings(languagePair = baseline.languagePair)
+            val reset = AppSettings(languagePair = baseline.languagePair, translationSetupComplete = baseline.translationSetupComplete)
             compose.waitUntil(30_000) { runBlocking { runtime.settings.current() == reset } }
             compose.runOnIdle { store.clear() }
             runBlocking {
@@ -896,6 +860,7 @@ class RuntimeSettingsRouteTest {
     private fun openSettings() {
         clickHomeControl(compose.onNodeWithTag("settings_button"))
         compose.onNodeWithTag(SettingsTestTags.APPLY).assertIsEnabled()
+        compose.onNodeWithTag(SettingsTestTags.ADVANCED).performScrollTo().performClick()
     }
 
     private fun clickHomeControl(node: SemanticsNodeInteraction) {

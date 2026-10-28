@@ -31,17 +31,15 @@ object SelectedSpeechResources {
         requireModel(store, config.vadModelId, SpeechModelRole.VAD)
         val recognitionModels = recognitionModelIds.map(store.catalog::model)
         for (model in recognitionModels) {
-            require(model.role == SpeechModelRole.ASR || model.role == SpeechModelRole.LANGUAGE_ID) {
+            require(model.role == SpeechModelRole.ASR) {
                 "Selected recognition model has an incompatible role: ${model.id}"
             }
-            require(if (model.role == SpeechModelRole.LANGUAGE_ID) model.languages.containsAll(config.languages)
-                else config.languages.any { it in model.languages }) {
+            require(config.languages.any { it in model.languages }) {
                 "Selected recognition model has incompatible languages: ${model.id}"
             }
             selections += model.id
         }
-        require(recognitionModels.isEmpty() || recognitionModels.filter { it.role == SpeechModelRole.ASR }
-            .flatMap { it.languages }.containsAll(config.languages)) {
+        require(recognitionModels.isEmpty() || recognitionModels.flatMap { it.languages }.containsAll(config.languages)) {
             "Selected recognition models do not cover the conversation languages"
         }
         if (config.speechOutputBackend == SpeechOutputBackend.PIPER) {

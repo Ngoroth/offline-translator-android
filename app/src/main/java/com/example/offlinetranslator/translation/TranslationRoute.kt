@@ -20,7 +20,7 @@ fun TranslationRoute(homeControls: @Composable () -> Unit, onLanguageTransitionC
     val loaded = !settingsState.loading && !settingsState.loadError && settingsState.settings != null
     val problem = remember(settings) { runtime.textProblems(settings).firstOrNull() }
     val config = remember(settings) { settings.textConfig() }
-    val descriptor = remember(settings.textEngineId) { runtime.registry.descriptors.firstOrNull { it.id == settings.textEngineId } }
+    val descriptor = remember(settings.translationEngineId) { runtime.registry.descriptors.firstOrNull { it.id == settings.translationEngineId } }
     val teardownFailed by runtime.owners.teardownFailed.collectAsStateWithLifecycle()
     val ownershipVersion by runtime.owners.ownershipVersion.collectAsStateWithLifecycle()
     val lifecycleOwner = LocalLifecycleOwner.current

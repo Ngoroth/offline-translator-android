@@ -12,14 +12,12 @@ class SherpaModelFactoriesTest {
     private fun catalog() = File("src/main/assets/speech-models.json").inputStream().use(SherpaSpeechModelCatalog::parse)
     private fun path(ref: SpeechModelRef) = "/verified/${ref.packageId}/${ref.path}"
 
-    @Test fun alternateWhisperBuildsItsOwnDecodeWithExactLidWeightsAndMatchingVocabulary() {
+    @Test fun alternateWhisperBuildsItsOwnDecodeWithMatchingMultilingualWeightsAndVocabulary() {
         val catalog = catalog()
         val selected = catalog.model("asr-en-whisper-tiny")
-        val identifier = catalog.model("lid-whisper-tiny")
         val asr = SherpaModelFactories.offlineConfig(selected, ::path)
-        val lid = SherpaModelFactories.languageIdConfig(identifier, ::path)
-        assertEquals(lid.whisper.encoder, asr.modelConfig.whisper.encoder)
-        assertEquals(lid.whisper.decoder, asr.modelConfig.whisper.decoder)
+        assertEquals("/verified/language-whisper-tiny-encoder/tiny-encoder.int8.onnx", asr.modelConfig.whisper.encoder)
+        assertEquals("/verified/language-whisper-tiny-decoder/tiny-decoder.int8.onnx", asr.modelConfig.whisper.decoder)
         assertEquals("/verified/whisper-tiny-tokens/tiny-tokens.txt", asr.modelConfig.tokens)
         assertFalse(asr.modelConfig.tokens.contains("tiny.en"))
         assertEquals("en", asr.modelConfig.whisper.language)
@@ -113,7 +111,6 @@ class SherpaModelFactoriesTest {
         assertThrows(IllegalArgumentException::class.java) { SherpaModelFactories.offlineConfig(vad, paths) }
         assertThrows(IllegalArgumentException::class.java) { SherpaModelFactories.onlineConfig(vad, paths) }
         assertThrows(IllegalArgumentException::class.java) { SherpaModelFactories.ttsConfig(vad, paths) }
-        assertThrows(IllegalArgumentException::class.java) { SherpaModelFactories.languageIdConfig(vad, paths) }
         assertEquals(0, reads)
     }
 }

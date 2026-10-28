@@ -4,6 +4,15 @@ Notable capability, behavior and developer-facing compatibility changes. Entries
 
 ## Unreleased
 
+### Compact translation setup and simplified settings — 2026-10-27
+
+- Added an explicit first-launch Fast (ML Kit) / Accurate (Tencent) choice shared by Text and Conversation. Engine selection and setup completion persist together before either route mounts; choosing does not download models or start capture.
+- Split Settings into basic translation/interface-language/voice-speed controls and expandable advanced recognition/service/output/silence/Reset controls. Recovery opens Advanced; interface language still applies immediately while other edits use Apply. All 17 locales include the new copy and Piper's existing RU/EN scope.
+- Retired the old Russian/English Sherpa conversation recognizer and standalone language-ID path, not the shared sherpa-onnx library. Whisper, VAD, System recognition with explicit Google/GrapheneOS compatibility, Piper and evaluator ASR resources remain.
+- Current settings use strict schema7 with one translation-engine preference; earlier schema migration is intentionally unsupported for this development iteration. Reset restores Tencent/Whisper/System while retaining pair, locale and completed setup.
+- Alternative application-managed speech output for every language is deferred in the backlog; no voice coverage, native model, download policy or quality qualification is added here.
+
+
 ### Tencent and Whisper defaults — 2026-10-26
 
 - Fresh installs and **Reset advanced settings** now select Tencent Hy-MT2 independently for Text and Conversation, Whisper recognition and unchanged System offline output.

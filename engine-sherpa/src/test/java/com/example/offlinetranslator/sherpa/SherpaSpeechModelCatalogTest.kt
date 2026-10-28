@@ -33,7 +33,7 @@ class SherpaSpeechModelCatalogTest {
     }
 
     @Test fun multilingualWhisperRejectsForcedLanguageWrongRoleAndUnboundedNativeParameters() {
-        for ((field, value) in listOf("role" to "LANGUAGE_ID", "sampleRateHz" to 8_000,
+        for ((field, value) in listOf("role" to "TTS", "sampleRateHz" to 8_000,
             "languages" to JSONArray().put("en"))) {
             val invalid = document()
             whisper(invalid).put(field, value)
@@ -46,7 +46,7 @@ class SherpaSpeechModelCatalogTest {
             rejects(invalid)
         }
         val oldMonolingual = document()
-        oldMonolingual.getJSONArray("models").getJSONObject(2).put("languages", JSONArray().put("en").put("nl"))
+        model(oldMonolingual, "asr-en-whisper-tiny.en").put("languages", JSONArray().put("en").put("nl"))
         rejects(oldMonolingual)
     }
 
@@ -85,7 +85,7 @@ class SherpaSpeechModelCatalogTest {
             WhisperConversationRecognitionEngine.selectedDefinition(parse(missing), selectedConfig)
         }
         val wrongFamily = document()
-        val old = wrongFamily.getJSONArray("models").getJSONObject(2)
+        val old = model(wrongFamily, "asr-en-whisper-tiny.en")
         whisper(wrongFamily).put("adapter", old.getJSONObject("adapter")).put("languages", old.getJSONArray("languages"))
         assertThrows(IllegalStateException::class.java) {
             WhisperConversationRecognitionEngine.selectedDefinition(parse(wrongFamily), selectedConfig)
@@ -102,13 +102,14 @@ class SherpaSpeechModelCatalogTest {
 
     @Test fun selectedDependenciesDeduplicateSharedWeightsAndExcludeUnselectedArtifacts() {
         val catalog = parse(document())
-        val alternate = catalog.requiredPackages(setOf("asr-en-whisper-tiny", "lid-whisper-tiny"))
+        val alternate = catalog.requiredPackages(setOf("asr-en-whisper-tiny"))
         assertEquals(setOf("language-whisper-tiny-encoder", "language-whisper-tiny-decoder", "whisper-tiny-tokens"), alternate)
         assertFalse("en-whisper-tiny.en-offline" in alternate)
-        val defaults = catalog.requiredPackages(setOf("vad-silero-6.2.2", "asr-ru-gigaam-v1",
-            "asr-en-whisper-tiny.en", "lid-whisper-tiny", "tts-ru-piper-irina-medium", "tts-en-piper-lessac-medium"))
-        assertEquals(7, defaults.size)
-        assertFalse("whisper-tiny-tokens" in defaults)
+        val selected = catalog.requiredPackages(setOf("vad-silero-6.2.2", "asr-ru-gigaam-v1",
+            "asr-en-whisper-tiny.en", "tts-ru-piper-irina-medium", "tts-en-piper-lessac-medium"))
+        assertFalse("whisper-tiny-tokens" in selected)
+        assertFalse("language-whisper-tiny-encoder" in selected)
+        assertFalse("language-whisper-tiny-decoder" in selected)
         assertTrue(catalog.requiredPackages(emptySet()).isEmpty())
         assertThrows(IllegalArgumentException::class.java) { catalog.requiredPackages(setOf("missing")) }
     }
@@ -159,36 +160,36 @@ class SherpaSpeechModelCatalogTest {
             "sampleRateHz" to 22_050, "sampleRateHz" to "16000",
         )) {
             val invalid = document()
-            invalid.getJSONArray("models").getJSONObject(2).put(field, value)
+            model(invalid, "asr-en-whisper-tiny.en").put(field, value)
             rejects(invalid)
         }
         for ((field, value) in listOf("family" to "arbitraryClass", "language" to "ru", "task" to "translate",
             "numThreads" to 0, "numThreads" to "2", "featureDim" to 81, "tailPaddings" to 1.5,
             "provider" to "cuda")) {
             val invalid = document()
-            invalid.getJSONArray("models").getJSONObject(2).getJSONObject("adapter").put(field, value)
+            model(invalid, "asr-en-whisper-tiny.en").getJSONObject("adapter").put(field, value)
             rejects(invalid)
         }
         val invalidVad = document()
-        invalidVad.getJSONArray("models").getJSONObject(0).put("languages", JSONArray().put("en"))
+        model(invalidVad, "vad-silero-6.2.2").put("languages", JSONArray().put("en"))
         rejects(invalidVad)
         val invalidNemo = document()
-        invalidNemo.getJSONArray("models").getJSONObject(1).put("sampleRateHz", 8_000)
+        model(invalidNemo, "asr-ru-gigaam-v1").put("sampleRateHz", 8_000)
         rejects(invalidNemo)
     }
 
     @Test fun rejectsUndeclaredUnsafeAndAliasedReferencesIncludingDirectoryPrefixes() {
         for ((field, value) in listOf("packageId" to "missing", "path" to "missing.onnx", "path" to "../model.onnx")) {
             val invalid = document()
-            invalid.getJSONArray("models").getJSONObject(2).getJSONObject("adapter").getJSONObject("encoder").put(field, value)
+            model(invalid, "asr-en-whisper-tiny.en").getJSONObject("adapter").getJSONObject("encoder").put(field, value)
             rejects(invalid)
         }
         val aliased = document()
-        val adapter = aliased.getJSONArray("models").getJSONObject(2).getJSONObject("adapter")
+        val adapter = model(aliased, "asr-en-whisper-tiny.en").getJSONObject("adapter")
         adapter.put("decoder", adapter.getJSONObject("encoder"))
         rejects(aliased)
         val invalidDirectory = document()
-        invalidDirectory.getJSONArray("models").getJSONObject(4).getJSONObject("adapter")
+        model(invalidDirectory, "tts-ru-piper-irina-medium").getJSONObject("adapter")
             .getJSONObject("dataDir").put("path", "espeak-ng")
         rejects(invalidDirectory)
     }
@@ -197,16 +198,16 @@ class SherpaSpeechModelCatalogTest {
         for ((field, value) in listOf("threshold" to 0, "threshold" to 1.1,
             "minSpeechDuration" to 15, "maxSpeechDuration" to 15, "windowSize" to 256)) {
             val invalid = document()
-            invalid.getJSONArray("models").getJSONObject(0).getJSONObject("adapter").put(field, value)
+            model(invalid, "vad-silero-6.2.2").getJSONObject("adapter").put(field, value)
             rejects(invalid)
         }
         val reversedDurations = document()
-        reversedDurations.getJSONArray("models").getJSONObject(0).getJSONObject("adapter")
+        model(reversedDurations, "vad-silero-6.2.2").getJSONObject("adapter")
             .put("minSpeechDuration", 5).put("maxSpeechDuration", 1)
         rejects(reversedDurations)
         for ((field, value) in listOf("noiseScale" to -1, "noiseScaleW" to "0.8", "lengthScale" to 0)) {
             val invalid = document()
-            invalid.getJSONArray("models").getJSONObject(4).getJSONObject("adapter").put(field, value)
+            model(invalid, "tts-ru-piper-irina-medium").getJSONObject("adapter").put(field, value)
             rejects(invalid)
         }
     }
@@ -219,10 +220,14 @@ class SherpaSpeechModelCatalogTest {
 
     private fun config(languages: List<String>, backend: SpeechRecognitionBackend = SpeechRecognitionBackend.WHISPER) =
         ConversationSessionConfig(languages.map { LanguageId(it) }, "test", backend,
-            "vad-silero-6.2.2", "lid-whisper-tiny", 700, 100, SpeechOutputBackend.SYSTEM_OFFLINE)
+            "vad-silero-6.2.2", 700, 100, SpeechOutputBackend.SYSTEM_OFFLINE)
 
     private fun rejects(document: JSONObject) {
         assertThrows(IllegalArgumentException::class.java) { parse(document) }
+    }
+    private fun model(document: JSONObject, id: String): JSONObject {
+        val models = document.getJSONArray("models")
+        return (0 until models.length()).map(models::getJSONObject).single { it.getString("id") == id }
     }
     private fun document() = JSONObject(File("src/main/assets/speech-models.json").readText())
     private fun parse(document: JSONObject) = SherpaSpeechModelCatalog.parse(document.toString().byteInputStream())

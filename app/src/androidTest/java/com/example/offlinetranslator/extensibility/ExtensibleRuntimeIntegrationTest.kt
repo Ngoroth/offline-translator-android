@@ -43,7 +43,7 @@ class ExtensibleRuntimeIntegrationTest {
         val original = runtime.settings.current()
         try {
             for (language in addedTextReverseInputs.keys) {
-                val selected = original.copy(languagePair = LanguagePair(LanguageCatalog.ENGLISH, language), textEngineId = "mlkit")
+                val selected = original.copy(languagePair = LanguagePair(LanguageCatalog.ENGLISH, language), translationEngineId = "mlkit")
                 selectPair(runtime, selected.languagePair)
                 assertTrue("Apply prepared text provider", runtime.applySettings(selected))
                 val owner = runtime.createTextOwner(selected.textConfig())
@@ -89,7 +89,7 @@ class ExtensibleRuntimeIntegrationTest {
             for ((language, reverseInput) in addedTextReverseInputs) {
                 val forward = LanguagePair(LanguageCatalog.ENGLISH, language)
                 for ((pair, input) in listOf(forward to forwardInput, forward.reverse() to reverseInput)) {
-                    val selected = original.copy(languagePair = pair, textEngineId = "mlkit")
+                    val selected = original.copy(languagePair = pair, translationEngineId = "mlkit")
                     selectPair(runtime, pair)
                     assertTrue("Apply prepared text provider", runtime.applySettings(selected))
                     val owner = runtime.createTextOwner(selected.textConfig())
@@ -208,10 +208,8 @@ class ExtensibleRuntimeIntegrationTest {
         val extensionDraft = original.copy(
             languagePair = LanguagePair(LanguageCatalog.ENGLISH, LanguageCatalog.GERMAN),
             speechOutputBackend = SpeechOutputBackend.PIPER,
-            textEngineId = "mlkit",
-            conversationEngineId = "mlkit",
+            translationEngineId = "mlkit",
             vadModelId = "vad-silero-6.2.2",
-            languageIdModelId = "lid-whisper-tiny",
             vadMinSilenceMs = 900,
             ttsSpeedPercent = 110,
         )
@@ -289,7 +287,7 @@ class ExtensibleRuntimeIntegrationTest {
             // 3. Swap direction to DE -> EN and rebuild Text owner
             val deToEn = current.languagePair.reverse()
             selectPair(runtime, deToEn)
-            val reverseOwner = runtime.createTextOwner(TextRuntimeConfig(deToEn, current.textEngineId))
+            val reverseOwner = runtime.createTextOwner(TextRuntimeConfig(deToEn, current.translationEngineId))
             try {
                 assertEquals(ModelAvailability.READY, requireNotNull(runtime.useText(reverseOwner) { it.modelAvailability() }))
                 val t3 = requireNotNull(runtime.useText(reverseOwner) { it.translate(deToEn, "Ich werde nicht mit dem Bus fahren.") })
@@ -432,7 +430,7 @@ class ExtensibleRuntimeIntegrationTest {
         val runtime = AppRuntime.get(context)
 
         // 1. Unknown engine
-        val unknownEngine = AppSettings(textEngineId = "unknown-mt")
+        val unknownEngine = AppSettings(translationEngineId = "unknown-mt")
         val problems1 = runtime.validationProblems(unknownEngine)
         assertTrue(problems1.contains(ConfigurationProblem.UNKNOWN_ENGINE))
 
@@ -447,7 +445,7 @@ class ExtensibleRuntimeIntegrationTest {
         assertTrue(problems4.contains(ConfigurationProblem.INVALID_SPEED))
 
         // Incompatible activity model
-        val incompatibleVad = AppSettings(vadModelId = "lid-whisper-tiny")
+        val incompatibleVad = AppSettings(vadModelId = "asr-ru-gigaam-v1")
         val problems5 = runtime.validationProblems(incompatibleVad)
         assertTrue(problems5.contains(ConfigurationProblem.INCOMPATIBLE_MODEL))
 

@@ -628,7 +628,6 @@ class ConversationViewModelTest {
             languages = listOf(LanguageCatalog.RUSSIAN, LanguageCatalog.ENGLISH),
             engineId = "test",
             vadModelId = "vad",
-            languageIdModelId = "language-id",
             vadMinSilenceMs = 900,
             ttsSpeedPercent = 100,
             speechOutputBackend = SpeechOutputBackend.SYSTEM_OFFLINE,

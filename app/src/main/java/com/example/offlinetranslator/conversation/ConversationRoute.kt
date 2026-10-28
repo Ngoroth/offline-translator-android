@@ -33,7 +33,7 @@ fun ConversationRoute(
     val loaded = !settingsState.loading && !settingsState.loadError && settingsState.settings != null
     val conversationProblem = remember(settings) { runtime.conversationProblems(settings).firstOrNull() }
     val config = remember(settings) { if (conversationProblem == null) runCatching { settings.conversationConfig() }.getOrNull() else null }
-    val descriptor = remember(settings.conversationEngineId) { runtime.registry.descriptors.firstOrNull { it.id == settings.conversationEngineId } }
+    val descriptor = remember(settings.translationEngineId) { runtime.registry.descriptors.firstOrNull { it.id == settings.translationEngineId } }
     val coverage = remember(settings) { runtime.conversationLanguageCoverage(settings) }
     val teardownFailed by runtime.owners.teardownFailed.collectAsStateWithLifecycle()
     val lifecycleOwner = LocalLifecycleOwner.current
@@ -196,8 +196,7 @@ fun ConversationRoute(
     val preparationFailure = shown?.preparationFailure?.collectAsStateWithLifecycle()?.value
     val localRecognitionEligible = remember(settings) {
         settings.speechRecognitionBackend == SpeechRecognitionBackend.SYSTEM_OFFLINE &&
-            (runtime.conversationProblems(settings.copy(speechRecognitionBackend = SpeechRecognitionBackend.SHERPA)).isEmpty() ||
-                runtime.conversationProblems(settings.copy(speechRecognitionBackend = SpeechRecognitionBackend.WHISPER)).isEmpty())
+            runtime.conversationProblems(settings.copy(speechRecognitionBackend = SpeechRecognitionBackend.WHISPER)).isEmpty()
     }
     ConversationScreen(
         state = state, models = statuses, preparation = preparation,

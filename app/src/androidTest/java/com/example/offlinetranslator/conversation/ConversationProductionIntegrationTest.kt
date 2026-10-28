@@ -8,7 +8,7 @@ import com.example.offlinetranslator.core.*
 import com.example.offlinetranslator.mlkit.MlKitPreparationCoordinator
 import com.example.offlinetranslator.mlkit.MlKitTranslationEngine
 import com.example.offlinetranslator.speechmodels.SelectedSpeechResources
-import com.example.offlinetranslator.sherpa.SherpaConversationRecognitionEngine
+import com.example.offlinetranslator.sherpa.WhisperConversationRecognitionEngine
 import com.example.offlinetranslator.sherpa.SherpaConversationSpeechOutput
 import com.example.offlinetranslator.speechmodels.SpeechModelStore
 import com.example.offlinetranslator.sherpa.SherpaSpeechModelCatalog
@@ -29,9 +29,8 @@ class ConversationProductionIntegrationTest {
     private val defaultConfig = ConversationSessionConfig(
         languages = listOf(LanguageCatalog.RUSSIAN, LanguageCatalog.ENGLISH),
         engineId = "mlkit",
-        speechRecognitionBackend = SpeechRecognitionBackend.SHERPA,
+        speechRecognitionBackend = SpeechRecognitionBackend.WHISPER,
         vadModelId = "vad-silero-6.2.2",
-        languageIdModelId = "lid-whisper-tiny",
         vadMinSilenceMs = 700,
         ttsSpeedPercent = 100,
         speechOutputBackend = SpeechOutputBackend.PIPER,
@@ -44,8 +43,8 @@ class ConversationProductionIntegrationTest {
         val coordinator = MlKitPreparationCoordinator(context)
         val translation = MlKitTranslationEngine(context, defaultConfig.pairs, coordinator)
         val models = SelectedSpeechResources.forConversation(store, defaultConfig,
-            defaultConfig.asrModelIds.values.toSet() + defaultConfig.languageIdModelId)
-        val recognition = SherpaConversationRecognitionEngine(store, defaultConfig)
+            setOf(WhisperConversationRecognitionEngine.MODEL_ID))
+        val recognition = WhisperConversationRecognitionEngine(store, defaultConfig)
         try {
             withTimeout(1_200_000) {
                 models.install()
@@ -53,7 +52,7 @@ class ConversationProductionIntegrationTest {
             }
             assertEquals(ModelAvailability.READY, translation.prepare())
             assertTrue("Selected native VAD/Piper resources must be verified", models.isConversationReady())
-            assertEquals("Selected genuine Sherpa ASR/LID must also be installed", SpeechRecognitionReadiness.READY, recognition.readiness())
+            assertEquals("Selected joint Whisper recognition must also be installed", SpeechRecognitionReadiness.READY, recognition.readiness())
         } finally {
             try { recognition.closeAndJoin() } finally {
                 try { translation.closeAndJoin() } finally {
@@ -87,15 +86,15 @@ class ConversationProductionIntegrationTest {
         val store = SpeechModelStore(context, SherpaSpeechModelCatalog.fromAssets(context))
         val coordinator = MlKitPreparationCoordinator(context)
         val translation = MlKitTranslationEngine(context, defaultConfig.pairs, coordinator)
-        val recognition = SherpaConversationRecognitionEngine(store, defaultConfig)
+        val recognition = WhisperConversationRecognitionEngine(store, defaultConfig)
         val output = SherpaConversationSpeechOutput(context, store, defaultConfig)
         val models = SelectedSpeechResources.forConversation(store, defaultConfig,
-            defaultConfig.asrModelIds.values.toSet() + defaultConfig.languageIdModelId)
+            setOf(WhisperConversationRecognitionEngine.MODEL_ID))
         val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
         val capture = ConversationProofFixtures.PacedCapture(scope, store)
         val timing = ConversationProofFixtures.TurnTiming()
         val timedRecognition = object : ConversationRecognitionEngine by recognition {
-            override suspend fun recognize(segment: SpeechSegment): RecognizedUtterance {
+            override suspend fun recognize(segment: SpeechSegment): ConversationRecognitionResult {
                 timing.speechEnd = segment.speechEndNanos ?: 0L
                 timing.understandingStarted = System.nanoTime()
                 try { return recognition.recognize(segment) }

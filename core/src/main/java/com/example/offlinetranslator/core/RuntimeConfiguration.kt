@@ -1,6 +1,6 @@
 package com.example.offlinetranslator.core
 
-enum class SpeechModelRole { VAD, ASR, LANGUAGE_ID, TTS }
+enum class SpeechModelRole { VAD, ASR, TTS }
 
 data class TextRuntimeConfig(val pair: LanguagePair, val engineId: String)
 
@@ -12,32 +12,18 @@ object RecommendedConversationVoices {
     }
 }
 
-object RecommendedConversationRecognition {
-    fun modelId(language: LanguageId): String? = when (language) {
-        LanguageCatalog.RUSSIAN -> "asr-ru-gigaam-v1"
-        LanguageCatalog.ENGLISH -> "asr-en-whisper-tiny.en"
-        else -> null
-    }
-}
 
 class ConversationSessionConfig(
     languages: List<LanguageId>,
     val engineId: String,
     val speechRecognitionBackend: SpeechRecognitionBackend,
     val vadModelId: String,
-    val languageIdModelId: String,
     val vadMinSilenceMs: Int,
     val ttsSpeedPercent: Int,
     val speechOutputBackend: SpeechOutputBackend,
     val speechRecognitionService: String? = null,
 ) {
     val languages: List<LanguageId> = languages.toList()
-    val asrModelIds: Map<LanguageId, String> = if (speechRecognitionBackend == SpeechRecognitionBackend.SHERPA) {
-        this.languages.associateWith { language ->
-            RecommendedConversationRecognition.modelId(language)
-                ?: throw InvalidConfigurationException(ConfigurationProblem.UNKNOWN_MODEL)
-        }
-    } else emptyMap()
     val ttsModelIds: Map<LanguageId, String> = if (speechOutputBackend == SpeechOutputBackend.PIPER) {
         this.languages.associateWith { language ->
             RecommendedConversationVoices.modelId(language)

@@ -272,7 +272,7 @@ fun ConversationScreen(
                                 var downloaded = 0L
                                 var downloading = false
                                 models.forEach { model ->
-                                    if (model.role == SpeechModelRole.VAD || model.role == SpeechModelRole.LANGUAGE_ID ||
+                                    if (model.role == SpeechModelRole.VAD ||
                                         ((model.role == SpeechModelRole.ASR || model.role == SpeechModelRole.TTS) &&
                                             languages.any { it in model.languages })) {
                                         total += model.sizeBytes

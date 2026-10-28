@@ -3900,28 +3900,6 @@
       }
     },
     {
-      "id": "lid-whisper-tiny",
-      "displayName": "Whisper tiny language identification",
-      "role": "LANGUAGE_ID",
-      "languages": [
-        "ru",
-        "en"
-      ],
-      "sampleRateHz": 16000,
-      "adapter": {
-        "family": "whisperLanguageId",
-        "encoder": {
-          "packageId": "language-whisper-tiny-encoder",
-          "path": "tiny-encoder.int8.onnx"
-        },
-        "decoder": {
-          "packageId": "language-whisper-tiny-decoder",
-          "path": "tiny-decoder.int8.onnx"
-        },
-        "numThreads": 2
-      }
-    },
-    {
       "id": "tts-ru-piper-irina-medium",
       "displayName": "Piper Irina Russian medium",
       "role": "TTS",

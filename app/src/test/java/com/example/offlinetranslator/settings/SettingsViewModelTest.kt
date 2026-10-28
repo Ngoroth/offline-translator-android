@@ -26,7 +26,8 @@ class SettingsViewModelTest {
         val repo = AppSettingsRepository(File(temp.root, "validation.json"), dispatcher)
         val editable = MutableStateFlow(true)
         val vm = SettingsViewModel(repo, editable, { if (it.vadMinSilenceMs !in 300..1500) listOf(ConfigurationProblem.INVALID_SILENCE) else emptyList() },
-            { repo.save(it.copy(languagePair = repo.current().languagePair)); true }, MutableStateFlow(false))
+            { repo.save(it.copy(languagePair = repo.current().languagePair)); true }, MutableStateFlow(false),
+            completeSetup = { error("Unexpected setup action") })
         try {
             runCurrent()
             vm.beginEditing()
@@ -50,16 +51,17 @@ class SettingsViewModelTest {
         Dispatchers.setMain(dispatcher)
         val repo = AppSettingsRepository(File(temp.root, "draft.json"), dispatcher)
         val vm = SettingsViewModel(repo, MutableStateFlow(true), { emptyList() },
-            { repo.save(it.copy(languagePair = repo.current().languagePair)); true }, MutableStateFlow(false))
+            { repo.save(it.copy(languagePair = repo.current().languagePair)); true }, MutableStateFlow(false),
+            completeSetup = { error("Unexpected setup action") })
         try {
             runCurrent()
             vm.beginEditing()
-            vm.updateDraft(vm.state.value.draft.copy(speechRecognitionBackend = SpeechRecognitionBackend.SHERPA,
+            vm.updateDraft(vm.state.value.draft.copy(speechRecognitionBackend = SpeechRecognitionBackend.SYSTEM_OFFLINE,
                 speechOutputBackend = SpeechOutputBackend.PIPER, ttsSpeedPercent = 110))
             vm.updateDraft(vm.state.value.draft.copy(speechRecognitionService = "missing.provider/.RecognitionService"))
             repo.save(repo.current().copy(languagePair = frenchSpanish))
             runCurrent()
-            val draft = AppSettings(languagePair = frenchSpanish, speechRecognitionBackend = SpeechRecognitionBackend.SHERPA,
+            val draft = AppSettings(languagePair = frenchSpanish, speechRecognitionBackend = SpeechRecognitionBackend.SYSTEM_OFFLINE,
                 speechOutputBackend = SpeechOutputBackend.PIPER, ttsSpeedPercent = 110)
                 .copy(speechRecognitionService = "missing.provider/.RecognitionService")
             assertEquals(draft, vm.state.value.draft)
@@ -77,7 +79,6 @@ class SettingsViewModelTest {
             assertEquals(AppSettingsTestFixtures.freshInstall.copy(languagePair = frenchSpanish), repo.current())
             assertEquals(SpeechOutputBackend.SYSTEM_OFFLINE, vm.state.value.draft.speechOutputBackend)
             assertEquals(SpeechRecognitionBackend.WHISPER, vm.state.value.draft.speechRecognitionBackend)
-            assertFalse(vm.state.value.usesSherpaRecognition)
         } finally { repo.closeAndJoin(); Dispatchers.resetMain() }
     }
 
@@ -90,12 +91,12 @@ class SettingsViewModelTest {
             gate.await()
             repo.save(draft.copy(languagePair = repo.current().languagePair))
             true
-        }, MutableStateFlow(false))
+        }, MutableStateFlow(false), completeSetup = { error("Unexpected setup action") })
         try {
             runCurrent()
             vm.beginEditing()
             vm.updateDraft(vm.state.value.draft.copy(ttsSpeedPercent = 120, speechOutputBackend = SpeechOutputBackend.PIPER,
-                speechRecognitionBackend = SpeechRecognitionBackend.SHERPA))
+                speechRecognitionBackend = SpeechRecognitionBackend.SYSTEM_OFFLINE))
             vm.apply()
             runCurrent()
             assertTrue(vm.state.value.saving)
@@ -103,7 +104,7 @@ class SettingsViewModelTest {
             runCurrent()
             gate.complete(Unit)
             val actual = AppSettings(languagePair = frenchSpanish, ttsSpeedPercent = 120,
-                speechOutputBackend = SpeechOutputBackend.PIPER, speechRecognitionBackend = SpeechRecognitionBackend.SHERPA)
+                speechOutputBackend = SpeechOutputBackend.PIPER, speechRecognitionBackend = SpeechRecognitionBackend.SYSTEM_OFFLINE)
             vm.state.first { !it.saving }
             assertEquals(actual, repo.current())
             assertEquals(actual, vm.state.value.draft)
@@ -116,7 +117,8 @@ class SettingsViewModelTest {
         Dispatchers.setMain(dispatcher)
         val repo = AppSettingsRepository(File(temp.root, "failure.json"), dispatcher)
         val teardown = MutableStateFlow(false)
-        val vm = SettingsViewModel(repo, MutableStateFlow(true), { emptyList() }, { false }, teardown)
+        val vm = SettingsViewModel(repo, MutableStateFlow(true), { emptyList() }, { false }, teardown,
+            completeSetup = { error("Unexpected setup action") })
         try {
             runCurrent()
             vm.beginEditing()
@@ -137,13 +139,14 @@ class SettingsViewModelTest {
         } finally { repo.closeAndJoin(); Dispatchers.resetMain() }
     }
 
-    @Test fun independentRecognitionAndOutputChoicesPersistAndReloadWithoutChangingPairOrLid() = runTest {
+    @Test fun independentRecognitionAndOutputChoicesPersistAndReloadWithoutChangingPair() = runTest {
         val dispatcher = StandardTestDispatcher(testScheduler)
         Dispatchers.setMain(dispatcher)
         val file = File(temp.root, "independent-backends.json")
         val repo = AppSettingsRepository(file, dispatcher)
         val vm = SettingsViewModel(repo, MutableStateFlow(true), { emptyList() },
-            { repo.save(it.copy(languagePair = repo.current().languagePair)); true }, MutableStateFlow(false))
+            { repo.save(it.copy(languagePair = repo.current().languagePair)); true }, MutableStateFlow(false),
+            completeSetup = { error("Unexpected setup action") })
         try {
             runCurrent()
             val reversed = LanguagePair(LanguageCatalog.ENGLISH, LanguageCatalog.RUSSIAN)
@@ -151,26 +154,23 @@ class SettingsViewModelTest {
                 speechRecognitionBackend = SpeechRecognitionBackend.SYSTEM_OFFLINE))
             runCurrent()
             vm.beginEditing()
-            val originalLid = vm.state.value.draft.languageIdModelId
             vm.updateDraft(vm.state.value.draft.copy(speechOutputBackend = SpeechOutputBackend.PIPER))
             assertEquals(SpeechRecognitionBackend.SYSTEM_OFFLINE, vm.state.value.draft.speechRecognitionBackend)
-            assertFalse(vm.state.value.usesSherpaRecognition)
             vm.apply()
             runCurrent()
-            vm.updateDraft(vm.state.value.draft.copy(speechRecognitionBackend = SpeechRecognitionBackend.SHERPA))
+            vm.updateDraft(vm.state.value.draft.copy(speechRecognitionBackend = SpeechRecognitionBackend.WHISPER))
             assertEquals(SpeechOutputBackend.PIPER, vm.state.value.draft.speechOutputBackend)
-            assertTrue(vm.state.value.usesSherpaRecognition)
+            assertFalse(vm.state.value.usesSystemRecognition)
             vm.apply()
             runCurrent()
             vm.updateDraft(vm.state.value.draft.copy(speechOutputBackend = SpeechOutputBackend.SYSTEM_OFFLINE))
-            assertEquals(SpeechRecognitionBackend.SHERPA, vm.state.value.draft.speechRecognitionBackend)
+            assertEquals(SpeechRecognitionBackend.WHISPER, vm.state.value.draft.speechRecognitionBackend)
             vm.apply()
             runCurrent()
             assertEquals(reversed, repo.current().languagePair)
-            assertEquals(originalLid, repo.current().languageIdModelId)
             vm.updateDraft(vm.state.value.draft.copy(speechRecognitionBackend = SpeechRecognitionBackend.SYSTEM_OFFLINE))
             vm.cancelDraft()
-            assertEquals(SpeechRecognitionBackend.SHERPA, vm.state.value.draft.speechRecognitionBackend)
+            assertEquals(SpeechRecognitionBackend.WHISPER, vm.state.value.draft.speechRecognitionBackend)
             assertEquals(reversed, vm.state.value.draft.languagePair)
             val committed = repo.current()
             vm.viewModelScope.cancel()
@@ -179,27 +179,27 @@ class SettingsViewModelTest {
             try {
                 runCurrent()
                 assertEquals(committed, reloaded.current())
-                assertEquals(SpeechRecognitionBackend.SHERPA, reloaded.current().speechRecognitionBackend)
+                assertEquals(SpeechRecognitionBackend.WHISPER, reloaded.current().speechRecognitionBackend)
                 assertEquals(SpeechOutputBackend.SYSTEM_OFFLINE, reloaded.current().speechOutputBackend)
             } finally { reloaded.closeAndJoin() }
         } finally { repo.closeAndJoin(); Dispatchers.resetMain() }
     }
 
-    @Test fun explicitWhisperHidesButRetainsLegacyChoicesAndResetPersistsFreshDefaults() = runTest {
+    @Test fun whisperRetainsSystemServiceAndResetPreservesCompletedSetup() = runTest {
         val dispatcher = StandardTestDispatcher(testScheduler)
         Dispatchers.setMain(dispatcher)
         val file = File(temp.root, "whisper-draft.json")
         val repo = AppSettingsRepository(file, dispatcher)
         val selected = AppSettings(languagePair = LanguagePair(LanguageCatalog.DUTCH, LanguageCatalog.ENGLISH),
-            speechRecognitionBackend = SpeechRecognitionBackend.SHERPA,
+            speechRecognitionBackend = SpeechRecognitionBackend.SYSTEM_OFFLINE,
             speechOutputBackend = SpeechOutputBackend.PIPER,
-            textEngineId = "mlkit", conversationEngineId = "mlkit",
+            translationEngineId = "mlkit", translationSetupComplete = true,
             speechRecognitionService = "installed.provider/.RecognitionService",
-            languageIdModelId = "saved-lid", vadMinSilenceMs = 1200, ttsSpeedPercent = 115)
-        var discoveries = 0
+            vadMinSilenceMs = 1200, ttsSpeedPercent = 115)
         val vm = SettingsViewModel(repo, MutableStateFlow(true), { emptyList() },
             { repo.save(it); true }, MutableStateFlow(false),
-            { discoveries++; listOf(selected.speechRecognitionService to "Installed recognition") })
+            { listOf(selected.speechRecognitionService to "Installed recognition") },
+            completeSetup = { error("Unexpected setup action") })
         try {
             runCurrent()
             repo.save(selected)
@@ -209,9 +209,6 @@ class SettingsViewModelTest {
             val whisper = selected.copy(speechRecognitionBackend = SpeechRecognitionBackend.WHISPER)
             assertEquals(whisper, vm.state.value.draft)
             assertFalse(vm.state.value.usesSystemRecognition)
-            assertFalse(vm.state.value.usesSherpaRecognition)
-            assertTrue(vm.state.value.recognitionServices.isEmpty())
-            assertEquals(0, discoveries)
             vm.cancelDraft()
             assertEquals(selected, vm.state.value.draft)
             assertEquals(selected, repo.current())
@@ -226,22 +223,15 @@ class SettingsViewModelTest {
             vm.updateDraft(whisper.copy(speechRecognitionBackend = SpeechRecognitionBackend.SYSTEM_OFFLINE))
             assertTrue(vm.state.value.usesSystemRecognition)
             assertEquals(selected.speechRecognitionService, vm.state.value.draft.speechRecognitionService)
-            assertEquals(selected.languageIdModelId, vm.state.value.draft.languageIdModelId)
-            vm.updateDraft(whisper.copy(speechRecognitionBackend = SpeechRecognitionBackend.SHERPA))
-            assertTrue(vm.state.value.usesSherpaRecognition)
-            assertEquals(selected.languageIdModelId, vm.state.value.draft.languageIdModelId)
             vm.cancelDraft()
-            val discoveriesBeforeReset = discoveries
+            assertTrue(vm.state.value.recognitionServices.isEmpty())
             vm.reset()
             runCurrent()
-            val reset = AppSettingsTestFixtures.freshInstall.copy(languagePair = selected.languagePair)
+            val reset = AppSettingsTestFixtures.freshInstall.copy(languagePair = selected.languagePair, translationSetupComplete = true)
             assertEquals(reset, repo.current())
             assertEquals(repo.current(), vm.state.value.draft)
             assertFalse(vm.state.value.usesSystemRecognition)
-            assertFalse(vm.state.value.usesSherpaRecognition)
             assertEquals(null, vm.state.value.draft.speechRecognitionService)
-            assertTrue(vm.state.value.recognitionServices.isEmpty())
-            assertEquals("Reset to Whisper must not probe Android services", discoveriesBeforeReset, discoveries)
             vm.viewModelScope.cancel()
             repo.closeAndJoin()
             val reopened = AppSettingsRepository(file, dispatcher)
@@ -265,7 +255,8 @@ class SettingsViewModelTest {
         var inventory: List<Pair<String?, String>> = listOf(firstService to "Installed service")
         var discoveries = 0
         val vm = SettingsViewModel(repo, MutableStateFlow(true), { emptyList() },
-            { repo.save(it); true }, MutableStateFlow(false), { discoveries++; inventory })
+            { repo.save(it); true }, MutableStateFlow(false), { discoveries++; inventory },
+            completeSetup = { error("Unexpected setup action") })
         try {
             runCurrent()
             repo.save(AppSettings(speechRecognitionBackend = SpeechRecognitionBackend.WHISPER))
@@ -284,12 +275,12 @@ class SettingsViewModelTest {
             runCurrent()
             assertEquals(firstService, repo.current().speechRecognitionService)
 
-            val discoveriesBeforeSherpa = discoveries
-            vm.updateDraft(vm.state.value.draft.copy(speechRecognitionBackend = SpeechRecognitionBackend.SHERPA))
+            val discoveriesBeforeWhisper = discoveries
+            vm.updateDraft(vm.state.value.draft.copy(speechRecognitionBackend = SpeechRecognitionBackend.WHISPER))
             vm.apply()
             runCurrent()
             assertTrue(vm.state.value.recognitionServices.isEmpty())
-            assertEquals("Sherpa settings must not probe Android services", discoveriesBeforeSherpa, discoveries)
+            assertEquals("Whisper settings must not probe Android services", discoveriesBeforeWhisper, discoveries)
             inventory = listOf(replacementService to "Replacement service")
 
             vm.updateDraft(vm.state.value.draft.copy(speechRecognitionBackend = SpeechRecognitionBackend.SYSTEM_OFFLINE))
@@ -316,7 +307,8 @@ class SettingsViewModelTest {
         val selected = "installed.provider/.RecognitionService"
         var inventory: List<Pair<String?, String>> = listOf(null to "Default", selected to "Installed service")
         val vm = SettingsViewModel(repo, MutableStateFlow(true), { emptyList() },
-            { repo.save(it); true }, MutableStateFlow(false), { inventory })
+            { repo.save(it); true }, MutableStateFlow(false), { inventory },
+            completeSetup = { error("Unexpected setup action") })
         try {
             runCurrent()
             repo.save(AppSettings(speechRecognitionBackend = SpeechRecognitionBackend.SYSTEM_OFFLINE))
@@ -342,6 +334,189 @@ class SettingsViewModelTest {
             vm.reset()
             runCurrent()
             assertEquals(null, repo.current().speechRecognitionService)
+        } finally {
+            vm.viewModelScope.cancel()
+            repo.closeAndJoin()
+            Dispatchers.resetMain()
+        }
+    }
+    @Test fun firstChoiceCompletesOnlyAfterPersistenceAndCannotBeRepeated() = runTest {
+        val dispatcher = StandardTestDispatcher(testScheduler)
+        Dispatchers.setMain(dispatcher)
+        try {
+            for (engineId in listOf("mlkit", "tencent")) {
+                val file = File(temp.root, "setup-$engineId.json")
+                val repo = AppSettingsRepository(file, dispatcher)
+                val gate = CompletableDeferred<Unit>()
+                var writes = 0
+                val vm = SettingsViewModel(repo, MutableStateFlow(true), { emptyList() },
+                    { repo.save(it); true }, MutableStateFlow(false), completeSetup = { chosen ->
+                        writes++
+                        gate.await()
+                        repo.save(repo.current().copy(translationEngineId = chosen, translationSetupComplete = true))
+                        true
+                    })
+                try {
+                    vm.completeTranslationSetup(engineId)
+                    assertEquals(0, writes)
+                    runCurrent()
+                    vm.completeTranslationSetup(engineId)
+                    runCurrent()
+                    assertTrue(vm.state.value.saving)
+                    assertFalse(vm.state.value.translationSetupComplete)
+                    assertFalse(repo.current().translationSetupComplete)
+                    vm.completeTranslationSetup(engineId)
+                    gate.complete(Unit)
+                    runCurrent()
+                    assertTrue(vm.state.value.translationSetupComplete)
+                    assertEquals(engineId, repo.current().translationEngineId)
+                    vm.completeTranslationSetup(engineId)
+                    runCurrent()
+                    assertEquals(1, writes)
+                } finally {
+                    gate.complete(Unit)
+                    vm.viewModelScope.cancel()
+                    repo.closeAndJoin()
+                }
+                val reopened = AppSettingsRepository(file, dispatcher)
+                try {
+                    runCurrent()
+                    assertTrue(reopened.current().translationSetupComplete)
+                    assertEquals(engineId, reopened.current().translationEngineId)
+                } finally { reopened.closeAndJoin() }
+            }
+        } finally { Dispatchers.resetMain() }
+    }
+
+    @Test fun rejectedFailedBusyAndTeardownSetupNeverCompleteAndExplicitRetryWorks() = runTest {
+        val dispatcher = StandardTestDispatcher(testScheduler)
+        Dispatchers.setMain(dispatcher)
+        val repo = AppSettingsRepository(File(temp.root, "setup-failure.json"), dispatcher)
+        val editable = MutableStateFlow(false)
+        val teardown = MutableStateFlow(false)
+        var attempts = 0
+        val vm = SettingsViewModel(repo, editable, { emptyList() }, { repo.save(it); true }, teardown,
+            completeSetup = { engineId ->
+                when (++attempts) {
+                    1 -> false
+                    2 -> throw java.io.IOException("Storage unavailable")
+                    else -> {
+                        repo.save(repo.current().copy(translationEngineId = engineId, translationSetupComplete = true))
+                        true
+                    }
+                }
+            })
+        try {
+            runCurrent()
+            vm.completeTranslationSetup("mlkit")
+            runCurrent()
+            assertEquals(0, attempts)
+            editable.value = true
+            teardown.value = true
+            runCurrent()
+            vm.completeTranslationSetup("mlkit")
+            runCurrent()
+            assertEquals(0, attempts)
+            teardown.value = false
+            runCurrent()
+            repeat(2) {
+                vm.completeTranslationSetup("mlkit")
+                runCurrent()
+                assertTrue(vm.state.value.saveError)
+                assertFalse(vm.state.value.translationSetupComplete)
+                assertFalse(repo.current().translationSetupComplete)
+                assertFalse(vm.state.value.saving)
+            }
+            vm.completeTranslationSetup("mlkit")
+            runCurrent()
+            assertTrue(vm.state.value.translationSetupComplete)
+            assertFalse(vm.state.value.saveError)
+            assertEquals("mlkit", repo.current().translationEngineId)
+        } finally {
+            vm.viewModelScope.cancel()
+            repo.closeAndJoin()
+            Dispatchers.resetMain()
+        }
+    }
+
+    @Test fun ordinaryDraftApplyAndResetPreserveLatestCommittedCompletion() = runTest {
+        val dispatcher = StandardTestDispatcher(testScheduler)
+        Dispatchers.setMain(dispatcher)
+        val repo = AppSettingsRepository(File(temp.root, "setup-draft.json"), dispatcher)
+        val vm = SettingsViewModel(repo, MutableStateFlow(true), { emptyList() }, { repo.save(it); true },
+            MutableStateFlow(false), completeSetup = { error("Ordinary editing must not complete setup") })
+        try {
+            runCurrent()
+            vm.beginEditing()
+            vm.updateDraft(vm.state.value.draft.copy(translationSetupComplete = true, ttsSpeedPercent = 110))
+            assertFalse(vm.state.value.translationSetupComplete)
+            vm.apply()
+            runCurrent()
+            assertFalse(repo.current().translationSetupComplete)
+            repo.save(repo.current().copy(languagePair = frenchSpanish, translationSetupComplete = true))
+            runCurrent()
+            vm.updateDraft(vm.state.value.draft.copy(translationSetupComplete = false, ttsSpeedPercent = 115))
+            vm.apply()
+            runCurrent()
+            assertTrue(repo.current().translationSetupComplete)
+            assertEquals(frenchSpanish, repo.current().languagePair)
+            vm.reset()
+            runCurrent()
+            assertTrue(repo.current().translationSetupComplete)
+            assertTrue(vm.state.value.translationSetupComplete)
+            assertEquals(frenchSpanish, repo.current().languagePair)
+        } finally {
+            vm.viewModelScope.cancel()
+            repo.closeAndJoin()
+            Dispatchers.resetMain()
+        }
+    }
+
+    @Test fun loadFailureAndInvalidChoiceCannotCompleteSetup() = runTest {
+        val dispatcher = StandardTestDispatcher(testScheduler)
+        Dispatchers.setMain(dispatcher)
+        val file = File(temp.root, "setup-load-error.json")
+        file.writeText(AppSettingsTestFixtures.document().put("translationSetupComplete", false).toString())
+        var failRead = true
+        val delegate = AppSettingsSerializer()
+        val serializer = object : androidx.datastore.core.Serializer<AppSettings> {
+            override val defaultValue = delegate.defaultValue
+            override suspend fun readFrom(input: java.io.InputStream): AppSettings {
+                if (failRead) throw java.io.IOException("Unavailable settings")
+                return delegate.readFrom(input)
+            }
+            override suspend fun writeTo(t: AppSettings, output: java.io.OutputStream) = delegate.writeTo(t, output)
+        }
+        val repo = AppSettingsRepository(file, dispatcher, serializer)
+        var saves = 0
+        val vm = SettingsViewModel(repo, MutableStateFlow(true),
+            { if (it.translationEngineId == "unknown") listOf(ConfigurationProblem.UNKNOWN_ENGINE) else emptyList() },
+            { repo.save(it); true }, MutableStateFlow(false), completeSetup = { engineId ->
+                saves++
+                repo.save(repo.current().copy(translationEngineId = engineId, translationSetupComplete = true))
+                true
+            })
+        try {
+            vm.completeTranslationSetup("mlkit")
+            runCurrent()
+            assertTrue(vm.state.value.loadError)
+            vm.completeTranslationSetup("mlkit")
+            runCurrent()
+            assertEquals(0, saves)
+            assertFalse(vm.state.value.translationSetupComplete)
+            failRead = false
+            vm.retry()
+            runCurrent()
+            assertFalse(vm.state.value.loadError)
+            vm.completeTranslationSetup("unknown")
+            runCurrent()
+            assertEquals(0, saves)
+            assertTrue(ConfigurationProblem.UNKNOWN_ENGINE in vm.state.value.problems)
+            assertFalse(repo.current().translationSetupComplete)
+            vm.completeTranslationSetup("mlkit")
+            runCurrent()
+            assertEquals(1, saves)
+            assertTrue(vm.state.value.translationSetupComplete)
         } finally {
             vm.viewModelScope.cancel()
             repo.closeAndJoin()

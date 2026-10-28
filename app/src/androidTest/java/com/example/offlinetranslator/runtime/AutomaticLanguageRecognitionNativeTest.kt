@@ -10,7 +10,7 @@ import com.example.offlinetranslator.core.SpeechSegment
 import com.example.offlinetranslator.core.SpeechOutputBackend
 import com.example.offlinetranslator.core.SpeechRecognitionBackend
 import com.example.offlinetranslator.speechmodels.SelectedSpeechResources
-import com.example.offlinetranslator.sherpa.SherpaConversationRecognitionEngine
+import com.example.offlinetranslator.sherpa.WhisperConversationRecognitionEngine
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeout
 import org.junit.Assert.assertEquals
@@ -19,7 +19,7 @@ import org.junit.Test
 import java.io.File
 import java.util.Locale
 
-/** Fresh-process offline production LID+ASR fixture smoke, not general recognition qualification. */
+/** Fresh-process offline joint Whisper fixture smoke, not general recognition qualification. */
 class AutomaticLanguageRecognitionNativeTest {
     @Test fun preparedOfflineRecommendedRecognitionAfterRestart() = runBlocking<Unit> {
         val instrumentation = InstrumentationRegistry.getInstrumentation()
@@ -32,17 +32,15 @@ class AutomaticLanguageRecognitionNativeTest {
             commitNativeSettings(runtime, original.copy(
                 languagePair = LanguagePair(LanguageCatalog.RUSSIAN, LanguageCatalog.ENGLISH),
                 speechOutputBackend = SpeechOutputBackend.PIPER,
-                speechRecognitionBackend = SpeechRecognitionBackend.SHERPA,
+                speechRecognitionBackend = SpeechRecognitionBackend.WHISPER,
             ))
             val config = runtime.settings.current().conversationConfig()
             assertEquals(setOf(LanguageCatalog.RUSSIAN, LanguageCatalog.ENGLISH), config.languages.toSet())
-            assertEquals("asr-ru-gigaam-v1", config.asrModelIds[LanguageCatalog.RUSSIAN])
-            assertEquals("asr-en-whisper-tiny.en", config.asrModelIds[LanguageCatalog.ENGLISH])
             val resources = SelectedSpeechResources.forConversation(runtime.speechModels, config,
-                config.asrModelIds.values.toSet() + config.languageIdModelId)
+                setOf(WhisperConversationRecognitionEngine.MODEL_ID))
             try {
                 assertTrue("Selected conversation resources must already be ready", resources.isConversationReady())
-                val engine = SherpaConversationRecognitionEngine(runtime.speechModels, config)
+                val engine = WhisperConversationRecognitionEngine(runtime.speechModels, config)
                 try {
                     withTimeout(120_000) { engine.prepare() }
                     for (fixture in listOf(
@@ -74,6 +72,8 @@ class AutomaticLanguageRecognitionNativeTest {
                             val utterance = withTimeout(120_000) {
                                 engine.recognize(SpeechSegment.fromPcm(pcm))
                             }
+                            assertTrue("Whisper must establish a paired direction", utterance is com.example.offlinetranslator.core.RecognizedUtterance)
+                            val recognized = utterance as com.example.offlinetranslator.core.RecognizedUtterance
                             val normalized = utterance.text.lowercase(Locale.ROOT)
                                 .replace('ё', 'е')
                                 .replace(Regex("\\p{P}+"), " ")
@@ -88,10 +88,10 @@ class AutomaticLanguageRecognitionNativeTest {
                                     true
                                 }
                             }
-                            val direction = utterance.direction
+                            val direction = recognized.direction
                             Log.i(
                                 TAG,
-                                "fixture=${fixture.asset} model=${config.asrModelIds.getValue(fixture.direction.source)} " +
+                                "fixture=${fixture.asset} model=${WhisperConversationRecognitionEngine.MODEL_ID} " +
                                     "direction=${direction.source.value}->${direction.target.value} " +
                                     "oracle=$oraclePassed complete=true",
                             )

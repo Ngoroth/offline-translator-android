@@ -4,7 +4,6 @@ import android.content.Context
 import com.example.offlinetranslator.core.*
 import com.example.offlinetranslator.mlkit.MlKitPreparationCoordinator
 import com.example.offlinetranslator.settings.AppSettingsRepository
-import com.example.offlinetranslator.settings.SpeechModelChoice
 import com.example.offlinetranslator.sherpa.*
 import com.example.offlinetranslator.speechmodels.SelectedSpeechResources
 import com.example.offlinetranslator.speechmodels.SpeechModelCatalog
@@ -46,7 +45,6 @@ class AppRuntime private constructor(context: Context) {
         { store, selected -> SherpaSpeechCaptureEngine(this.context, store, selected.vadModelId, selected.vadMinSilenceMs) }
     val busy = owners.busy
     val editable: StateFlow<Boolean> = busy.map { !it }.stateIn(scope, SharingStarted.Eagerly, true)
-    val modelChoices: List<SpeechModelChoice> = catalog.models.map { SpeechModelChoice(it.id, it.role, it.languages, it.displayName) }
     private val validator = SettingsValidator(catalog, registry.descriptors.map { it.id }.toSet(), registry::capability)
     @Volatile private var closed = false
     private val closeLock = Mutex()
@@ -68,10 +66,8 @@ class AppRuntime private constructor(context: Context) {
                 speechRecognitionBackend = value.speechRecognitionBackend,
                 speechRecognitionService = value.speechRecognitionService,
                 speechOutputBackend = value.speechOutputBackend,
-                textEngineId = value.textEngineId,
-                conversationEngineId = value.conversationEngineId,
+                translationEngineId = value.translationEngineId,
                 vadModelId = value.vadModelId,
-                languageIdModelId = value.languageIdModelId,
                 vadMinSilenceMs = value.vadMinSilenceMs,
                 ttsSpeedPercent = value.ttsSpeedPercent,
             ).also { requireValid(it); changed = it }
@@ -86,6 +82,20 @@ class AppRuntime private constructor(context: Context) {
                 }
             },
         ) { settings.save(latestPatch()) }
+    }
+
+    /** First selection never constructs or displaces a route owner, or prepares resources. */
+    suspend fun completeTranslationSetup(engineId: String): Boolean {
+        check(!closed)
+        return owners.saveIfUnowned {
+            val latest = settings.current()
+            if (latest.translationSetupComplete) return@saveIfUnowned false
+            val selected = latest.copy(translationEngineId = engineId, translationSetupComplete = true)
+            requireValid(selected)
+            coroutineContext.ensureActive()
+            settings.save(selected)
+            true
+        }
     }
 
     /** The route releases its owner first; this commit cannot steal a subsequent contender. */
@@ -166,7 +176,6 @@ class AppRuntime private constructor(context: Context) {
             capture = captureFactory(speechModels, config)
             recognition = when (config.speechRecognitionBackend) {
                 SpeechRecognitionBackend.SYSTEM_OFFLINE -> AndroidConversationRecognitionEngine(context, config)
-                SpeechRecognitionBackend.SHERPA -> SherpaConversationRecognitionEngine(speechModels, config)
                 SpeechRecognitionBackend.WHISPER -> WhisperConversationRecognitionEngine(speechModels, config)
             }
             output = when (config.speechOutputBackend) {
@@ -198,10 +207,6 @@ class AppRuntime private constructor(context: Context) {
     }
     private fun recognitionModelIds(config: ConversationSessionConfig): Set<String> = when (config.speechRecognitionBackend) {
         SpeechRecognitionBackend.SYSTEM_OFFLINE -> emptySet()
-        SpeechRecognitionBackend.SHERPA -> buildSet {
-            add(config.languageIdModelId)
-            addAll(config.asrModelIds.values)
-        }
         SpeechRecognitionBackend.WHISPER -> setOf(WhisperConversationRecognitionEngine.MODEL_ID)
     }
 
@@ -272,10 +277,10 @@ class AppRuntime private constructor(context: Context) {
     internal fun matches(settings: AppSettings, config: ConversationSessionConfig): Boolean =
         config.languages.size == 2 &&
             settings.languagePair.source == config.languages[0] && settings.languagePair.target == config.languages[1] &&
-            settings.speechOutputBackend == config.speechOutputBackend && settings.conversationEngineId == config.engineId &&
+            settings.speechOutputBackend == config.speechOutputBackend && settings.translationEngineId == config.engineId &&
             settings.speechRecognitionBackend == config.speechRecognitionBackend &&
             settings.speechRecognitionService == config.speechRecognitionService &&
-            settings.vadModelId == config.vadModelId && settings.languageIdModelId == config.languageIdModelId &&
+            settings.vadModelId == config.vadModelId &&
             settings.vadMinSilenceMs == config.vadMinSilenceMs && settings.ttsSpeedPercent == config.ttsSpeedPercent
 
     companion object {
@@ -293,16 +298,12 @@ class SettingsValidator(
     private val capability: (String, LanguagePair) -> TranslationCapability,
 ) {
     fun textProblems(settings: AppSettings): List<ConfigurationProblem> =
-        pairProblems(settings.textEngineId, settings.languagePair)
+        pairProblems(settings.translationEngineId, settings.languagePair)
 
     /** Saved settings and Text do not require voice-language coverage. */
     fun problems(settings: AppSettings): List<ConfigurationProblem> {
         val result = LinkedHashSet(textProblems(settings))
-        if (settings.conversationEngineId !in engineIds) result += ConfigurationProblem.UNKNOWN_ENGINE
         modelProblem(settings.vadModelId, SpeechModelRole.VAD, emptySet())?.let(result::add)
-        if (settings.speechRecognitionBackend == SpeechRecognitionBackend.SHERPA) {
-            modelProblem(settings.languageIdModelId, SpeechModelRole.LANGUAGE_ID, emptySet())?.let(result::add)
-        }
         if (settings.speechRecognitionBackend == SpeechRecognitionBackend.WHISPER) {
             modelProblem(WhisperConversationRecognitionEngine.MODEL_ID, SpeechModelRole.ASR, emptySet())?.let(result::add)
         }
@@ -313,19 +314,14 @@ class SettingsValidator(
 
     fun conversationProblems(settings: AppSettings): List<ConfigurationProblem> {
         val result = LinkedHashSet(problems(settings))
-        result += pairProblems(settings.conversationEngineId, settings.languagePair)
-        result += pairProblems(settings.conversationEngineId, settings.languagePair.reverse())
+        result += pairProblems(settings.translationEngineId, settings.languagePair)
+        result += pairProblems(settings.translationEngineId, settings.languagePair.reverse())
         val languages = setOf(settings.languagePair.source, settings.languagePair.target)
-        if (settings.speechRecognitionBackend == SpeechRecognitionBackend.SHERPA) {
-            modelProblem(settings.languageIdModelId, SpeechModelRole.LANGUAGE_ID, languages)?.let(result::add)
-        }
         if (settings.speechRecognitionBackend == SpeechRecognitionBackend.WHISPER) {
             modelProblem(WhisperConversationRecognitionEngine.MODEL_ID, SpeechModelRole.ASR, languages)?.let(result::add)
         }
         languages.forEach { language ->
-            if (settings.speechRecognitionBackend == SpeechRecognitionBackend.SHERPA) {
-                modelProblem(RecommendedConversationRecognition.modelId(language), SpeechModelRole.ASR, setOf(language))?.let(result::add)
-            } else if (settings.speechRecognitionBackend == SpeechRecognitionBackend.SYSTEM_OFFLINE &&
+            if (settings.speechRecognitionBackend == SpeechRecognitionBackend.SYSTEM_OFFLINE &&
                 LanguageCatalog.find(language) == null) {
                 result += ConfigurationProblem.UNKNOWN_LANGUAGE
             }
@@ -343,9 +339,6 @@ class SettingsValidator(
         LanguageCatalog.entries.asSequence().map { it.id }.filter { language ->
             val recognitionSupported = when (settings.speechRecognitionBackend) {
                 SpeechRecognitionBackend.SYSTEM_OFFLINE -> true
-                SpeechRecognitionBackend.SHERPA ->
-                    modelProblem(RecommendedConversationRecognition.modelId(language), SpeechModelRole.ASR, setOf(language)) == null &&
-                        modelProblem(settings.languageIdModelId, SpeechModelRole.LANGUAGE_ID, setOf(language)) == null
                 SpeechRecognitionBackend.WHISPER ->
                     modelProblem(WhisperConversationRecognitionEngine.MODEL_ID, SpeechModelRole.ASR, setOf(language)) == null
             }
