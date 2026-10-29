@@ -19,6 +19,7 @@ class SettingsViewModel(
     private val teardownFailed: StateFlow<Boolean>,
     private val recognitionServices: () -> List<Pair<String?, String>> = { emptyList() },
     private val completeSetup: suspend (String) -> Boolean,
+    private val persistReset: suspend (AppSettings) -> Boolean = persist,
 ) : ViewModel() {
     private val mutableState = MutableStateFlow(SettingsUiState())
     val state = mutableState.asStateFlow()
@@ -35,6 +36,7 @@ class SettingsViewModel(
                         if (editing) mutableState.value.draft.copy(
                             languagePair = it.languagePair,
                             translationSetupComplete = it.translationSetupComplete,
+                            speechOutputEnabled = it.speechOutputEnabled,
                         ) else it
                     } ?: mutableState.value.draft
                     mutableState.value = mutableState.value.copy(
@@ -65,6 +67,7 @@ class SettingsViewModel(
         val frozen = value.copy(
             languagePair = committed?.languagePair ?: current.draft.languagePair,
             translationSetupComplete = committed?.translationSetupComplete ?: false,
+            speechOutputEnabled = committed?.speechOutputEnabled ?: current.draft.speechOutputEnabled,
         )
         mutableState.value = current.copy(draft = frozen, saveError = false, problems = validate(frozen))
         if (current.draft.speechRecognitionBackend != frozen.speechRecognitionBackend) refreshRecognitionServices()
@@ -77,10 +80,11 @@ class SettingsViewModel(
 
     fun reset() {
         if (!state.value.canReset) return
-        submit(AppSettings(
+        val defaults = AppSettings(
             languagePair = committed?.languagePair ?: state.value.draft.languagePair,
             translationSetupComplete = committed?.translationSetupComplete ?: false,
-        ))
+        )
+        submit(defaults) { persistReset(defaults) }
     }
 
     fun completeTranslationSetup(engineId: String) {

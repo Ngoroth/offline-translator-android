@@ -27,6 +27,37 @@ import java.util.concurrent.CopyOnWriteArrayList
 class SelectedSpeechResourcesTest {
     @get:Rule val temporary = TemporaryFolder()
 
+    @Test fun silentUnsupportedPiperPairPreparesOnlyBaseResourcesWithoutResolvingVoices() = runBlocking<Unit> {
+        val fixture = fixture()
+        val requested = CopyOnWriteArrayList<String>()
+        TestHttpsServer { exchange ->
+            val id = exchange.requestURI.path.removePrefix("/")
+            requested += id
+            val bytes = fixture.bytes.getValue(id)
+            exchange.sendResponseHeaders(200, bytes.size.toLong())
+            exchange.responseBody.use { it.write(bytes) }
+        }.use { https ->
+            val store = store(fixture.catalog, SpeechModelDownloader(https::openConnection))
+            val config = AppSettings(languagePair = LanguagePair(LanguageCatalog.DUTCH, LanguageCatalog.ENGLISH),
+                speechOutputBackend = SpeechOutputBackend.PIPER, speechOutputEnabled = false).conversationConfig()
+            val resources = SelectedSpeechResources.forConversation(store, config, setOf("multilingual"))
+            try {
+                assertFalse(resources.isConversationReady(speechOutputRequired = false))
+                resources.install(speechOutputRequired = false)
+                assertTrue(resources.isConversationReady(speechOutputRequired = false))
+                assertEquals(setOf(VAD), requested.toSet())
+                val ready = withTimeout(5000) { resources.models.first { rows ->
+                    rows.any { it.id == VAD && it.state == SpeechModelInstallState.READY }
+                } }
+                assertEquals(setOf(VAD, "multilingual"), ready.map { it.id }.toSet())
+                assertTrue(ready.none { it.role == SpeechModelRole.TTS })
+                assertTrue(runCatching { resources.isConversationReady(speechOutputRequired = true) }.exceptionOrNull()
+                    is com.example.offlinetranslator.core.InvalidConfigurationException)
+                assertEquals(setOf(VAD), requested.toSet())
+            } finally { resources.close(); store.close() }
+        }
+    }
+
     @Test fun recognitionIdsAreDataAndConversationInstallsOnlyCaptureAndChosenOutput() = runBlocking<Unit> {
         val fixture = fixture()
         val requested = CopyOnWriteArrayList<String>()
@@ -46,22 +77,24 @@ class SelectedSpeechResourcesTest {
                     val resources = SelectedSpeechResources.forConversation(store, config, recognitionIds)
                     try {
                         val owned = setOf(config.vadModelId) + config.ttsModelIds.values
-                        assertEquals(owned + recognitionIds, resources.models.value.map { it.id }.toSet())
-                        assertFalse(resources.isConversationReady())
-                        resources.install()
-                        assertTrue(resources.isConversationReady())
+                        assertFalse(resources.isConversationReady(speechOutputRequired = true))
+                        resources.install(speechOutputRequired = true)
+                        assertTrue(resources.isConversationReady(speechOutputRequired = true))
                         assertEquals(owned, requested.toSet())
                         assertTrue(store.packages.value.filter { it.id in recognitionIds }.all { it.state == SpeechModelInstallState.MISSING })
                         store.install(fixture.catalog.requiredPackages(recognitionIds))
-                        resources.install()
+                        resources.install(speechOutputRequired = true)
                         assertEquals(owned + recognitionIds, requested.toSet())
                         assertEquals(requested.toSet().size, requested.size)
-                        val ready = withTimeout(5000) { resources.models.first { rows -> rows.all { it.state == SpeechModelInstallState.READY } } }
+                        val ready = withTimeout(5000) { resources.models.first { rows ->
+                            rows.map { it.id }.toSet() == owned + recognitionIds &&
+                                rows.all { it.state == SpeechModelInstallState.READY }
+                        } }
                         assertEquals(owned + recognitionIds, ready.map { it.id }.toSet())
                         assertFalse("unused-voice" in requested)
                         resources.close()
                         assertTrue(store.availability(owned + recognitionIds))
-                        assertTrue(runCatching { resources.install() }.isFailure)
+                        assertTrue(runCatching { resources.install(speechOutputRequired = true) }.isFailure)
                     } finally { resources.close(); store.close() }
                 }
             }

@@ -49,6 +49,56 @@ import java.util.Locale
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class SystemConversationSpeechOutputTest {
+    @Test fun liveMuteStopsRealSystemOutputKeepsTextAndCaptureAndEnableNeverReplaysRows() = runTest {
+        withSystemConsumer { consumer ->
+            beginSystemSpeech(consumer)
+            val firstId = consumer.platform.client.ids.single()
+            consumer.model.toggleSpeechOutput()
+            assertFalse(consumer.model.speechOutputEnabled.value)
+            runCurrent()
+            val completed = consumer.model.state.value.transcripts.single()
+            assertEquals("Consumer release fixture", completed.translation)
+            assertEquals(com.example.offlinetranslator.core.ConversationTranscriptStatus.COMPLETE, completed.status)
+            assertTrue(consumer.model.state.value.captureActive)
+            assertEquals(1, consumer.platform.client.stops)
+            assertEquals(1, consumer.platform.focus.abandons)
+            consumer.platform.client.listener.onDone(firstId, ENGINE_UID)
+            consumer.capture.emit()
+            runCurrent()
+            assertEquals(2, consumer.model.state.value.transcripts.size)
+            assertEquals(listOf(firstId), consumer.platform.client.ids)
+            assertEquals(completed, consumer.model.state.value.transcripts.first())
+            consumer.model.toggleSpeechOutput()
+            runCurrent()
+            assertTrue(consumer.model.speechOutputEnabled.value)
+            assertEquals(1, consumer.platform.client.ids.size)
+            consumer.capture.emit()
+            runCurrent()
+            assertFalse(consumer.model.state.value.captureActive)
+            assertEquals(2, consumer.platform.client.ids.size)
+            consumer.platform.client.listener.onDone(consumer.platform.client.ids.last(), ENGINE_UID)
+            runCurrent()
+            assertTrue(consumer.model.state.value.captureActive)
+            assertEquals(3, consumer.model.state.value.transcripts.size)
+        }
+    }
+
+    @Test fun liveMuteCannotHideSystemStopFailureOrResumeCapture() = runTest {
+        withSystemConsumer { consumer ->
+            beginSystemSpeech(consumer)
+            consumer.platform.client.stopResult = TextToSpeech.ERROR
+            consumer.model.toggleSpeechOutput()
+            runCurrent()
+            assertFalse(consumer.model.state.value.sessionActive)
+            assertFalse(consumer.model.state.value.captureActive)
+            assertFalse(consumer.model.ready.value)
+            val primary = nativeStopFailure(consumer)
+            assertContainsFailure(primary, runCatching { consumer.model.disposeAndJoin() }.exceptionOrNull())
+            assertControllerBlocked(consumer, primary)
+            assertEquals(1, consumer.capture.starts)
+        }
+    }
+
     @Test fun everyCatalogLocaleRequiresInstalledOfflineDataAndExactActivation() = runTest {
         for (metadata in LanguageCatalog.entries) {
             val language = metadata.id
@@ -830,10 +880,8 @@ class SystemConversationSpeechOutputTest {
         assertContainsFailure(primary, runCatching { consumer.controller.closeAndJoin() }.exceptionOrNull())
     }
 
-    private suspend fun nativeStopFailure(consumer: SystemConsumer): Throwable {
-        // Await may recover a thrown exception into a wrapper. The adapter's original
-        // SDK stop fault, not that incidental wrapper, must survive every cleanup result.
-        var failure = requireNotNull(runCatching { consumer.platform.output.readiness() }.exceptionOrNull())
+    private fun nativeStopFailure(consumer: SystemConsumer): Throwable {
+        var failure = requireNotNull(runCatching { consumer.platform.output.throwIfReleaseFailed() }.exceptionOrNull())
         while (true) failure = failure.cause ?: return failure
     }
 
@@ -869,7 +917,8 @@ class SystemConversationSpeechOutputTest {
                 CoroutineScope(dispatcher + ownerJob),
             )
         }
-        val model = ConversationViewModel(owner, controller)
+        val model = ConversationViewModel(owner, controller,
+            saveSpeechOutput = { _, fresh -> controller.saveSpeechOutput(owner, fresh) { true } })
         val consumer = SystemConsumer(platform, controller, owner, model, capture, recognition, translation, models)
         try {
             block(consumer)
@@ -954,8 +1003,8 @@ class SystemConversationSpeechOutputTest {
         var closes = 0
         var closeFailure: Throwable? = null
         override val models = MutableStateFlow<List<SpeechModelStatus>>(emptyList())
-        override suspend fun install() = Unit
-        override suspend fun isConversationReady() = true
+        override suspend fun install(speechOutputRequired: Boolean) = Unit
+        override suspend fun isConversationReady(speechOutputRequired: Boolean) = true
         override fun close() { closes++; closeFailure?.let { throw it } }
     }
 

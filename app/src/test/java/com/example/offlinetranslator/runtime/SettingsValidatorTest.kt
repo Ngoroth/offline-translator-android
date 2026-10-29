@@ -10,6 +10,22 @@ import org.junit.Test
 import java.io.File
 
 class SettingsValidatorTest {
+    @Test fun disabledPiperRemovesOnlyVoicePrerequisitesAndCoverageRestrictions() {
+        val validation = validator()
+        val silent = AppSettings(languagePair = LanguagePair(LanguageCatalog.DUTCH, LanguageCatalog.ENGLISH),
+            translationEngineId = "mlkit", speechOutputBackend = SpeechOutputBackend.PIPER, speechOutputEnabled = false)
+        assertEquals(emptyList<ConfigurationProblem>(), validation.conversationProblems(silent))
+        assertTrue(LanguageCatalog.DUTCH in validation.conversationLanguageCoverage(silent))
+        assertTrue(ConfigurationProblem.UNSUPPORTED_VOICE in validation.conversationProblems(silent.copy(speechOutputEnabled = true)))
+        assertTrue(ConfigurationProblem.UNKNOWN_MODEL in validation.conversationProblems(silent.copy(vadModelId = "missing-vad")))
+        assertTrue(ConfigurationProblem.INVALID_SPEED in validation.conversationProblems(silent.copy(ttsSpeedPercent = 126)))
+        assertTrue(ConfigurationProblem.INVALID_SILENCE in validation.conversationProblems(silent.copy(vadMinSilenceMs = 299)))
+        val noTranslation = SettingsValidator(
+            SherpaSpeechModelCatalog.parse(catalogDocument().toString().byteInputStream()), setOf("mlkit"),
+            { _, pair -> if (pair.source == LanguageCatalog.DUTCH) TranslationCapability.Unsupported else TranslationCapability.Direct })
+        assertTrue(ConfigurationProblem.UNSUPPORTED_PAIR in noTranslation.conversationProblems(silent))
+    }
+
     private fun catalogDocument() = JSONObject(File("../engine-sherpa/src/main/assets/speech-models.json").readText())
     private fun validator(document: JSONObject = catalogDocument()) = SettingsValidator(
         SherpaSpeechModelCatalog.parse(document.toString().byteInputStream()),

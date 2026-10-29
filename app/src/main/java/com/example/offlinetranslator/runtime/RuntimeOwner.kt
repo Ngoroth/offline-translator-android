@@ -104,6 +104,16 @@ class RuntimeOwnerController(private val scope: CoroutineScope) {
             mutableBusy.value = mutableTeardownFailed.value || (current?.isBusy ?: false)
         }
     }
+    /** Only the live output preference may be patched while this exact owner is active. */
+    suspend fun saveSpeechOutput(
+        owner: ConversationRuntimeOwner?,
+        isFresh: () -> Boolean,
+        commit: suspend () -> Boolean,
+    ): Boolean = control.withLock {
+        coroutineContext.ensureActive()
+        if (mutableTeardownFailed.value || current !== owner || !isFresh()) return@withLock false
+        commit()
+    }
 
     /** Check ownership and persisted freshness before any factory or teardown side effect. */
     suspend fun <T : RuntimeOwner> createIfUnowned(
@@ -206,10 +216,11 @@ class ConversationRuntimeOwner(
     val translation: TranslationEngine,
     val output: ConversationSpeechOutput,
     private val scope: CoroutineScope,
+    speechOutputEnabled: Boolean = true,
 ) : RuntimeOwner {
     /** The real screen and pipeline share this boundary and the owner's exact recognizer. */
     val models: ConversationModelRepository = ConversationResources(models, recognition)
-    val pipeline = ConversationPipeline(capture, recognition, this.models, translation, output, scope)
+    val pipeline = ConversationPipeline(capture, recognition, this.models, translation, output, scope, speechOutputEnabled)
     @Volatile private var closed = false
     private val closeLock = Mutex()
     private var closeResult: Result<Unit>? = null
@@ -259,14 +270,14 @@ private class ConversationResources(
     private val recognition: ConversationRecognitionEngine,
 ) : ConversationModelRepository {
     override val models: StateFlow<List<SpeechModelStatus>> get() = native.models
-    override suspend fun install() {
-        native.install()
+    override suspend fun install(speechOutputRequired: Boolean) {
+        native.install(speechOutputRequired)
         recognition.install()
     }
-    override suspend fun isConversationReady(): Boolean {
+    override suspend fun isConversationReady(speechOutputRequired: Boolean): Boolean {
         // Recheck recognition even when a native package is missing: expose the actual OS state.
         val recognitionReady = recognition.readiness() == SpeechRecognitionReadiness.READY
-        return native.isConversationReady() && recognitionReady
+        return native.isConversationReady(speechOutputRequired) && recognitionReady
     }
     // The owner awaits recognition release once, before closing this native projection.
     override fun close() = native.close()

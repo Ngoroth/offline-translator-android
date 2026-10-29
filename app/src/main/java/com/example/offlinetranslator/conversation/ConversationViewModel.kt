@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.example.offlinetranslator.core.*
 import com.example.offlinetranslator.runtime.ConversationRuntimeOwner
 import com.example.offlinetranslator.runtime.RuntimeOwnerController
+import com.example.offlinetranslator.runtime.SpeechOutputUnavailableException
 import com.example.offlinetranslator.speech.SystemConversationSpeechOutput
 import com.example.offlinetranslator.speech.AndroidConversationRecognitionEngine
 import com.example.offlinetranslator.speech.AndroidRecognitionDataInstallRequest
@@ -15,6 +16,8 @@ import kotlinx.coroutines.flow.asStateFlow
 class ConversationViewModel(
     private val owner: ConversationRuntimeOwner,
     private val owners: RuntimeOwnerController,
+    private val saveSpeechOutput: suspend (Boolean, () -> Boolean) -> Boolean,
+    private val speechOutputProblem: () -> ConfigurationProblem? = { null },
 ) : ViewModel() {
     val config = owner.config
     val hasCurrentOwner: Boolean get() = owners.isCurrent(owner)
@@ -32,6 +35,96 @@ class ConversationViewModel(
     val ready = mutableReady.asStateFlow()
     private val mutableOutputReadiness = MutableStateFlow<SpeechOutputReadiness?>(null)
     val outputReadiness = mutableOutputReadiness.asStateFlow()
+    val speechOutputEnabled = pipeline.speechOutputEnabled
+    private var savedSpeechOutputEnabled = speechOutputEnabled.value
+    private val mutableSpeechOutputChanging = MutableStateFlow(false)
+    val speechOutputChanging = mutableSpeechOutputChanging.asStateFlow()
+    private val mutableSpeechOutputUnavailable = MutableStateFlow(false)
+    val speechOutputUnavailable = mutableSpeechOutputUnavailable.asStateFlow()
+    private val mutableSpeechOutputProblem = MutableStateFlow<ConfigurationProblem?>(null)
+    val speechOutputConfigurationProblem = mutableSpeechOutputProblem.asStateFlow()
+    private val mutableSpeechOutputSaveError = MutableStateFlow(false)
+    val speechOutputSaveError = mutableSpeechOutputSaveError.asStateFlow()
+    private var speechOutputJob: Job? = null
+
+    fun toggleSpeechOutput() {
+        if (disposed || !foreground || !hasCurrentOwner) return
+        val enabling = !speechOutputEnabled.value
+        if (enabling && (mutableSpeechOutputChanging.value || preparationJob?.isActive == true)) return
+        val generation = pipeline.disableSpeechOutput()
+        speechOutputJob?.cancel()
+        readinessJob.cancel()
+        mutableOutputReadiness.value = null
+        mutableSpeechOutputUnavailable.value = false
+        mutableSpeechOutputProblem.value = null
+        mutableSpeechOutputSaveError.value = false
+        mutableSpeechOutputChanging.value = true
+        fun fresh() = !disposed && foreground && hasCurrentOwner && pipeline.isSpeechOutputRequestCurrent(generation)
+        speechOutputJob = viewModelScope.launch {
+            var savingPreference = true
+            try {
+                // A failed enable must also remain persistently off, even after an earlier failed mute save.
+                if (!saveSpeechOutput(false, ::fresh)) {
+                    if (fresh()) mutableSpeechOutputSaveError.value = true
+                    return@launch
+                }
+                savingPreference = false
+                savedSpeechOutputEnabled = false
+                if (!fresh()) return@launch
+                if (enabling) {
+                    val problem = speechOutputProblem()
+                    if (problem != null) {
+                        mutableSpeechOutputProblem.value = problem
+                        mutableSpeechOutputUnavailable.value = true
+                        return@launch
+                    }
+                    val ready = pipeline.prepareSpeechOutput(generation) {
+                        val output = owner.output
+                        if (output is SystemConversationSpeechOutput) output.recheck() else output.readiness()
+                    } ?: return@launch
+                    if (!fresh()) return@launch
+                    mutableOutputReadiness.value = ready
+                    if (ready != SpeechOutputReadiness.READY) {
+                        mutableSpeechOutputUnavailable.value = true
+                        return@launch
+                    }
+                    savingPreference = true
+                    if (!saveSpeechOutput(true, ::fresh)) {
+                        if (fresh()) mutableSpeechOutputSaveError.value = true
+                        return@launch
+                    }
+                    savingPreference = false
+                    savedSpeechOutputEnabled = true
+                    if (fresh()) pipeline.enableSpeechOutput(generation)
+                }
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (unavailable: SpeechOutputUnavailableException) {
+                if (fresh()) {
+                    mutableOutputReadiness.value = unavailable.readiness
+                    mutableSpeechOutputUnavailable.value = true
+                }
+            } catch (invalid: InvalidConfigurationException) {
+                if (fresh()) {
+                    mutableSpeechOutputProblem.value = invalid.problem
+                    mutableSpeechOutputUnavailable.value = true
+                }
+            } catch (_: Exception) {
+                if (fresh()) {
+                    if (savingPreference) mutableSpeechOutputSaveError.value = true
+                    else if (enabling) {
+                        mutableOutputReadiness.value = SpeechOutputReadiness.INITIALIZATION_FAILED
+                        mutableSpeechOutputUnavailable.value = true
+                    }
+                }
+            } finally {
+                if (pipeline.isSpeechOutputRequestCurrent(generation)) {
+                    mutableSpeechOutputChanging.value = false
+                    if (fresh() && !state.value.sessionActive) refreshReadiness()
+                }
+            }
+        }
+    }
     /** A user action gets one fresh attestation under the shared owner gate, never a recheck. */
     suspend fun voiceDataEnginePackage(isFresh: () -> Boolean): String? {
         fun allowed() = !disposed && foreground && hasCurrentOwner && isFresh() &&
@@ -88,7 +181,10 @@ class ConversationViewModel(
         }
     }
 
-    fun recheckReadiness() { refreshReadiness(recheckSystem = true) }
+    fun recheckReadiness() {
+        if (!speechOutputEnabled.value && speechOutputUnavailable.value) toggleSpeechOutput()
+        else refreshReadiness(recheckSystem = true)
+    }
 
     private fun refreshReadiness(recheckSystem: Boolean = false) {
         if (disposed || !foreground || !hasCurrentOwner || state.value.sessionActive ||
@@ -101,7 +197,7 @@ class ConversationViewModel(
         state.collect { current ->
             if (current.failure == ConversationFailure.MODELS_MISSING || current.failure == ConversationFailure.PLAYBACK_FAILED) {
                 mutableReady.value = false
-                refreshReadiness()
+                if (pipeline.releaseFailed) cleanup() else refreshReadiness()
             }
         }
     }
@@ -114,9 +210,13 @@ class ConversationViewModel(
         }
     }
 
-    /** One explicit action prepares all selected languages; a partial installation never enables Start. */
+    /** Explicit recovery may prepare output resources without enabling them or blocking silent Start. */
     fun prepareLanguages() {
-        if (disposed || !foreground || !hasCurrentOwner || preparationJob?.isActive == true || state.value.sessionActive) return
+        if (disposed || !foreground || !hasCurrentOwner || preparationJob?.isActive == true ||
+            speechOutputChanging.value || state.value.sessionActive) return
+        val recoveringSpeechOutput = config.speechOutputBackend == SpeechOutputBackend.PIPER &&
+            !speechOutputEnabled.value && speechOutputUnavailable.value &&
+            speechOutputConfigurationProblem.value == null
         mutableReady.value = false
         mutablePreparation.value = ConversationPreparation.INSTALLING
         mutablePreparationFailure.value = null
@@ -124,7 +224,12 @@ class ConversationViewModel(
             readinessJob.cancelAndJoin()
             try {
                 val ready = owners.use(owner) {
-                    models.install()
+                    models.install(speechOutputEnabled.value || recoveringSpeechOutput)
+                    currentCoroutineContext().ensureActive()
+                    if (recoveringSpeechOutput) {
+                        mutableOutputReadiness.value = pipeline.checkSpeechOutputForEnable() ?: mutableOutputReadiness.value
+                        mutableSpeechOutputUnavailable.value = mutableOutputReadiness.value != SpeechOutputReadiness.READY
+                    }
                     mutablePreparation.value = ConversationPreparation.TRANSLATION
                     val translationReady = owner.translation.prepare() == ModelAvailability.READY
                     when (recognitionReadiness.value) {
@@ -132,18 +237,38 @@ class ConversationViewModel(
                         SpeechRecognitionReadiness.DOWNLOADING,
                         SpeechRecognitionReadiness.DOWNLOAD_FAILED -> {
                             // Preserve the explicit download outcome until the user or foreground re-entry rechecks.
-                            mutableOutputReadiness.value = owner.output.readiness()
+                            if (speechOutputEnabled.value) mutableOutputReadiness.value = pipeline.checkSpeechOutput()
                             false
                         }
                         else -> translationReady && resourcesReady()
                     }
                 } ?: return@launch
+                currentCoroutineContext().ensureActive()
+                if (disposed || !foreground || !hasCurrentOwner) return@launch
                 mutableReady.value = ready
-                mutablePreparation.value = if (mutableReady.value) ConversationPreparation.IDLE else ConversationPreparation.ERROR
+                mutablePreparation.value = if (ready && (!recoveringSpeechOutput || !speechOutputUnavailable.value))
+                    ConversationPreparation.IDLE else ConversationPreparation.ERROR
             } catch (cancelled: CancellationException) {
                 throw cancelled
             } catch (failure: Exception) {
-                mutableReady.value = false
+                currentCoroutineContext().ensureActive()
+                if (disposed || !foreground || !hasCurrentOwner) return@launch
+                if (pipeline.releaseFailed) {
+                    cleanup()
+                    return@launch
+                }
+                mutableReady.value = if (recoveringSpeechOutput) {
+                    try {
+                        owners.use(owner) { resourcesReady() } == true
+                    } catch (cancelled: CancellationException) {
+                        throw cancelled
+                    } catch (_: Exception) {
+                        if (pipeline.releaseFailed) cleanup()
+                        false
+                    }
+                } else false
+                currentCoroutineContext().ensureActive()
+                if (disposed || !foreground || !hasCurrentOwner) return@launch
                 mutablePreparationFailure.value = failure as? TranslationFailure
                 mutablePreparation.value = ConversationPreparation.ERROR
             }
@@ -175,6 +300,9 @@ class ConversationViewModel(
     fun stop() {
         if (disposed) return
         sessionAction?.cancel()
+        if (speechOutputEnabled.value != savedSpeechOutputEnabled) mutableSpeechOutputSaveError.value = true
+        speechOutputJob?.cancel()
+        mutableSpeechOutputChanging.value = false
         pipeline.interruptCurrent()
         sessionAction = viewModelScope.launch {
             try {
@@ -197,6 +325,9 @@ class ConversationViewModel(
         if (disposed) return
         foreground = false
         mutableReady.value = false
+        if (speechOutputEnabled.value != savedSpeechOutputEnabled) mutableSpeechOutputSaveError.value = true
+        speechOutputJob?.cancel()
+        mutableSpeechOutputChanging.value = false
         val checking = readinessJob
         val preparing = preparationJob
         val previousAction = sessionAction
@@ -224,10 +355,18 @@ class ConversationViewModel(
     }
 
     private suspend fun resourcesReady(recheckSystem: Boolean = false): Boolean {
-        val output = if (recheckSystem && owner.output is SystemConversationSpeechOutput) owner.output.recheck() else owner.output.readiness()
-        mutableOutputReadiness.value = output
-        return owner.models.isConversationReady() &&
-            owner.translation.modelAvailability() == ModelAvailability.READY && output == SpeechOutputReadiness.READY
+        pipeline.throwIfReleaseFailed()
+        val required = speechOutputEnabled.value
+        val output = if (!required) null else pipeline.checkSpeechOutput {
+            if (recheckSystem && owner.output is SystemConversationSpeechOutput) owner.output.recheck()
+            else owner.output.readiness()
+        }
+        val stillRequired = speechOutputEnabled.value
+        if (required == stillRequired) {
+            mutableOutputReadiness.value = if (required || speechOutputUnavailable.value) output ?: mutableOutputReadiness.value else null
+        }
+        return owner.models.isConversationReady(stillRequired) &&
+            owner.translation.modelAvailability() == ModelAvailability.READY && (!stillRequired || output == SpeechOutputReadiness.READY)
     }
 
     /** One cleanup result survives route cancellation and propagates actual native teardown errors. */
@@ -243,6 +382,7 @@ class ConversationViewModel(
         mutableReady.value = false
         val action = sessionAction
         val preparing = preparationJob
+        val outputAction = speechOutputJob
         val cleanupScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
         val result = cleanupScope.async(start = CoroutineStart.LAZY) {
             readinessJob.join()
@@ -250,12 +390,14 @@ class ConversationViewModel(
             recognitionObservation.join()
             preparing?.join()
             action?.join()
+            outputAction?.join()
             runCatching { owners.release(owner) }
         }
         cleanupJob = result
         result.invokeOnCompletion { cleanupScope.cancel() }
         pipeline.interruptCurrent()
         action?.cancel()
+        outputAction?.cancel()
         readinessJob.cancel()
         readinessObservation.cancel()
         recognitionObservation.cancel()

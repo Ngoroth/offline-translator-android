@@ -5,8 +5,8 @@ import kotlinx.coroutines.flow.StateFlow
 /** Preparation is explicit; inference must never download a missing resource. */
 interface ConversationModelRepository : AutoCloseable {
     val models: StateFlow<List<SpeechModelStatus>>
-    suspend fun install()
-    suspend fun isConversationReady(): Boolean
+    suspend fun install(speechOutputRequired: Boolean)
+    suspend fun isConversationReady(speechOutputRequired: Boolean): Boolean
     override fun close()
 }
 
@@ -54,6 +54,8 @@ interface ConversationSpeechOutput : AutoCloseable {
     suspend fun prepare()
     suspend fun speak(language: LanguageId, text: String, onPlaybackStarted: (SpeechPlaybackStart) -> Unit)
     fun interruptCurrent()
+    /** Throw the retained actual audio/focus release fault after interrupted work has settled. */
+    fun throwIfReleaseFailed()
     override fun close()
     suspend fun closeAndJoin() { close() }
 }

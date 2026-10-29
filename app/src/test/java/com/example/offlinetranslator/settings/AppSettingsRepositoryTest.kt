@@ -29,6 +29,28 @@ import java.util.concurrent.atomic.AtomicInteger
 class AppSettingsRepositoryTest {
     @get:Rule val temp = TemporaryFolder()
 
+    @Test fun liveOutputPatchPreservesLatestPairSetupAndPreferencesAcrossReopening() = runBlocking {
+        val file = File(temp.root, "output-settings.json")
+        val repository = AppSettingsRepository(file)
+        val latest = AppSettings(languagePair = LanguagePair(LanguageCatalog.DUTCH, LanguageCatalog.ENGLISH),
+            translationSetupComplete = true, ttsSpeedPercent = 115)
+        try {
+            repository.save(latest)
+            assertTrue(repository.updateSpeechOutput(false) { true })
+            assertEquals(latest.copy(speechOutputEnabled = false), repository.current())
+            assertFalse(repository.updateSpeechOutput(true) { false })
+            assertFalse(repository.current().speechOutputEnabled)
+        } finally { repository.closeAndJoin() }
+        val reopened = AppSettingsRepository(file)
+        try {
+            assertEquals(latest.copy(speechOutputEnabled = false), reopened.current())
+            assertFalse(reopened.corruptionNotice.value)
+            assertTrue(reopened.updateSpeechOutput(true) { true })
+        } finally { reopened.closeAndJoin() }
+        val enabled = AppSettingsRepository(file)
+        try { assertEquals(latest, enabled.current()) } finally { enabled.closeAndJoin() }
+    }
+
 
     @Test
     fun missingFileYieldsDefaults() = runBlocking {

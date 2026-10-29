@@ -5,7 +5,9 @@ import android.provider.Settings
 import android.util.Log
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.*
+import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.semantics.SemanticsProperties
+import androidx.compose.ui.state.ToggleableState
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.lifecycle.ViewModelStore
@@ -33,9 +35,12 @@ internal suspend fun commitNativeSettings(runtime: AppRuntime, selected: AppSett
     runtime.owners.closeAndJoin()
     val current = runtime.settings.current()
     assertTrue(runtime.updateLanguagePair(current.languagePair, selected.languagePair))
-    // Explicit test fixture setup/restoration; ordinary Apply must never change this marker.
+    // Explicit fixture setup/restoration; ordinary Apply preserves these main-screen choices.
     assertTrue(runtime.owners.saveIfUnowned {
-        runtime.settings.save(runtime.settings.current().copy(translationSetupComplete = selected.translationSetupComplete))
+        runtime.settings.save(runtime.settings.current().copy(
+            translationSetupComplete = selected.translationSetupComplete,
+            speechOutputEnabled = selected.speechOutputEnabled,
+        ))
         true
     })
     assertTrue(runtime.applySettings(selected))
@@ -146,6 +151,133 @@ class SharedLanguagePairNativeTest {
         }
     }
 
+    @Test fun speechOutputChoiceKeepsTheLiveOwnerAndPersistsSilentTurnsAfterReopen() {
+        runBlocking { commitNativeSettings(runtime, original.copy(languagePair = ruEn,
+            translationEngineId = "tencent", translationSetupComplete = true,
+            speechRecognitionBackend = SpeechRecognitionBackend.WHISPER,
+            speechOutputBackend = SpeechOutputBackend.SYSTEM_OFFLINE, speechOutputEnabled = true)) }
+        showHome()
+        prepareConversationFromMainControls()
+        compose.onNodeWithTag(ConversationTestTags.SPEECH_OUTPUT).assertIsOn().performClick()
+        awaitSpeechOutputChoice(false)
+        compose.onNodeWithTag(ConversationTestTags.SPEECH_OUTPUT).assertIsOff()
+        startCapture()
+        replayAndAwaitComplete("speech-en-fixture.wav", ruEn.reverse())
+        val liveCapture = requireNotNull(capture)
+        compose.onNodeWithTag(ConversationTestTags.CAPTURE_STATUS)
+            .assertTextContains(context.getString(R.string.conversation_capture_active))
+        recordRecognitionSurface(SpeechRecognitionBackend.WHISPER, "conversation-output-silent")
+
+        compose.onNodeWithTag(ConversationTestTags.SPEECH_OUTPUT).performClick()
+        awaitSpeechOutputChoice(true)
+        compose.onNodeWithTag(ConversationTestTags.SPEECH_OUTPUT).assertIsOn()
+        assertSame("A live output preference must not replace the capture owner", liveCapture, capture)
+        assertTrue(liveCapture.running)
+        compose.onNodeWithTag(ConversationTestTags.CURRENT_TURN).assertExists()
+        runBlocking {
+            liveCapture.awaitReplay()
+            liveCapture.replay(loadPcm("speech-en-fixture.wav"))
+        }
+        awaitFixtureState(120_000, "Translation must retain the live capture indication") {
+            compose.onAllNodes(hasTestTag(ConversationTestTags.CURRENT_TURN) and
+                hasAnyDescendant(hasText(context.getString(R.string.conversation_translating))))
+                .fetchSemanticsNodes().isNotEmpty()
+        }
+        assertTrue("Recognition/translation must not revoke capture", liveCapture.running)
+        compose.onNodeWithTag(ConversationTestTags.CAPTURE_STATUS)
+            .assertTextContains(context.getString(R.string.conversation_capture_active))
+        showCurrentTranslation()
+        recordRecognitionSurface(SpeechRecognitionBackend.WHISPER, "conversation-output-processing")
+        awaitFixtureState(120_000, "New enabled output must reach speech with capture paused") {
+            !liveCapture.running && compose.onAllNodes(hasTestTag(ConversationTestTags.CURRENT_TURN) and
+                hasAnyDescendant(hasText(context.getString(R.string.conversation_speaking))))
+                .fetchSemanticsNodes().isNotEmpty()
+        }
+        compose.onNodeWithTag(ConversationTestTags.CAPTURE_STATUS)
+            .assertTextContains(context.getString(R.string.conversation_capture_wait))
+        compose.onNodeWithTag(ConversationTestTags.CAPTURE_STATUS)
+            .assertTextContains(context.getString(R.string.conversation_speaking))
+        showCurrentTranslation()
+        recordRecognitionSurface(SpeechRecognitionBackend.WHISPER, "conversation-output-speaking")
+        compose.onNodeWithTag(ConversationTestTags.SPEECH_OUTPUT).performClick()
+        awaitSpeechOutputChoice(false)
+        awaitFixtureState(30_000, "Live UI mute must resume the same capture without stopping the session") {
+            liveCapture.running && compose.onAllNodes(hasTestTag(ConversationTestTags.SESSION_ACTION) and
+                    hasContentDescription(context.getString(R.string.conversation_stop)) and isEnabled()).fetchSemanticsNodes().isNotEmpty()
+        }
+        assertSame("Mute must retain the same capture owner", liveCapture, capture)
+        compose.onNodeWithTag(ConversationTestTags.CAPTURE_STATUS)
+            .assertTextContains(context.getString(R.string.conversation_capture_active))
+        showCurrentTranslation()
+        recordRecognitionSurface(SpeechRecognitionBackend.WHISPER, "conversation-output-muted-live")
+        runBlocking { liveCapture.awaitReplay() }
+        replayAndAwaitComplete("speech-ru-fixture.wav", ruEn)
+        compose.onNodeWithTag(ConversationTestTags.SPEECH_OUTPUT).assertIsOff()
+        compose.onNodeWithTag(ConversationTestTags.SESSION_ACTION).performClick()
+        compose.waitUntil(30_000) { capture?.running == false }
+        reopenHomeAndRuntime()
+        prepareConversationFromMainControls()
+        compose.onNodeWithTag(ConversationTestTags.SPEECH_OUTPUT).assertIsOff()
+        assertFalse(runBlocking { runtime.settings.current().speechOutputEnabled })
+        assertFalse(requireNotNull(capture).running)
+        compose.onNodeWithTag(ConversationTestTags.CURRENT_TURN).assertDoesNotExist()
+        recordRecognitionSurface(SpeechRecognitionBackend.WHISPER, "conversation-output-reopened-off")
+    }
+
+    @Test fun unavailablePiperEnableKeepsTheSelectedPairAndCapturesAnotherSilentTurn() {
+        val nlEn = LanguagePair(LanguageCatalog.DUTCH, LanguageCatalog.ENGLISH)
+        runBlocking { commitNativeSettings(runtime, original.copy(languagePair = nlEn,
+            translationEngineId = "tencent", translationSetupComplete = true,
+            speechRecognitionBackend = SpeechRecognitionBackend.WHISPER,
+            speechOutputBackend = SpeechOutputBackend.PIPER, speechOutputEnabled = false)) }
+        showHome()
+        prepareConversationFromMainControls()
+        startCapture()
+        replayAndAwaitComplete("speech-en-fixture.wav", nlEn.reverse())
+        val liveCapture = requireNotNull(capture)
+        compose.onNodeWithTag(ConversationTestTags.SPEECH_OUTPUT).assertIsOff().performClick()
+        compose.waitUntil(30_000) {
+            compose.onAllNodesWithTag(ConversationTestTags.SPEECH_OUTPUT_UNAVAILABLE).fetchSemanticsNodes().isNotEmpty()
+        }
+        compose.onNodeWithTag(ConversationTestTags.SPEECH_OUTPUT_UNAVAILABLE).performScrollTo().assertIsDisplayed()
+        compose.onNodeWithTag(ConversationTestTags.SPEECH_OUTPUT).assertIsOff()
+        compose.onNodeWithTag(ConversationTestTags.CAPTURE_STATUS)
+            .assertTextContains(context.getString(R.string.conversation_capture_active))
+        compose.onNodeWithTag(ConversationTestTags.SESSION_ACTION).assertIsEnabled()
+        assertSame(liveCapture, capture)
+        assertTrue(liveCapture.running)
+        val selected = runBlocking { runtime.settings.current() }
+        assertEquals(nlEn, selected.languagePair)
+        assertEquals(SpeechOutputBackend.PIPER, selected.speechOutputBackend)
+        assertFalse(selected.speechOutputEnabled)
+        recordRecognitionSurface(SpeechRecognitionBackend.WHISPER, "conversation-output-piper-unavailable")
+        runBlocking { liveCapture.awaitReplay() }
+        replayAndAwaitComplete("speech-en-fixture.wav", nlEn.reverse())
+        assertTrue(liveCapture.running)
+        compose.onNodeWithTag(ConversationTestTags.SESSION_ACTION).performClick()
+        compose.waitUntil(30_000) { capture?.running == false }
+        compose.onNodeWithTag(ConversationTestTags.OUTPUT_SETTINGS).performScrollTo().assertIsDisplayed().assertIsEnabled()
+        recordRecognitionSurface(SpeechRecognitionBackend.WHISPER, "conversation-output-piper-idle-recovery")
+    }
+
+    private fun prepareConversationFromMainControls() {
+        compose.waitUntil(30_000) {
+            compose.onAllNodes(hasTestTag(ConversationTestTags.PREPARE) and isEnabled()).fetchSemanticsNodes().isNotEmpty()
+        }
+        compose.onNodeWithTag(ConversationTestTags.PREPARE).performScrollTo().performClick()
+        awaitConversationReady()
+    }
+
+    private fun awaitSpeechOutputChoice(enabled: Boolean) {
+        val expected = if (enabled) ToggleableState.On else ToggleableState.Off
+        compose.waitUntil(60_000) {
+            runtime.settings.state.value.settings?.speechOutputEnabled == enabled &&
+                compose.onAllNodesWithTag(ConversationTestTags.SPEECH_OUTPUT_CHANGING).fetchSemanticsNodes().isEmpty() &&
+                compose.onAllNodesWithTag(ConversationTestTags.SPEECH_OUTPUT).fetchSemanticsNodes()
+                    .singleOrNull()?.config?.get(SemanticsProperties.ToggleableState) == expected
+        }
+    }
+
     @Test fun whisperUsesSelectedPairAndRealOfflineVoicesInBothDirectionsForDutchEnglishRussian() {
         val backend = SpeechRecognitionBackend.WHISPER
         val nlEn = LanguagePair(LanguageCatalog.DUTCH, LanguageCatalog.ENGLISH)
@@ -205,7 +337,7 @@ class SharedLanguagePairNativeTest {
             awaitFixtureState(120_000, "Whisper Stop must return to idle Start") {
                 capture?.running == false &&
                     compose.onAllNodes(hasTestTag(ConversationTestTags.SESSION_ACTION) and
-                        hasText(context.getString(R.string.conversation_start)) and isEnabled())
+                        hasContentDescription(context.getString(R.string.conversation_start)) and isEnabled())
                         .fetchSemanticsNodes().isNotEmpty()
             }
         }
@@ -215,6 +347,16 @@ class SharedLanguagePairNativeTest {
         compose.onNodeWithTag(ConversationTestTags.CURRENT_TURN).assertDoesNotExist()
         assertEquals(backend, runBlocking { runtime.settings.current().speechRecognitionBackend })
         assertTrue("Whisper lost fixture meaning: ${failures.joinToString("; ")}", failures.isEmpty())
+    }
+
+    private fun showCurrentTranslation() {
+        val translation = compose.onNode(hasText(context.getString(R.string.conversation_translation)) and
+            hasAnyAncestor(hasTestTag(ConversationTestTags.CURRENT_TURN)))
+        translation.performScrollTo()
+        val content = compose.onNodeWithTag(ConversationTestTags.CONTENT)
+        val distance = translation.fetchSemanticsNode().boundsInRoot.top - content.fetchSemanticsNode().boundsInRoot.top
+        content.performSemanticsAction(SemanticsActions.ScrollBy) { it(0f, distance) }
+        translation.assertIsDisplayed()
     }
 
     private fun recordRecognitionSurface(backend: SpeechRecognitionBackend, name: String): String {
@@ -370,8 +512,12 @@ class SharedLanguagePairNativeTest {
     }
 
     private fun startCapture() {
-        compose.onNodeWithTag(ConversationTestTags.SESSION_ACTION).performClick()
-        compose.waitUntil(120_000) { capture?.running == true }
+        // A speaker change may still be refreshing readiness after its checked state has changed.
+        awaitConversationReady()
+        compose.onNodeWithTag(ConversationTestTags.SESSION_ACTION).assertIsEnabled().assertIsDisplayed().performClick()
+        awaitFixtureState(120_000, "An enabled Start action must acquire the actual fixture capture") {
+            capture?.running == true
+        }
     }
 
     private fun replayAndAwaitComplete(asset: String, direction: LanguagePair) {

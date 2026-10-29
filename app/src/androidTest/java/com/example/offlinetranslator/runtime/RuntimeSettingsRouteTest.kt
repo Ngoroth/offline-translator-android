@@ -305,7 +305,7 @@ class RuntimeSettingsRouteTest {
         choose(ConversationTestTags.LANGUAGE_FIRST, LanguageCatalog.ENGLISH.value)
         awaitConversationSettings(swapped)
         assertConversationLanguages(swapped.languagePair)
-        compose.onNodeWithText(context.getString(R.string.conversation_start)).assertExists()
+        compose.onNodeWithContentDescription(context.getString(R.string.conversation_start)).assertExists()
         assertTrue(!checkNotNull(pacedCapture).running)
 
         startAndCompleteOfficialRussian()
@@ -334,7 +334,7 @@ class RuntimeSettingsRouteTest {
         assertTrue("Changed selection must build a fresh capture", pacedCapture !== activeCapture)
         compose.onNodeWithTag(ConversationTestTags.CURRENT_TURN).assertDoesNotExist()
         compose.onNodeWithTag(ConversationTestTags.PREVIOUS_TURN).assertDoesNotExist()
-        compose.onNodeWithText(context.getString(R.string.conversation_start)).assertExists()
+        compose.onNodeWithContentDescription(context.getString(R.string.conversation_start)).assertExists()
         assertConversationLanguages(baseline.languagePair)
 
         // Explicit Start after the active UI cutover exercises the successor's native pipeline.
@@ -355,7 +355,7 @@ class RuntimeSettingsRouteTest {
         showConversation()
         awaitConversationReady()
         assertConversationLanguages(swapped.languagePair)
-        compose.onNodeWithText(context.getString(R.string.conversation_start)).assertExists()
+        compose.onNodeWithContentDescription(context.getString(R.string.conversation_start)).assertExists()
         compose.onNodeWithTag(ConversationTestTags.CURRENT_TURN).assertDoesNotExist()
         assertTrue("Restart must not auto-start capture", !checkNotNull(pacedCapture).running)
         runBlocking { assertEquals(swapped, runtime.settings.current()) }
@@ -544,7 +544,7 @@ class RuntimeSettingsRouteTest {
         lateinit var vm: SettingsViewModel
         compose.runOnIdle {
             vm = SettingsViewModel(runtime.settings, runtime.editable, runtime::validationProblems, runtime::applySettings,
-                runtime.owners.teardownFailed, completeSetup = runtime::completeTranslationSetup)
+                runtime.owners.teardownFailed, completeSetup = runtime::completeTranslationSetup, persistReset = runtime::resetSettings)
             store.put("draft-race", vm)
         }
         try {
@@ -751,7 +751,7 @@ class RuntimeSettingsRouteTest {
     }
 
     private fun startAndCompleteOfficialRussian() {
-        compose.onNodeWithText(context.getString(R.string.conversation_start)).assertExists()
+        compose.onNodeWithContentDescription(context.getString(R.string.conversation_start)).assertExists()
         compose.onNodeWithTag(ConversationTestTags.SESSION_ACTION).assertIsEnabled().performClick()
         compose.waitUntil(30_000) {
             checkNotNull(pacedCapture).running ||

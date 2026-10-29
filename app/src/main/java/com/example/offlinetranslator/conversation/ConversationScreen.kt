@@ -1,35 +1,58 @@
 package com.example.offlinetranslator.conversation
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.size
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.res.painterResource
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.LocalContentColor
+import androidx.compose.material3.LocalTextStyle
+import androidx.compose.material3.IconToggleButton
+import androidx.compose.material3.PlainTooltip
+import androidx.compose.material3.TooltipBox
+import androidx.compose.material3.TooltipDefaults
+import androidx.compose.material3.rememberTooltipState
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.liveRegion
+import androidx.compose.ui.semantics.onClick
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.example.offlinetranslator.R
@@ -80,12 +103,19 @@ object ConversationTestTags {
     const val OPEN_ADVANCED_SETTINGS = "conversation_open_advanced_settings"
     const val INSTALL_RECOGNITION_DATA = "conversation_install_recognition_data"
     const val RECOGNITION_INSTALL_ERROR = "conversation_recognition_install_error"
-    const val PHASE = "conversation_phase"
+    const val CAPTURE_STATUS = "conversation_capture_status"
+    const val CAPTURE_REASON = "conversation_capture_reason"
+    const val SPEECH_OUTPUT = "conversation_speech_output"
+    const val OUTPUT_SETTINGS = "conversation_output_settings"
+    const val SPEECH_OUTPUT_UNAVAILABLE = "conversation_speech_output_unavailable"
+    const val SPEECH_OUTPUT_SAVE_ERROR = "conversation_speech_output_save_error"
+    const val SPEECH_OUTPUT_CHANGING = "conversation_speech_output_changing"
 }
 
 
 
 @Composable
+@OptIn(ExperimentalMaterial3Api::class)
 fun ConversationScreen(
     state: ConversationState,
     models: List<SpeechModelStatus>,
@@ -120,12 +150,42 @@ fun ConversationScreen(
     recognitionInstallError: Boolean = false,
     onInstallRecognitionData: () -> Unit = {},
     speechRecognitionService: String? = null,
+    speechOutputEnabled: Boolean = true,
+    speechOutputChanging: Boolean = false,
+    speechOutputUnavailable: Boolean = false,
+    speechOutputProblem: ConfigurationProblem? = null,
+    speechOutputSaveError: Boolean = false,
+    onToggleSpeechOutput: () -> Unit = {},
 ) {
     val preparing = preparation == ConversationPreparation.CHECKING ||
         preparation == ConversationPreparation.INSTALLING || preparation == ConversationPreparation.TRANSLATION
     val languageBlocked = languageChangeError == ConversationLanguageChangeError.TEARDOWN ||
         languageChangeError == ConversationLanguageChangeError.OPEN
     val canEditLanguages = languageSelectionEnabled && !languageChanging && !languageBlocked && !preparing
+    val captureActive = state.captureActive && state.sessionActive && ownerAvailable &&
+        !languageChanging && !languageBlocked
+    val captureStatus = when {
+        captureActive -> R.string.conversation_capture_active
+        state.failure != null || state.phase == ConversationPhase.ERROR || permissionDenied || languageBlocked ->
+            R.string.conversation_capture_stopped
+        state.sessionActive || preparing || languageChanging -> R.string.conversation_capture_wait
+        else -> R.string.conversation_capture_off
+    }
+    val captureReason = if (!captureActive && captureStatus == R.string.conversation_capture_wait) when {
+        languageChanging -> R.string.conversation_languages_changing
+        preparing -> preparationLabel(preparation)
+        state.phase == ConversationPhase.SPEAKING -> R.string.conversation_speaking
+        state.phase == ConversationPhase.PREPARING -> R.string.conversation_phase_preparing
+        state.phase == ConversationPhase.UNDERSTANDING -> R.string.conversation_understanding
+        state.phase == ConversationPhase.TRANSLATING -> R.string.conversation_translating
+        else -> R.string.conversation_capture_paused
+    } else null
+    val outputRecoveryVisible = speechOutputEnabled || speechOutputUnavailable
+    val preparingSpeechOutput = !systemOutput && outputRecoveryVisible && speechOutputProblem == null &&
+        outputReadiness != null && outputReadiness != SpeechOutputReadiness.READY
+    val outputState = stringResource(if (speechOutputEnabled) R.string.conversation_output_on else R.string.conversation_output_off)
+    val outputAction = stringResource(if (speechOutputEnabled) R.string.conversation_output_disable else R.string.conversation_output_enable)
+    val sessionActionDescription = stringResource(if (state.sessionActive) R.string.conversation_stop else R.string.conversation_start)
     val languages = listOf(pair.source, pair.target)
     val current = state.transcripts.lastOrNull()
     val previous = state.transcripts.getOrNull(state.transcripts.lastIndex - 1)
@@ -202,13 +262,28 @@ fun ConversationScreen(
                     Text(stringResource(R.string.conversation_permission_denied), color = MaterialTheme.colorScheme.error,
                         modifier = Modifier.testTag(ConversationTestTags.PERMISSION_ERROR))
                 }
-                if (configurationProblem != null || installError ||
-                    (systemOutput && outputReadiness != null && outputReadiness != SpeechOutputReadiness.READY)) {
+                if (speechOutputChanging) {
+                    Text(stringResource(R.string.conversation_output_changing),
+                        modifier = Modifier.testTag(ConversationTestTags.SPEECH_OUTPUT_CHANGING))
+                }
+                if (speechOutputSaveError) {
+                    Text(stringResource(R.string.conversation_output_save_error),
+                        color = MaterialTheme.colorScheme.error,
+                        modifier = Modifier.testTag(ConversationTestTags.SPEECH_OUTPUT_SAVE_ERROR))
+                }
+                if (configurationProblem != null || (outputRecoveryVisible && (installError ||
+                    speechOutputUnavailable || speechOutputProblem != null ||
+                    (outputReadiness != null && outputReadiness != SpeechOutputReadiness.READY)))) {
                     Column(
                         Modifier.fillMaxWidth(),
                         horizontalAlignment = Alignment.CenterHorizontally,
                         verticalArrangement = Arrangement.spacedBy(8.dp),
                     ) {
+                        if (speechOutputUnavailable) {
+                            Text(stringResource(R.string.conversation_output_unavailable),
+                                modifier = Modifier.testTag(ConversationTestTags.SPEECH_OUTPUT_UNAVAILABLE),
+                                textAlign = TextAlign.Center)
+                        }
                         if (configurationProblem != null) {
                             Text(
                                 if (pair.source !in conversationCoverage || pair.target !in conversationCoverage)
@@ -220,24 +295,41 @@ fun ConversationScreen(
                             TextButton(onOpenText, modifier = Modifier.heightIn(min = 48.dp).testTag(ConversationTestTags.OPEN_TEXT)) {
                                 Text(stringResource(R.string.conversation_open_text))
                             }
-                        } else if (systemOutput && outputReadiness != null && outputReadiness != SpeechOutputReadiness.READY) {
-                            Text(stringResource(when (outputReadiness) {
+                        }
+                        if (outputRecoveryVisible && speechOutputProblem != null) {
+                            Text(configurationProblemMessage(speechOutputProblem), textAlign = TextAlign.Center)
+                            TextButton(onOpenAdvancedSettings,
+                                enabled = !preparing && !languageChanging && !languageBlocked && !state.sessionActive,
+                                modifier = Modifier.heightIn(min = 48.dp).testTag(ConversationTestTags.OUTPUT_SETTINGS)) {
+                                Text(stringResource(R.string.conversation_recognition_settings_action))
+                            }
+                        }
+                        if (outputRecoveryVisible && outputReadiness != null && outputReadiness != SpeechOutputReadiness.READY) {
+                            Text(stringResource(if (systemOutput) when (outputReadiness) {
                                 SpeechOutputReadiness.MISSING_LOCAL_VOICE -> R.string.system_voice_missing
                                 SpeechOutputReadiness.ENGINE_UNAVAILABLE -> R.string.system_engine_unavailable
                                 SpeechOutputReadiness.INITIALIZATION_FAILED -> R.string.system_engine_initialization_failed
                                 SpeechOutputReadiness.READY -> R.string.conversation_resource_ready
+                            } else when (outputReadiness) {
+                                SpeechOutputReadiness.MISSING_LOCAL_VOICE -> R.string.conversation_failure_models
+                                else -> R.string.conversation_failure_preparation
                             }), modifier = Modifier.testTag(ConversationTestTags.OUTPUT_READINESS), textAlign = TextAlign.Center)
-                            if (canInstallVoiceData) TextButton(onInstallVoiceData,
-                                enabled = !preparing && !languageChanging && !languageBlocked,
-                                modifier = Modifier.heightIn(min = 48.dp).testTag(ConversationTestTags.INSTALL_VOICES)) {
-                                Text(stringResource(R.string.system_install_voices))
-                            }
-                            TextButton(onRecheck, enabled = !preparing && !languageChanging && !languageBlocked,
-                                modifier = Modifier.heightIn(min = 48.dp).testTag(ConversationTestTags.RECHECK)) {
-                                Text(stringResource(R.string.system_recheck))
+                            if (systemOutput) {
+                                if (canInstallVoiceData) TextButton(onInstallVoiceData,
+                                    enabled = ownerAvailable && !preparing && !languageChanging && !languageBlocked && !state.sessionActive,
+                                    modifier = Modifier.heightIn(min = 48.dp).testTag(ConversationTestTags.INSTALL_VOICES)) {
+                                    Text(stringResource(R.string.system_install_voices))
+                                }
+                                TextButton(onRecheck, enabled = ownerAvailable && !preparing && !languageChanging && !languageBlocked && !state.sessionActive,
+                                    modifier = Modifier.heightIn(min = 48.dp).testTag(ConversationTestTags.RECHECK)) {
+                                    Text(stringResource(R.string.system_recheck))
+                                }
                             }
                         }
-                        if (installError) Text(stringResource(R.string.system_voice_install_error),
+                        if (speechOutputUnavailable && !speechOutputEnabled && state.sessionActive) {
+                            Text(stringResource(R.string.conversation_output_recovery_after_stop), textAlign = TextAlign.Center)
+                        }
+                        if (outputRecoveryVisible && installError) Text(stringResource(R.string.system_voice_install_error),
                             color = MaterialTheme.colorScheme.error, modifier = Modifier.testTag(ConversationTestTags.INSTALL_ERROR))
                     }
                 }
@@ -253,7 +345,7 @@ fun ConversationScreen(
                 }
                 if (configurationProblem == null && (!ready ||
                     (systemRecognition && recognitionReadiness != SpeechRecognitionReadiness.READY) ||
-                    preparing || preparation == ConversationPreparation.ERROR)) {
+                    preparing || preparation == ConversationPreparation.ERROR || preparingSpeechOutput)) {
                     Card(Modifier.fillMaxWidth().testTag(ConversationTestTags.PREPARATION)) {
                         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                             Text(stringResource(preparationLabel(preparation)), style = MaterialTheme.typography.bodyMedium,
@@ -273,7 +365,7 @@ fun ConversationScreen(
                                 var downloading = false
                                 models.forEach { model ->
                                     if (model.role == SpeechModelRole.VAD ||
-                                        ((model.role == SpeechModelRole.ASR || model.role == SpeechModelRole.TTS) &&
+                                        ((model.role == SpeechModelRole.ASR || ((speechOutputEnabled || preparingSpeechOutput) && model.role == SpeechModelRole.TTS)) &&
                                             languages.any { it in model.languages })) {
                                         total += model.sizeBytes
                                         downloaded += if (model.state == SpeechModelInstallState.READY) model.sizeBytes else model.downloadedBytes
@@ -288,7 +380,7 @@ fun ConversationScreen(
                             }
                             Button(
                                 onClick = onPrepare,
-                                enabled = ownerAvailable && !preparing && !state.sessionActive &&
+                                enabled = ownerAvailable && !preparing && !speechOutputChanging && !state.sessionActive &&
                                     recognitionReadiness != SpeechRecognitionReadiness.UNSUPPORTED &&
                                     recognitionReadiness != SpeechRecognitionReadiness.INCOMPATIBLE_SERVICE &&
                                     recognitionReadiness != SpeechRecognitionReadiness.ENGINE_UNAVAILABLE &&
@@ -303,8 +395,9 @@ fun ConversationScreen(
                     previous?.let { TranscriptCard(it, primary = false) }
                 } else {
                     val recoveryVisible = !ready || preparing || configurationProblem != null || permissionDenied ||
-                        languageChangeError != null || installError || state.failure != null ||
-                        (systemOutput && outputReadiness != SpeechOutputReadiness.READY) ||
+                        languageChangeError != null || (outputRecoveryVisible && installError) || state.failure != null ||
+                        speechOutputUnavailable || speechOutputSaveError || speechOutputChanging ||
+                        (outputRecoveryVisible && outputReadiness != null && outputReadiness != SpeechOutputReadiness.READY) ||
                         (systemRecognition && recognitionReadiness != SpeechRecognitionReadiness.READY)
                     Column(
                         Modifier.fillMaxWidth().heightIn(min = if (recoveryVisible) 0.dp else emptyHeight)
@@ -329,24 +422,93 @@ fun ConversationScreen(
         Surface(tonalElevation = 3.dp) {
             Column(Modifier.fillMaxWidth().navigationBarsPadding(), horizontalAlignment = Alignment.CenterHorizontally) {
                 Column(
-                    Modifier.widthIn(max = 680.dp).fillMaxWidth().padding(horizontal = 20.dp, vertical = 12.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                    Modifier.widthIn(max = 680.dp).fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp),
+                    verticalArrangement = Arrangement.spacedBy(4.dp),
                     horizontalAlignment = Alignment.CenterHorizontally,
                 ) {
-                    if (state.sessionActive || state.phase == ConversationPhase.ERROR) {
-                        Text(stringResource(phaseLabel(state.phase)), style = MaterialTheme.typography.labelLarge,
-                            textAlign = TextAlign.Center, modifier = Modifier.testTag(ConversationTestTags.PHASE))
-                    }
-                    ProviderAttribution(provider)
-                    Button(
-                        onClick = onSessionAction,
-                        enabled = state.sessionActive || (configurationProblem == null && ready && !preparing &&
-                            (!systemRecognition || recognitionReadiness == SpeechRecognitionReadiness.READY) &&
-                            !languageChanging && !languageBlocked),
-                        modifier = Modifier.fillMaxWidth().heightIn(min = 56.dp).testTag(ConversationTestTags.SESSION_ACTION),
+                    Column(
+                        Modifier.fillMaxWidth().testTag(ConversationTestTags.CAPTURE_STATUS)
+                            .semantics(mergeDescendants = true) { liveRegion = LiveRegionMode.Polite },
+                        horizontalAlignment = Alignment.CenterHorizontally,
                     ) {
-                        Text(stringResource(if (state.sessionActive) R.string.conversation_stop else R.string.conversation_start),
-                            textAlign = TextAlign.Center)
+                        Row(
+                            Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally),
+                        ) {
+                            Icon(
+                                painterResource(if (captureActive) R.drawable.conversation_microphone else R.drawable.conversation_microphone_off),
+                                contentDescription = null,
+                                modifier = Modifier.size(28.dp),
+                                tint = if (captureActive) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                            Text(
+                                stringResource(captureStatus),
+                                modifier = Modifier.weight(1f, fill = false),
+                                style = MaterialTheme.typography.titleLarge,
+                                fontWeight = if (captureStatus == R.string.conversation_capture_off) FontWeight.Normal else FontWeight.SemiBold,
+                                color = if (captureStatus == R.string.conversation_capture_off)
+                                    MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurface,
+                                textAlign = TextAlign.Center,
+                            )
+                        }
+                        Text(
+                            captureReason?.let { stringResource(it) }.orEmpty(),
+                            modifier = if (captureReason != null) Modifier.testTag(ConversationTestTags.CAPTURE_REASON) else Modifier,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            textAlign = TextAlign.Center,
+                            minLines = 1,
+                        )
+                    }
+                    Row(Modifier.widthIn(max = 372.dp).fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalAlignment = Alignment.CenterVertically) {
+                        TooltipBox(
+                            positionProvider = TooltipDefaults.rememberPlainTooltipPositionProvider(),
+                            tooltip = { PlainTooltip { Text("$outputState\n$outputAction") } },
+                            state = rememberTooltipState(),
+                        ) {
+                            IconToggleButton(
+                                checked = speechOutputEnabled,
+                                onCheckedChange = { onToggleSpeechOutput() },
+                                enabled = ((!speechOutputChanging && !preparing) || speechOutputEnabled) && !languageChanging && !languageBlocked &&
+                                    (ownerAvailable || !state.sessionActive),
+                                modifier = Modifier.size(56.dp)
+                                    .border(1.dp, MaterialTheme.colorScheme.outlineVariant, CircleShape)
+                                    .testTag(ConversationTestTags.SPEECH_OUTPUT).semantics {
+                                    contentDescription = outputAction
+                                    stateDescription = outputState
+                                    onClick(label = outputAction, action = null)
+                                },
+                            ) {
+                                Icon(painterResource(if (speechOutputEnabled) R.drawable.conversation_speaker else R.drawable.conversation_speaker_off),
+                                    contentDescription = null, modifier = Modifier.size(28.dp))
+                            }
+                        }
+                        Box(Modifier.weight(1f), contentAlignment = Alignment.Center) {
+                            Button(
+                                onClick = onSessionAction,
+                                enabled = state.sessionActive || (ownerAvailable && configurationProblem == null && ready && !preparing &&
+                                    (!systemRecognition || recognitionReadiness == SpeechRecognitionReadiness.READY) &&
+                                    !languageChanging && !languageBlocked),
+                                modifier = Modifier.widthIn(max = 244.dp).fillMaxWidth().heightIn(min = 56.dp)
+                                    .testTag(ConversationTestTags.SESSION_ACTION).semantics {
+                                        contentDescription = sessionActionDescription
+                                        onClick(label = sessionActionDescription, action = null)
+                                    },
+                            ) {
+                                Text(stringResource(if (state.sessionActive) R.string.conversation_stop_short else R.string.conversation_start_short),
+                                    textAlign = TextAlign.Center)
+                            }
+                        }
+                        // Equal side slots keep the primary action on the screen axis.
+                        Spacer(Modifier.width(56.dp))
+                    }
+                    CompositionLocalProvider(
+                        LocalTextStyle provides MaterialTheme.typography.bodySmall,
+                        LocalContentColor provides MaterialTheme.colorScheme.onSurfaceVariant,
+                    ) {
+                        ProviderAttribution(provider)
                     }
                 }
             }
@@ -413,15 +575,6 @@ private fun preparationLabel(value: ConversationPreparation) = when (value) {
 }
 
 
-private fun phaseLabel(value: ConversationPhase) = when (value) {
-    ConversationPhase.READY -> R.string.conversation_phase_ready
-    ConversationPhase.PREPARING -> R.string.conversation_phase_preparing
-    ConversationPhase.LISTENING -> R.string.conversation_phase_listening
-    ConversationPhase.UNDERSTANDING -> R.string.conversation_phase_understanding
-    ConversationPhase.TRANSLATING -> R.string.conversation_phase_translating
-    ConversationPhase.SPEAKING -> R.string.conversation_phase_speaking
-    ConversationPhase.ERROR -> R.string.conversation_phase_error
-}
 
 private fun transcriptLabel(value: ConversationTranscriptStatus) = when (value) {
     ConversationTranscriptStatus.UNDERSTANDING -> R.string.conversation_understanding

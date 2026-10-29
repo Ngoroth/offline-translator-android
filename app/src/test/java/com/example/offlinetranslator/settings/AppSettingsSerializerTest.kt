@@ -18,6 +18,21 @@ import java.io.OutputStream
 class AppSettingsSerializerTest {
     private val serializer = AppSettingsSerializer()
 
+    @Test fun schemaSevenWithoutOutputChoicePreservesExistingSettingsAndDefaultsOn() = runBlocking<Unit> {
+        val old = document().apply { remove("speechOutputEnabled") }
+        assertEquals(AppSettingsTestFixtures.selected.copy(speechOutputEnabled = true),
+            serializer.readFrom(old.toString().byteInputStream()))
+        for (invalid in listOf("false", 0, JSONObject.NULL, JSONObject(), JSONArray())) {
+            assertCorrupt(document().put("speechOutputEnabled", invalid))
+        }
+        for (enabled in listOf(false, true)) {
+            val selected = AppSettingsTestFixtures.selected.copy(speechOutputEnabled = enabled)
+            val output = ByteArrayOutputStream()
+            serializer.writeTo(selected, output)
+            assertEquals(selected, serializer.readFrom(output.toByteArray().inputStream()))
+        }
+    }
+
     @Test fun roundTripPreservesCommonEngineCompletionPairAndIndependentSpeechPreferences() = runBlocking<Unit> {
         for (backend in SpeechRecognitionBackend.entries) {
             val selected = AppSettingsTestFixtures.selected.copy(

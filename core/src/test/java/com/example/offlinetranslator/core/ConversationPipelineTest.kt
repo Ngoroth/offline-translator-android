@@ -18,6 +18,183 @@ import org.junit.Test
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class ConversationPipelineTest {
+    @Test fun disabledOutputCompletesTextWithMissingVoicesWithoutPausingCaptureOrReportingLatency() = runTest {
+        val fixture = Fixture(this, speechOutputEnabled = false)
+        fixture.output.ready = SpeechOutputReadiness.MISSING_LOCAL_VOICE
+        fixture.output.rejectUse = true
+        fixture.pipeline.start()
+        runCurrent()
+        fixture.capture.emit(segment(1_000_000_000L, measured = true))
+        runCurrent()
+        val row = fixture.pipeline.state.value.transcripts.single()
+        assertEquals("No bus today", row.translation)
+        assertEquals(ConversationTranscriptStatus.COMPLETE, row.status)
+        assertNull(row.latencyMillis)
+        assertFalse(row.latencyMeasured)
+        assertTrue(fixture.pipeline.state.value.captureActive)
+        assertEquals(1, fixture.capture.starts)
+        assertEquals(0, fixture.output.started)
+        fixture.pipeline.clear().getOrThrow()
+    }
+
+    @Test fun mutePreservesRecognitionTranslationAndBoundedQueuedTurns() = runTest {
+        val fixture = Fixture(this)
+        fixture.pipeline.start()
+        runCurrent()
+        val recognition = CompletableDeferred<Unit>()
+        fixture.recognition.gate = recognition
+        fixture.capture.emit(segment())
+        runCurrent()
+        fixture.capture.emit(segment())
+        assertEquals(1, fixture.pipeline.state.value.queuedSegments)
+        fixture.pipeline.disableSpeechOutput()
+        recognition.complete(Unit)
+        runCurrent()
+        assertEquals(2, fixture.pipeline.state.value.transcripts.size)
+        assertTrue(fixture.pipeline.state.value.transcripts.all {
+            it.translation == "No bus today" && it.status == ConversationTranscriptStatus.COMPLETE
+        })
+        assertEquals(0, fixture.output.started)
+        assertEquals(1, fixture.capture.starts)
+        assertTrue(fixture.pipeline.state.value.captureActive)
+        val translating = CompletableDeferred<Unit>()
+        fixture.translation.translationGate = translating
+        fixture.capture.emit(segment())
+        runCurrent()
+        val request = fixture.pipeline.disableSpeechOutput()
+        assertEquals(SpeechOutputReadiness.READY, fixture.pipeline.prepareSpeechOutput(request))
+        assertTrue(fixture.pipeline.enableSpeechOutput(request))
+        fixture.pipeline.disableSpeechOutput()
+        translating.complete(Unit)
+        runCurrent()
+        assertEquals(ConversationTranscriptStatus.COMPLETE, fixture.pipeline.state.value.transcripts.last().status)
+        assertEquals(0, fixture.output.started)
+        fixture.pipeline.clear().getOrThrow()
+    }
+
+    @Test fun muteDuringCapturePauseJoinsReaderBeforeExactlyOneResumeAndKeepsTranslation() = runTest {
+        val fixture = Fixture(this)
+        fixture.pipeline.start()
+        runCurrent()
+        val reader = CompletableDeferred<Unit>()
+        fixture.capture.stopGate = reader
+        fixture.capture.emit(segment())
+        runCurrent()
+        fixture.pipeline.disableSpeechOutput()
+        runCurrent()
+        assertFalse(fixture.pipeline.state.value.captureActive)
+        assertEquals(1, fixture.capture.starts)
+        assertEquals("No bus today", fixture.pipeline.state.value.transcripts.single().translation)
+        reader.complete(Unit)
+        runCurrent()
+        assertEquals(2, fixture.capture.starts)
+        assertTrue(fixture.pipeline.state.value.captureActive)
+        assertEquals(ConversationTranscriptStatus.COMPLETE, fixture.pipeline.state.value.transcripts.single().status)
+        assertEquals(0, fixture.output.started)
+        fixture.pipeline.clear().getOrThrow()
+    }
+
+    @Test fun mutedNativeOutputMustQuiesceBeforeCaptureOrARevokedEnableCanFinish() = runTest {
+        val fixture = Fixture(this)
+        fixture.pipeline.start()
+        runCurrent()
+        val native = CompletableDeferred<Unit>()
+        fixture.output.gate = native
+        fixture.output.ignoreCancellation = true
+        fixture.capture.emit(segment())
+        runCurrent()
+        fixture.pipeline.disableSpeechOutput()
+        runCurrent()
+        assertFalse(fixture.pipeline.state.value.captureActive)
+        val enabling = fixture.pipeline.disableSpeechOutput()
+        val prepared = async { fixture.pipeline.prepareSpeechOutput(enabling) }
+        runCurrent()
+        assertFalse(prepared.isCompleted)
+        fixture.pipeline.disableSpeechOutput()
+        native.complete(Unit)
+        runCurrent()
+        assertNull(prepared.await())
+        assertFalse(fixture.pipeline.enableSpeechOutput(enabling))
+        assertFalse(fixture.pipeline.speechOutputEnabled.value)
+        assertTrue(fixture.pipeline.state.value.captureActive)
+        assertEquals(2, fixture.capture.starts)
+        assertEquals(ConversationTranscriptStatus.COMPLETE, fixture.pipeline.state.value.transcripts.single().status)
+        fixture.capture.emit(segment())
+        runCurrent()
+        assertEquals(2, fixture.pipeline.state.value.transcripts.size)
+        assertEquals(1, fixture.output.started)
+        fixture.pipeline.clear().getOrThrow()
+    }
+
+    @Test fun muteDuringStartupReadinessOrWarmUpContinuesSameSilentSession() = runTest {
+        for (warming in listOf(false, true)) {
+            val fixture = Fixture(this)
+            val barrier = CompletableDeferred<Unit>()
+            if (warming) fixture.output.prepareGate = barrier else fixture.output.readinessGate = barrier
+            fixture.pipeline.start()
+            runCurrent()
+            assertFalse(fixture.pipeline.state.value.captureActive)
+            fixture.pipeline.disableSpeechOutput()
+            runCurrent()
+            assertTrue(fixture.pipeline.state.value.sessionActive)
+            assertTrue(fixture.pipeline.state.value.captureActive)
+            barrier.complete(Unit)
+            fixture.capture.emit(segment())
+            runCurrent()
+            assertEquals(ConversationTranscriptStatus.COMPLETE, fixture.pipeline.state.value.transcripts.single().status)
+            assertEquals(0, fixture.output.started)
+            fixture.pipeline.clear().getOrThrow()
+        }
+    }
+
+    @Test fun enableSpeaksOnlyNewResultsAndStopWinsOverMutedNativeSettlement() = runTest {
+        val fixture = Fixture(this, speechOutputEnabled = false)
+        fixture.pipeline.start()
+        runCurrent()
+        fixture.capture.emit(segment())
+        runCurrent()
+        val completed = fixture.pipeline.state.value.transcripts.single()
+        val enabling = fixture.pipeline.disableSpeechOutput()
+        assertEquals(SpeechOutputReadiness.READY, fixture.pipeline.prepareSpeechOutput(enabling))
+        assertTrue(fixture.pipeline.enableSpeechOutput(enabling))
+        assertEquals(0, fixture.output.started)
+        val native = CompletableDeferred<Unit>()
+        fixture.output.gate = native
+        fixture.output.ignoreCancellation = true
+        fixture.capture.emit(segment())
+        runCurrent()
+        fixture.pipeline.disableSpeechOutput()
+        fixture.pipeline.interruptCurrent()
+        native.complete(Unit)
+        runCurrent()
+        assertFalse(fixture.pipeline.state.value.sessionActive)
+        assertFalse(fixture.pipeline.state.value.captureActive)
+        assertEquals(completed, fixture.pipeline.state.value.transcripts.first())
+        assertEquals("No bus today", fixture.pipeline.state.value.transcripts.last().translation)
+        assertEquals(1, fixture.capture.starts)
+        assertFalse(fixture.pipeline.enableSpeechOutput(enabling))
+        fixture.pipeline.clear().getOrThrow()
+    }
+
+    @Test fun retainedOutputReleaseFaultCannotBecomeABenignMuteOrPermitRestart() = runTest {
+        val fixture = Fixture(this)
+        fixture.pipeline.start()
+        runCurrent()
+        fixture.output.gate = CompletableDeferred()
+        fixture.capture.emit(segment())
+        runCurrent()
+        val failure = IllegalStateException("Native audio focus release failed")
+        fixture.output.releaseFailure = failure
+        fixture.pipeline.disableSpeechOutput()
+        runCurrent()
+        assertFalse(fixture.pipeline.state.value.sessionActive)
+        assertFalse(fixture.pipeline.state.value.captureActive)
+        assertEquals(ConversationFailure.PLAYBACK_FAILED, fixture.pipeline.state.value.failure)
+        assertSame(failure, fixture.pipeline.stop().exceptionOrNull())
+        assertContainsFailure(failure, runCatching { fixture.pipeline.start() }.exceptionOrNull())
+        assertEquals(1, fixture.capture.starts)
+    }
+
     @Test fun undeterminedTextIsRetainedWithoutTranslationAndNextTurnCanSucceed() = runTest {
         val fixture = Fixture(this)
         fixture.recognition.result = UndeterminedLanguage("Сто сорок шесть куруш")
@@ -411,7 +588,8 @@ class ConversationPipelineTest {
         assertReplacementInterrupted(clear = true)
 
     private fun assertReplacementInterrupted(clear: Boolean) = runTest {
-        val fixture = Fixture(this)
+        // Reach replacement capture deterministically instead of racing optional output warm-up.
+        val fixture = Fixture(this, speechOutputEnabled = false)
         val firstRelease = CompletableDeferred<Unit>()
         val replacementRelease = CompletableDeferred<Unit>()
         try {
@@ -439,9 +617,11 @@ class ConversationPipelineTest {
             runCurrent()
             assertTrue(restart.isCompleted)
             assertTrue(restart.await())
-            assertEquals(3, fixture.capture.starts)
             assertFalse("Replacement must be interrupted before joining it", fixture.capture.running)
-            assertTrue("Stop/Clear must await actual replacement release", fixture.capture.microphoneOwned)
+            assertFalse("Stop/Clear revokes replacement eligibility while release is pending",
+                fixture.pipeline.state.value.sessionActive)
+            assertTrue("Stop/Clear must await the acquired replacement microphone",
+                fixture.capture.microphoneOwned)
             assertFalse(terminal.isCompleted)
 
             replacementRelease.complete(Unit)
@@ -620,13 +800,13 @@ class ConversationPipelineTest {
         throw AssertionError("Actual release failure was lost: ${expected.message}")
     }
 
-    private class Fixture(scope: CoroutineScope) {
+    private class Fixture(scope: CoroutineScope, speechOutputEnabled: Boolean = true) {
         val capture = Capture()
         val recognition = Recognition()
         val models = Models(recognition)
         val output = Output()
         val translation = Translation()
-        val pipeline = ConversationPipeline(capture, recognition, models, translation, output, scope)
+        val pipeline = ConversationPipeline(capture, recognition, models, translation, output, scope, speechOutputEnabled)
     }
 
     private class Capture : SpeechCaptureEngine {
@@ -703,32 +883,46 @@ class ConversationPipelineTest {
     private class Models(private val recognition: Recognition) : ConversationModelRepository {
         var ready = true
         override val models = MutableStateFlow<List<SpeechModelStatus>>(emptyList())
-        override suspend fun install() { ready = true; recognition.install() }
-        override suspend fun isConversationReady() = ready && recognition.readiness() == SpeechRecognitionReadiness.READY
+        override suspend fun install(speechOutputRequired: Boolean) { ready = true; recognition.install() }
+        override suspend fun isConversationReady(speechOutputRequired: Boolean) = ready && recognition.readiness() == SpeechRecognitionReadiness.READY
         override fun close() = Unit
     }
 
     private class Output : ConversationSpeechOutput {
         var ready = SpeechOutputReadiness.READY
         var readyAfterPrepare = SpeechOutputReadiness.READY
-        override suspend fun readiness() = ready
+        var rejectUse = false
+        var readinessGate: CompletableDeferred<Unit>? = null
+        var prepareGate: CompletableDeferred<Unit>? = null
+        var ignoreCancellation = false
+        var releaseFailure: Throwable? = null
+        override suspend fun readiness(): SpeechOutputReadiness {
+            check(!rejectUse) { "Disabled output must not be queried" }
+            readinessGate?.await()
+            return ready
+        }
         var started = 0
         var fail = false
         var interrupts = 0
         var interruptFailure: Throwable? = null
         var gate: CompletableDeferred<Unit>? = null
         var start = SpeechPlaybackStart(1_500_000_000L, measured = true)
-        override suspend fun prepare() { ready = readyAfterPrepare }
+        override suspend fun prepare() {
+            check(!rejectUse) { "Disabled output must not warm up" }
+            prepareGate?.await()
+            ready = readyAfterPrepare
+        }
         override suspend fun speak(language: LanguageId, text: String, onPlaybackStarted: (SpeechPlaybackStart) -> Unit) {
             if (fail) error("Output device unavailable")
             started++
             onPlaybackStarted(start)
-            gate?.await()
+            if (ignoreCancellation) withContext(NonCancellable) { gate?.await() } else gate?.await()
         }
         override fun interruptCurrent() {
             interrupts++
             interruptFailure?.let { throw it }
         }
+        override fun throwIfReleaseFailed() { releaseFailure?.let { throw it } }
         override fun close() = Unit
     }
 
@@ -736,12 +930,17 @@ class ConversationPipelineTest {
         override val preparation = kotlinx.coroutines.flow.MutableStateFlow(TranslationPreparationState(TranslationPreparationPhase.READY))
         var calls = 0
         var preparationGate: CompletableDeferred<Unit>? = null
+        var translationGate: CompletableDeferred<Unit>? = null
         override suspend fun modelAvailability() = ModelAvailability.READY
         override suspend fun prepare(): ModelAvailability {
             preparationGate?.await()
             return ModelAvailability.READY
         }
-        override suspend fun translate(pair: LanguagePair, text: String): String { calls++; return "No bus today" }
+        override suspend fun translate(pair: LanguagePair, text: String): String {
+            calls++
+            translationGate?.await()
+            return "No bus today"
+        }
         override fun close() = Unit
     }
 

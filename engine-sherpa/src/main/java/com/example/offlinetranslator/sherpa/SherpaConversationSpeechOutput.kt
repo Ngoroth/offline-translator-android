@@ -170,6 +170,7 @@ class SherpaConversationSpeechOutput internal constructor(
 
     private suspend fun beginOperation(expectedGeneration: Long? = null): Operation {
         coroutineContext.ensureActive()
+        throwIfReleaseFailed()
         val job = coroutineContext[Job]
         return synchronized(lifecycleLock) {
             check(!closed) { "Speech output is closed" }
@@ -196,6 +197,7 @@ class SherpaConversationSpeechOutput internal constructor(
         // Do not hold lifecycleLock: a playback-start callback may synchronously stop its owner.
         output?.fail(CancellationException("Speech playback interrupted"))
     }
+    override fun throwIfReleaseFailed() = playback.throwIfReleaseFailed()
 
     override fun close() {
         val output = synchronized(lifecycleLock) {
@@ -213,6 +215,7 @@ class SherpaConversationSpeechOutput internal constructor(
         close()
         withContext(NonCancellable) {
             mutex.withLock { synchronized(lifecycleLock) { releaseVoicesLocked() } }
+            throwIfReleaseFailed()
         }
     }
 
@@ -265,8 +268,7 @@ class SherpaConversationSpeechOutput internal constructor(
 
         private fun selectedReadiness(store: SpeechModelStore, config: ConversationSessionConfig): suspend () -> Boolean {
             require(config.speechOutputBackend == SpeechOutputBackend.PIPER) { "Piper output is not selected" }
-            val ids = config.languages.map { config.ttsModelIds.getValue(it) }.toSet()
-            val packages = store.catalog.requiredPackages(ids)
+            val packages by lazy { store.catalog.requiredPackages(config.ttsModelIds.values.toSet()) }
             return { store.availability(packages) }
         }
 
@@ -275,10 +277,12 @@ class SherpaConversationSpeechOutput internal constructor(
             store: SpeechModelStore,
             config: ConversationSessionConfig,
         ): suspend (LanguageId) -> ConversationVoice {
-            val definitions = config.languages.associateWith { language ->
-                store.catalog.model(config.ttsModelIds.getValue(language)).also {
-                    require(it.role == com.example.offlinetranslator.core.SpeechModelRole.TTS &&
-                        language in it.languages) { "Selected voice is incompatible with language" }
+            val definitions by lazy {
+                config.languages.associateWith { language ->
+                    store.catalog.model(config.ttsModelIds.getValue(language)).also {
+                        require(it.role == com.example.offlinetranslator.core.SpeechModelRole.TTS &&
+                            language in it.languages) { "Selected voice is incompatible with language" }
+                    }
                 }
             }
             return { language ->

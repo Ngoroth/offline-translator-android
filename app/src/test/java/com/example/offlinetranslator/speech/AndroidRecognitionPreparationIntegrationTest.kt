@@ -641,7 +641,10 @@ class AndroidRecognitionPreparationIntegrationTest {
         val owner: ConversationRuntimeOwner) {
         private var attached: ConversationViewModel? = null
         val model: ConversationViewModel get() = requireNotNull(attached)
-        fun attach(controller: RuntimeOwnerController) { attached = ConversationViewModel(owner, controller) }
+        fun attach(controller: RuntimeOwnerController) {
+            attached = ConversationViewModel(owner, controller,
+                saveSpeechOutput = { _, fresh -> controller.saveSpeechOutput(owner, fresh) { true } })
+        }
         suspend fun dispose() { if (attached != null) model.disposeAndJoin() else owner.closeAndJoin().getOrThrow() }
     }
 
@@ -754,8 +757,8 @@ class AndroidRecognitionPreparationIntegrationTest {
     private class NativeResources(var ready: Boolean) : ConversationModelRepository {
         var installations = 0
         override val models = MutableStateFlow<List<SpeechModelStatus>>(emptyList())
-        override suspend fun install() { installations++; ready = true }
-        override suspend fun isConversationReady() = ready
+        override suspend fun install(speechOutputRequired: Boolean) { installations++; ready = true }
+        override suspend fun isConversationReady(speechOutputRequired: Boolean) = ready
         override fun close() = Unit
     }
     private class Capture : SpeechCaptureEngine {
@@ -785,6 +788,7 @@ class AndroidRecognitionPreparationIntegrationTest {
             onPlaybackStarted(SpeechPlaybackStart(null, false))
         }
         override fun interruptCurrent() = Unit
+        override fun throwIfReleaseFailed() = Unit
         override fun close() = Unit
     }
 }

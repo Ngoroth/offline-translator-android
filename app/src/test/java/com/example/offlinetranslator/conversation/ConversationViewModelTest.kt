@@ -50,6 +50,356 @@ import org.junit.Test
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class ConversationViewModelTest {
+    @Test fun stopRevokesPendingMutePersistenceWithoutHidingTheUnsavedChoiceOrUndoingMute() = runTest {
+        withModel { fixture ->
+            fixture.model.start()
+            runCurrent()
+            fixture.preference.gate = CompletableDeferred()
+            fixture.model.toggleSpeechOutput()
+            runCurrent()
+            fixture.model.stop()
+            runCurrent()
+            fixture.preference.gate!!.complete(Unit)
+            runCurrent()
+            assertTrue(fixture.preference.saved)
+            assertFalse(fixture.model.speechOutputEnabled.value)
+            assertTrue(fixture.model.speechOutputSaveError.value)
+            assertFalse(fixture.model.state.value.sessionActive)
+            fixture.model.start()
+            runCurrent()
+            fixture.capture.emit()
+            runCurrent()
+            assertTrue(fixture.model.state.value.captureActive)
+            assertEquals("translation", fixture.model.state.value.transcripts.single().translation)
+            assertTrue(fixture.output.spoken.isEmpty())
+        }
+    }
+
+    @Test fun voiceLostAtEnableCommitKeepsActualNonfatalReasonAndSavedOffChoice() = runTest {
+        withModel(configure = { it.owner.pipeline.disableSpeechOutput(); it.preference.saved = false }) { fixture ->
+            fixture.model.start()
+            runCurrent()
+            fixture.preference.unavailable = SpeechOutputReadiness.ENGINE_UNAVAILABLE
+            fixture.model.toggleSpeechOutput()
+            runCurrent()
+            assertFalse(fixture.model.speechOutputEnabled.value)
+            assertFalse(fixture.preference.saved)
+            assertEquals(SpeechOutputReadiness.ENGINE_UNAVAILABLE, fixture.model.outputReadiness.value)
+            assertTrue(fixture.model.speechOutputUnavailable.value)
+            assertFalse(fixture.model.speechOutputSaveError.value)
+            fixture.capture.emit()
+            runCurrent()
+            assertEquals(ConversationTranscriptStatus.COMPLETE, fixture.model.state.value.transcripts.single().status)
+            assertTrue(fixture.model.state.value.captureActive)
+        }
+    }
+
+    @Test fun savedOffMissingOutputStartsTextOnlyAndUnavailableEnableIsNonfatal() = runTest {
+        withModel(configure = {
+            it.owner.pipeline.disableSpeechOutput()
+            it.preference.saved = false
+            it.output.readiness = SpeechOutputReadiness.MISSING_LOCAL_VOICE
+        }) { fixture ->
+            assertTrue(fixture.model.ready.value)
+            assertEquals(null, fixture.model.outputReadiness.value)
+            fixture.model.start()
+            runCurrent()
+            fixture.capture.emit()
+            runCurrent()
+            assertEquals("translation", fixture.model.state.value.transcripts.single().translation)
+            assertTrue(fixture.model.state.value.captureActive)
+            fixture.model.toggleSpeechOutput()
+            runCurrent()
+            assertFalse(fixture.model.speechOutputEnabled.value)
+            assertFalse(fixture.preference.saved)
+            assertTrue(fixture.model.speechOutputUnavailable.value)
+            assertEquals(SpeechOutputReadiness.MISSING_LOCAL_VOICE, fixture.model.outputReadiness.value)
+            assertTrue(fixture.model.state.value.sessionActive)
+            fixture.capture.emit()
+            runCurrent()
+            assertTrue(fixture.model.state.value.transcripts.all { it.status == ConversationTranscriptStatus.COMPLETE })
+            assertTrue(fixture.output.spoken.isEmpty())
+            assertEquals(0, fixture.models.installs)
+        }
+    }
+
+    @Test fun missingPiperVoiceRecoveryPreparesOnlyAfterStopAndRequiresExplicitEnable() = runTest {
+        withModel(
+            speechOutputBackend = SpeechOutputBackend.PIPER,
+            speechOutputEnabled = false,
+            configure = {
+                it.output.readiness = SpeechOutputReadiness.MISSING_LOCAL_VOICE
+                it.models.output = it.output
+            },
+        ) { fixture ->
+            assertTrue(fixture.model.ready.value)
+            assertTrue(fixture.owner.models.isConversationReady(speechOutputRequired = false))
+            assertFalse(fixture.owner.models.isConversationReady(speechOutputRequired = true))
+            fixture.model.start()
+            runCurrent()
+            fixture.model.toggleSpeechOutput()
+            runCurrent()
+            assertFalse(fixture.model.speechOutputEnabled.value)
+            assertFalse(fixture.preference.saved)
+            assertTrue(fixture.model.speechOutputUnavailable.value)
+            assertEquals(SpeechOutputReadiness.MISSING_LOCAL_VOICE, fixture.model.outputReadiness.value)
+            assertEquals(null, fixture.model.speechOutputConfigurationProblem.value)
+            assertFalse(fixture.model.speechOutputSaveError.value)
+            assertEquals(0, fixture.models.installs)
+
+            fixture.model.prepareLanguages()
+            runCurrent()
+            assertEquals(0, fixture.models.installs)
+            assertEquals(SpeechOutputReadiness.MISSING_LOCAL_VOICE, fixture.output.readiness)
+            assertTrue(fixture.model.state.value.sessionActive)
+            assertTrue(fixture.model.state.value.captureActive)
+            fixture.capture.emit()
+            runCurrent()
+            val silent = fixture.model.state.value.transcripts.single()
+            assertEquals("original", silent.original)
+            assertEquals("translation", silent.translation)
+            assertEquals(ConversationTranscriptStatus.COMPLETE, silent.status)
+            assertTrue(fixture.output.spoken.isEmpty())
+            assertTrue(fixture.model.state.value.captureActive)
+
+            fixture.model.stop()
+            runCurrent()
+            assertFalse(fixture.model.state.value.sessionActive)
+            assertFalse(fixture.model.state.value.captureActive)
+            assertFalse(fixture.controller.busy.value)
+            fixture.model.prepareLanguages()
+            runCurrent()
+            assertFalse(fixture.model.speechOutputEnabled.value)
+            assertFalse(fixture.preference.saved)
+            assertEquals(
+                "Explicit idle recovery must prepare the missing Piper voice, not just silent-session resources",
+                SpeechOutputReadiness.READY,
+                fixture.output.readiness,
+            )
+            assertTrue(fixture.owner.models.isConversationReady(speechOutputRequired = true))
+            assertEquals(ConversationPreparation.IDLE, fixture.model.preparation.value)
+            assertTrue(fixture.model.ready.value)
+            assertTrue(fixture.output.spoken.isEmpty())
+
+            fixture.model.start()
+            runCurrent()
+            fixture.capture.emit()
+            runCurrent()
+            val preparedButSilent = fixture.model.state.value.transcripts.single()
+            assertEquals("translation", preparedButSilent.translation)
+            assertEquals(ConversationTranscriptStatus.COMPLETE, preparedButSilent.status)
+            assertTrue(fixture.output.spoken.isEmpty())
+            fixture.model.toggleSpeechOutput()
+            runCurrent()
+            assertTrue(fixture.model.speechOutputEnabled.value)
+            assertTrue(fixture.preference.saved)
+            assertFalse(fixture.model.speechOutputUnavailable.value)
+            assertEquals(SpeechOutputReadiness.READY, fixture.model.outputReadiness.value)
+            assertEquals(preparedButSilent, fixture.model.state.value.transcripts.single())
+            assertTrue(fixture.output.spoken.isEmpty())
+            fixture.capture.emit()
+            runCurrent()
+            assertEquals(listOf("translation"), fixture.output.spoken)
+            assertEquals(ConversationTranscriptStatus.COMPLETE, fixture.model.state.value.transcripts.last().status)
+            assertTrue(fixture.model.state.value.sessionActive)
+            assertTrue(fixture.model.state.value.captureActive)
+        }
+    }
+
+    @Test fun ordinarySilentPiperPreparationDoesNotInstallMissingVoices() = runTest {
+        withModel(
+            speechOutputBackend = SpeechOutputBackend.PIPER,
+            speechOutputEnabled = false,
+            configure = {
+                it.output.readiness = SpeechOutputReadiness.MISSING_LOCAL_VOICE
+                it.models.output = it.output
+            },
+        ) { fixture ->
+            fixture.model.prepareLanguages()
+            runCurrent()
+            assertEquals(ConversationPreparation.IDLE, fixture.model.preparation.value)
+            assertTrue(fixture.model.ready.value)
+            assertEquals(SpeechOutputReadiness.MISSING_LOCAL_VOICE, fixture.output.readiness)
+            assertFalse(fixture.owner.models.isConversationReady(speechOutputRequired = true))
+            assertEquals(null, fixture.model.outputReadiness.value)
+            assertFalse(fixture.model.speechOutputUnavailable.value)
+            assertFalse(fixture.model.speechOutputEnabled.value)
+            assertFalse(fixture.preference.saved)
+            fixture.model.start()
+            runCurrent()
+            fixture.capture.emit()
+            runCurrent()
+            assertEquals("translation", fixture.model.state.value.transcripts.single().translation)
+            assertEquals(ConversationTranscriptStatus.COMPLETE, fixture.model.state.value.transcripts.single().status)
+            assertTrue(fixture.output.spoken.isEmpty())
+            assertTrue(fixture.model.state.value.captureActive)
+        }
+    }
+
+    @Test fun failedPiperRecoveryRetainsMissingVoiceAndSilentStartWithoutSavingEnable() = runTest {
+        withModel(
+            speechOutputBackend = SpeechOutputBackend.PIPER,
+            speechOutputEnabled = false,
+            configure = {
+                it.output.readiness = SpeechOutputReadiness.MISSING_LOCAL_VOICE
+                it.models.output = it.output
+            },
+        ) { fixture ->
+            fixture.model.toggleSpeechOutput()
+            runCurrent()
+            fixture.models.installFailure = true
+            val installationGate = CompletableDeferred<Unit>()
+            fixture.models.installationGate = installationGate
+            fixture.model.prepareLanguages()
+            runCurrent()
+            assertEquals(ConversationPreparation.INSTALLING, fixture.model.preparation.value)
+            fixture.model.toggleSpeechOutput()
+            runCurrent()
+            assertFalse(fixture.model.speechOutputChanging.value)
+            assertFalse(fixture.preference.saved)
+            installationGate.complete(Unit)
+            runCurrent()
+            assertEquals(ConversationPreparation.ERROR, fixture.model.preparation.value)
+            assertEquals(SpeechOutputReadiness.MISSING_LOCAL_VOICE, fixture.model.outputReadiness.value)
+            assertTrue(fixture.model.speechOutputUnavailable.value)
+            assertFalse(fixture.model.speechOutputEnabled.value)
+            assertFalse(fixture.preference.saved)
+            assertFalse(fixture.model.speechOutputSaveError.value)
+            assertTrue(fixture.model.ready.value)
+            assertFalse(fixture.owner.models.isConversationReady(speechOutputRequired = true))
+            fixture.model.start()
+            runCurrent()
+            fixture.capture.emit()
+            runCurrent()
+            assertEquals("translation", fixture.model.state.value.transcripts.single().translation)
+            assertEquals(ConversationTranscriptStatus.COMPLETE, fixture.model.state.value.transcripts.single().status)
+            assertTrue(fixture.output.spoken.isEmpty())
+            assertTrue(fixture.model.state.value.sessionActive)
+            assertTrue(fixture.model.state.value.captureActive)
+        }
+    }
+
+    @Test fun backgroundCancelsPiperRecoveryWithoutEnablingOrBlockingLaterSilentCapture() = runTest {
+        withModel(
+            speechOutputBackend = SpeechOutputBackend.PIPER,
+            speechOutputEnabled = false,
+            configure = {
+                it.output.readiness = SpeechOutputReadiness.MISSING_LOCAL_VOICE
+                it.models.output = it.output
+            },
+        ) { fixture ->
+            fixture.model.toggleSpeechOutput()
+            runCurrent()
+            val installationGate = CompletableDeferred<Unit>()
+            fixture.models.installationGate = installationGate
+            fixture.model.prepareLanguages()
+            runCurrent()
+            assertEquals(ConversationPreparation.INSTALLING, fixture.model.preparation.value)
+            fixture.model.leaveForeground()
+            runCurrent()
+            installationGate.complete(Unit)
+            runCurrent()
+            assertFalse(fixture.model.ready.value)
+            assertFalse(fixture.model.speechOutputEnabled.value)
+            assertFalse(fixture.preference.saved)
+            assertEquals(SpeechOutputReadiness.MISSING_LOCAL_VOICE, fixture.output.readiness)
+            assertFalse(fixture.model.state.value.captureActive)
+            fixture.model.enterForeground()
+            runCurrent()
+            assertTrue(fixture.model.ready.value)
+            assertTrue(fixture.model.speechOutputUnavailable.value)
+            fixture.model.start()
+            runCurrent()
+            fixture.capture.emit()
+            runCurrent()
+            assertEquals("translation", fixture.model.state.value.transcripts.single().translation)
+            assertEquals(ConversationTranscriptStatus.COMPLETE, fixture.model.state.value.transcripts.single().status)
+            assertTrue(fixture.output.spoken.isEmpty())
+            assertTrue(fixture.model.state.value.captureActive)
+        }
+    }
+
+    @Test fun muteIsImmediateDespiteBlockedFailedSaveAndPreservesNativeBarrierAndText() = runTest {
+        withModel { fixture ->
+            fixture.model.start()
+            runCurrent()
+            fixture.output.playbackGate = CompletableDeferred()
+            fixture.capture.emit()
+            runCurrent()
+            fixture.preference.gate = CompletableDeferred()
+            fixture.preference.failure = java.io.IOException("Preference disk full")
+            fixture.model.toggleSpeechOutput()
+            assertFalse(fixture.model.speechOutputEnabled.value)
+            runCurrent()
+            assertFalse(fixture.model.state.value.captureActive)
+            fixture.output.playbackGate!!.complete(Unit)
+            runCurrent()
+            assertTrue(fixture.model.state.value.captureActive)
+            assertEquals("translation", fixture.model.state.value.transcripts.single().translation)
+            assertEquals(ConversationTranscriptStatus.COMPLETE, fixture.model.state.value.transcripts.single().status)
+            fixture.preference.gate!!.complete(Unit)
+            runCurrent()
+            assertTrue(fixture.model.speechOutputSaveError.value)
+            assertFalse(fixture.model.speechOutputEnabled.value)
+            assertTrue(fixture.model.state.value.sessionActive)
+            fixture.capture.emit()
+            runCurrent()
+            assertEquals(2, fixture.model.state.value.transcripts.size)
+            assertEquals(1, fixture.output.spoken.size)
+        }
+    }
+
+    @Test fun enableWarmUpLeavesCompletedTurnsSilentAndDoesNotHoldOwnerGate() = runTest {
+        withModel(configure = { it.owner.pipeline.disableSpeechOutput(); it.preference.saved = false }) { fixture ->
+            fixture.model.start()
+            runCurrent()
+            fixture.output.prepareGate = CompletableDeferred()
+            fixture.model.toggleSpeechOutput()
+            runCurrent()
+            assertTrue(fixture.model.speechOutputChanging.value)
+            assertFalse(fixture.preference.saved)
+            assertTrue(fixture.controller.saveSpeechOutput(fixture.owner, { true }) { true })
+            fixture.capture.emit()
+            runCurrent()
+            val silent = fixture.model.state.value.transcripts.single()
+            assertEquals(ConversationTranscriptStatus.COMPLETE, silent.status)
+            assertTrue(fixture.output.spoken.isEmpty())
+            fixture.output.prepareGate!!.complete(Unit)
+            runCurrent()
+            assertTrue(fixture.model.speechOutputEnabled.value)
+            assertTrue(fixture.preference.saved)
+            assertEquals(silent, fixture.model.state.value.transcripts.single())
+            fixture.capture.emit()
+            runCurrent()
+            assertEquals(listOf("translation"), fixture.output.spoken)
+            assertTrue(fixture.model.state.value.captureActive)
+        }
+    }
+
+    @Test fun failedEnableSaveAndBackgroundDuringNativeWarmUpCannotResurrectOutput() = runTest {
+        withModel(configure = { it.owner.pipeline.disableSpeechOutput(); it.preference.saved = false }) { fixture ->
+            fixture.preference.failEnable = true
+            fixture.model.toggleSpeechOutput()
+            runCurrent()
+            assertTrue(fixture.model.speechOutputSaveError.value)
+            assertFalse(fixture.model.speechOutputUnavailable.value)
+            assertFalse(fixture.model.speechOutputEnabled.value)
+            assertFalse(fixture.preference.saved)
+            fixture.preference.failEnable = false
+            fixture.output.prepareGate = CompletableDeferred()
+            fixture.output.ignorePrepareCancellation = true
+            fixture.model.toggleSpeechOutput()
+            runCurrent()
+            fixture.model.leaveForeground()
+            fixture.output.prepareGate!!.complete(Unit)
+            runCurrent()
+            assertFalse(fixture.model.speechOutputEnabled.value)
+            assertFalse(fixture.preference.saved)
+            assertFalse(fixture.model.state.value.sessionActive)
+            assertEquals(0, fixture.capture.starts)
+        }
+    }
+
     @Test fun translationLimitKeepsRecognizedSourceAndSkipsPlaybackWithoutStoppingNextTurn() = runTest {
         withModel { fixture ->
             fixture.model.start()
@@ -584,13 +934,15 @@ class ConversationViewModelTest {
 
     private suspend fun TestScope.withModel(
         initiallyReady: Boolean = true,
+        speechOutputBackend: SpeechOutputBackend = SpeechOutputBackend.SYSTEM_OFFLINE,
+        speechOutputEnabled: Boolean = true,
         expectedDisposalFailure: Throwable? = null,
         configure: (Fixture) -> Unit = {},
         block: suspend TestScope.(Fixture) -> Unit,
     ) {
         val dispatcher = StandardTestDispatcher(testScheduler)
         Dispatchers.setMain(dispatcher)
-        val fixture = createFixture(initiallyReady, dispatcher)
+        val fixture = createFixture(initiallyReady, dispatcher, speechOutputBackend, speechOutputEnabled)
         configure(fixture)
         try {
             runCurrent()
@@ -601,6 +953,9 @@ class ConversationViewModelTest {
             fixture.capture.closeGate?.complete(Unit)
             fixture.models.readinessExitGate?.complete(Unit)
             fixture.translation.preparationExitGate?.complete(Unit)
+            fixture.preference.gate?.complete(Unit)
+            fixture.output.prepareGate?.complete(Unit)
+            fixture.output.playbackGate?.complete(Unit)
             try {
                 val cleanupFailure = runCatching { fixture.model.disposeAndJoin() }.exceptionOrNull()
                 if (expectedDisposalFailure == null) {
@@ -615,7 +970,12 @@ class ConversationViewModelTest {
         }
     }
 
-    private suspend fun createFixture(initiallyReady: Boolean, dispatcher: CoroutineDispatcher): Fixture {
+    private suspend fun createFixture(
+        initiallyReady: Boolean,
+        dispatcher: CoroutineDispatcher,
+        speechOutputBackend: SpeechOutputBackend,
+        speechOutputEnabled: Boolean,
+    ): Fixture {
         val observationJob = SupervisorJob()
         val scope = CoroutineScope(dispatcher + observationJob)
         val controller = RuntimeOwnerController(scope)
@@ -630,7 +990,7 @@ class ConversationViewModelTest {
             vadModelId = "vad",
             vadMinSilenceMs = 900,
             ttsSpeedPercent = 100,
-            speechOutputBackend = SpeechOutputBackend.SYSTEM_OFFLINE,
+            speechOutputBackend = speechOutputBackend,
             speechRecognitionBackend = SpeechRecognitionBackend.SYSTEM_OFFLINE,
         )
         val owner = controller.replace {
@@ -642,10 +1002,25 @@ class ConversationViewModelTest {
                 translation = translation,
                 output = output,
                 scope = CoroutineScope(dispatcher + SupervisorJob()),
+                speechOutputEnabled = speechOutputEnabled,
             )
         }
-        val model = ConversationViewModel(owner, controller)
-        return Fixture(controller, observationJob, models, capture, recognition, translation, output, owner, model)
+        val preference = OutputPreference().apply { saved = speechOutputEnabled }
+        val model = ConversationViewModel(owner, controller, saveSpeechOutput = { enabled, fresh ->
+            controller.saveSpeechOutput(owner, fresh) {
+                preference.gate?.await()
+                if (!fresh()) false else {
+                    preference.failure?.let { throw it }
+                    if (enabled && preference.failEnable) throw java.io.IOException("Enable preference save failed")
+                    if (enabled) preference.unavailable?.let {
+                        throw com.example.offlinetranslator.runtime.SpeechOutputUnavailableException(it)
+                    }
+                    preference.saved = enabled
+                    true
+                }
+            }
+        })
+        return Fixture(controller, observationJob, models, capture, recognition, translation, output, owner, model, preference)
     }
 
     private class Fixture(
@@ -658,10 +1033,20 @@ class ConversationViewModelTest {
         val output: FakeOutput,
         val owner: ConversationRuntimeOwner,
         val model: ConversationViewModel,
+        val preference: OutputPreference,
     )
+
+    private class OutputPreference {
+        var saved = true
+        var gate: CompletableDeferred<Unit>? = null
+        var failure: Exception? = null
+        var unavailable: SpeechOutputReadiness? = null
+        var failEnable = false
+    }
 
     private class FakeModels(var ready: Boolean) : ConversationModelRepository {
         var installs = 0
+        var output: FakeOutput? = null
         var installFailure = false
         var readyAfterInstall = true
         var installationGate: CompletableDeferred<Unit>? = null
@@ -672,16 +1057,18 @@ class ConversationViewModelTest {
         val readinessExiting = CompletableDeferred<Unit>()
         var readinessFinished = false
         override val models = MutableStateFlow<List<SpeechModelStatus>>(emptyList())
-        override suspend fun install() {
+        override suspend fun install(speechOutputRequired: Boolean) {
             installs++
             installationGate?.await()
             if (installFailure) error("Installation failed")
             ready = readyAfterInstall
+            if (ready && speechOutputRequired) output?.readiness = SpeechOutputReadiness.READY
         }
-        override suspend fun isConversationReady(): Boolean {
+        override suspend fun isConversationReady(speechOutputRequired: Boolean): Boolean {
             try {
                 readinessGate?.await()
-                return ready
+                return ready && (!speechOutputRequired ||
+                    (output?.readiness ?: SpeechOutputReadiness.READY) == SpeechOutputReadiness.READY)
             } finally {
                 readinessExiting.complete(Unit)
                 withContext(NonCancellable) { readinessExitGate?.await() }
@@ -785,8 +1172,13 @@ class ConversationViewModelTest {
         var playbackGate: CompletableDeferred<Unit>? = null
         var readiness = SpeechOutputReadiness.READY
         var failMissingOnSpeak = false
+        var prepareGate: CompletableDeferred<Unit>? = null
+        var ignorePrepareCancellation = false
         override suspend fun readiness() = readiness
-        override suspend fun prepare() = Unit
+        override suspend fun prepare() {
+            if (ignorePrepareCancellation) withContext(NonCancellable) { prepareGate?.await() }
+            else prepareGate?.await()
+        }
         override suspend fun speak(language: LanguageId, text: String, onPlaybackStarted: (SpeechPlaybackStart) -> Unit) {
             spoken += text
             if (failMissingOnSpeak) {
@@ -797,6 +1189,7 @@ class ConversationViewModelTest {
             withContext(NonCancellable) { playbackGate?.await() }
         }
         override fun interruptCurrent() { interrupts++ }
+        override fun throwIfReleaseFailed() = Unit
         override fun close() { closes++ }
     }
 }

@@ -4,6 +4,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.foundation.layout.width
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.mutableStateOf
@@ -17,6 +18,12 @@ import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertHasClickAction
 import androidx.compose.ui.test.assertHeightIsAtLeast
+import androidx.compose.ui.test.assertWidthIsAtLeast
+import androidx.compose.ui.test.assertHasNoClickAction
+import androidx.compose.ui.test.assertIsOn
+import androidx.compose.ui.test.assertIsOff
+import androidx.compose.ui.test.assert
+import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assertTextContains
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
@@ -36,6 +43,7 @@ import androidx.compose.ui.test.onNodeWithContentDescription
 import com.example.offlinetranslator.core.TranslationProviderDescriptor
 import androidx.compose.ui.test.SemanticsNodeInteraction
 import androidx.compose.ui.test.click
+import androidx.compose.ui.test.longClick
 import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.geometry.Rect
@@ -73,6 +81,219 @@ import org.junit.Test
 
 class ConversationScreenTest {
     @get:Rule val compose = createComposeRule()
+
+
+    @Test fun microphoneUsesFreshCaptureNotProcessingPhaseAndNeverActsAsAButton() {
+        val state = mutableStateOf(ConversationState(sessionActive = true, captureActive = false,
+            phase = ConversationPhase.LISTENING))
+        val ownerAvailable = mutableStateOf(true)
+        val changing = mutableStateOf(false)
+        val context = InstrumentationRegistry.getInstrumentation().targetContext
+        compose.setContent { MaterialTheme {
+            ConversationScreen(state.value, readyModels(), ConversationPreparation.IDLE, true, false, {}, {},
+                ownerAvailable = ownerAvailable.value, languageChanging = changing.value)
+        } }
+        val capture = compose.onNodeWithTag(ConversationTestTags.CAPTURE_STATUS)
+        capture.assertIsDisplayed().assertHasNoClickAction().assertTextContains(context.getString(R.string.conversation_capture_wait))
+        for (phase in listOf(ConversationPhase.LISTENING, ConversationPhase.UNDERSTANDING, ConversationPhase.TRANSLATING,
+            ConversationPhase.ERROR)) {
+            compose.runOnIdle { state.value = state.value.copy(phase = phase, captureActive = true,
+                failure = if (phase == ConversationPhase.ERROR) ConversationFailure.UNSUPPORTED_LANGUAGE else null) }
+            capture.assertTextContains(context.getString(R.string.conversation_capture_active)).assertHasNoClickAction()
+            compose.onNodeWithTag(ConversationTestTags.CAPTURE_REASON, useUnmergedTree = true).assertDoesNotExist()
+        }
+        compose.runOnIdle { state.value = state.value.copy(phase = ConversationPhase.SPEAKING, captureActive = false, failure = null) }
+        capture.assertTextContains(context.getString(R.string.conversation_capture_wait))
+        compose.onNodeWithTag(ConversationTestTags.CAPTURE_REASON, useUnmergedTree = true)
+            .assertTextContains(context.getString(R.string.conversation_speaking))
+        compose.runOnIdle { state.value = state.value.copy(phase = ConversationPhase.TRANSLATING, captureActive = true); ownerAvailable.value = false }
+        capture.assertTextContains(context.getString(R.string.conversation_capture_wait))
+        compose.runOnIdle { ownerAvailable.value = true; changing.value = true }
+        capture.assertTextContains(context.getString(R.string.conversation_capture_wait))
+        compose.runOnIdle { changing.value = false; state.value = state.value.copy(sessionActive = false) }
+        capture.assertTextContains(context.getString(R.string.conversation_capture_off))
+        compose.runOnIdle { state.value = state.value.copy(phase = ConversationPhase.ERROR, failure = ConversationFailure.CAPTURE_FAILED) }
+        capture.assertTextContains(context.getString(R.string.conversation_capture_stopped))
+    }
+
+    @Test fun speakerExposesEffectiveStateActionAndTooltipWithoutBlockingStopOrImmediateMute() {
+        val enabled = mutableStateOf(true)
+        val changing = mutableStateOf(false)
+        val ownerAvailable = mutableStateOf(true)
+        var toggles = 0
+        var stops = 0
+        val context = InstrumentationRegistry.getInstrumentation().targetContext
+        compose.setContent { MaterialTheme {
+            ConversationScreen(ConversationState(sessionActive = true, captureActive = false, phase = ConversationPhase.SPEAKING),
+                readyModels(), ConversationPreparation.IDLE, true, false, {}, { stops++ },
+                speechOutputEnabled = enabled.value, speechOutputChanging = changing.value,
+                ownerAvailable = ownerAvailable.value, onToggleSpeechOutput = { enabled.value = !enabled.value; toggles++ })
+        } }
+        val speaker = compose.onNodeWithTag(ConversationTestTags.SPEECH_OUTPUT)
+        speaker.assertIsDisplayed().assertIsOn().assertIsEnabled().assertHeightIsAtLeast(48.dp).assertWidthIsAtLeast(48.dp)
+            .assert(SemanticsMatcher.expectValue(SemanticsProperties.StateDescription, context.getString(R.string.conversation_output_on)))
+            .assert(SemanticsMatcher.expectValue(SemanticsProperties.ContentDescription, listOf(context.getString(R.string.conversation_output_disable))))
+        speaker.performTouchInput { longClick() }
+        compose.onNodeWithText(context.getString(R.string.conversation_output_on) + "\n" +
+            context.getString(R.string.conversation_output_disable)).assertIsDisplayed()
+        compose.mainClock.advanceTimeBy(2_000)
+        compose.runOnIdle { changing.value = true }
+        speaker.assertIsEnabled().performClick()
+        speaker.assertIsOff().assertIsNotEnabled()
+            .assert(SemanticsMatcher.expectValue(SemanticsProperties.StateDescription, context.getString(R.string.conversation_output_off)))
+            .assert(SemanticsMatcher.expectValue(SemanticsProperties.ContentDescription, listOf(context.getString(R.string.conversation_output_enable))))
+        compose.onNodeWithTag(ConversationTestTags.SESSION_ACTION).assertIsEnabled().performClick()
+        compose.runOnIdle { assertEquals(1, toggles); assertEquals(1, stops); changing.value = false }
+        speaker.assertIsEnabled().performClick().assertIsOn()
+        compose.runOnIdle { ownerAvailable.value = false }
+        speaker.assertIsNotEnabled()
+        compose.onNodeWithTag(ConversationTestTags.SESSION_ACTION).assertIsEnabled()
+    }
+
+    @Test fun silentConversationShowsOnlyExplicitOutputFailureAndDefersRecoveryUntilStop() {
+        val state = mutableStateOf(ConversationState(sessionActive = true, captureActive = true, phase = ConversationPhase.TRANSLATING))
+        val unavailable = mutableStateOf(false)
+        val saveError = mutableStateOf(false)
+        val problem = mutableStateOf<ConfigurationProblem?>(null)
+        var installs = 0
+        var rechecks = 0
+        var settings = 0
+        compose.setContent { MaterialTheme {
+            ConversationScreen(state.value, readyModels(), ConversationPreparation.IDLE, true, false, {}, {},
+                systemOutput = true, outputReadiness = SpeechOutputReadiness.MISSING_LOCAL_VOICE,
+                speechOutputEnabled = false, speechOutputUnavailable = unavailable.value,
+                speechOutputProblem = problem.value, speechOutputSaveError = saveError.value,
+                canInstallVoiceData = true, onInstallVoiceData = { installs++ }, onRecheck = { rechecks++ },
+                onOpenAdvancedSettings = { settings++ })
+        } }
+        compose.onNodeWithTag(ConversationTestTags.OUTPUT_READINESS).assertDoesNotExist()
+        compose.onNodeWithTag(ConversationTestTags.INSTALL_VOICES).assertDoesNotExist()
+        compose.onNodeWithTag(ConversationTestTags.SESSION_ACTION).assertIsEnabled()
+        compose.runOnIdle { unavailable.value = true; problem.value = ConfigurationProblem.UNSUPPORTED_VOICE; saveError.value = true }
+        compose.onNodeWithTag(ConversationTestTags.SPEECH_OUTPUT_UNAVAILABLE).performScrollTo().assertIsDisplayed()
+        compose.onNodeWithTag(ConversationTestTags.OUTPUT_READINESS).performScrollTo().assertIsDisplayed()
+        compose.onNodeWithTag(ConversationTestTags.SPEECH_OUTPUT_SAVE_ERROR).performScrollTo().assertIsDisplayed()
+        compose.onNodeWithTag(ConversationTestTags.INSTALL_VOICES).performScrollTo().assertIsNotEnabled()
+        compose.onNodeWithTag(ConversationTestTags.RECHECK).performScrollTo().assertIsNotEnabled()
+        compose.onNodeWithTag(ConversationTestTags.OUTPUT_SETTINGS).performScrollTo().assertIsNotEnabled()
+        compose.onNodeWithTag(ConversationTestTags.SPEECH_OUTPUT).assertIsOff().assertIsEnabled()
+        compose.onNodeWithTag(ConversationTestTags.SESSION_ACTION).assertIsEnabled()
+        compose.runOnIdle { state.value = state.value.copy(sessionActive = false, captureActive = false, phase = ConversationPhase.READY) }
+        compose.onNodeWithTag(ConversationTestTags.INSTALL_VOICES).performScrollTo().assertIsEnabled().performClick()
+        compose.onNodeWithTag(ConversationTestTags.RECHECK).performScrollTo().assertIsEnabled().performClick()
+        compose.onNodeWithTag(ConversationTestTags.OUTPUT_SETTINGS).performScrollTo().assertIsEnabled().performClick()
+        compose.runOnIdle { assertEquals(1, installs); assertEquals(1, rechecks); assertEquals(1, settings) }
+    }
+
+    @Test fun missingPiperVoiceShowsActualReasonAndPreparationBecomesEligibleOnlyAfterStop() {
+        val state = mutableStateOf(ConversationState(sessionActive = true, captureActive = true, phase = ConversationPhase.LISTENING))
+        val unavailable = mutableStateOf(false)
+        val preparation = mutableStateOf(ConversationPreparation.IDLE)
+        val readiness = mutableStateOf(SpeechOutputReadiness.MISSING_LOCAL_VOICE)
+        var prepares = 0
+        val context = InstrumentationRegistry.getInstrumentation().targetContext
+        compose.setContent { MaterialTheme {
+            ConversationScreen(state.value, readyModels(), preparation.value, true, false,
+                { prepares++; preparation.value = ConversationPreparation.INSTALLING },
+                { state.value = ConversationState() },
+                systemOutput = false, outputReadiness = readiness.value,
+                speechOutputEnabled = false, speechOutputUnavailable = unavailable.value)
+        } }
+        compose.onNodeWithTag(ConversationTestTags.PREPARE).assertDoesNotExist()
+        compose.onNodeWithTag(ConversationTestTags.OUTPUT_READINESS).assertDoesNotExist()
+        compose.runOnIdle { unavailable.value = true }
+        compose.onNodeWithTag(ConversationTestTags.SPEECH_OUTPUT_UNAVAILABLE).performScrollTo().assertIsDisplayed()
+        compose.onNodeWithTag(ConversationTestTags.OUTPUT_READINESS).performScrollTo()
+            .assertTextContains(context.getString(R.string.conversation_failure_models))
+        compose.onNodeWithText(context.getString(R.string.conversation_output_recovery_after_stop)).performScrollTo().assertIsDisplayed()
+        compose.onNodeWithTag(ConversationTestTags.INSTALL_VOICES).assertDoesNotExist()
+        compose.onNodeWithTag(ConversationTestTags.RECHECK).assertDoesNotExist()
+        compose.onNodeWithTag(ConversationTestTags.OUTPUT_SETTINGS).assertDoesNotExist()
+        compose.onNodeWithTag(ConversationTestTags.PREPARE).performScrollTo().assertIsNotEnabled().performClick()
+        compose.runOnIdle { assertEquals(0, prepares) }
+        compose.onNodeWithTag(ConversationTestTags.SPEECH_OUTPUT).assertIsOff()
+        compose.onNodeWithTag(ConversationTestTags.SESSION_ACTION).assertIsEnabled().performClick()
+        compose.onNodeWithTag(ConversationTestTags.PREPARE).performScrollTo().assertIsEnabled()
+            .assertHeightIsAtLeast(48.dp).performClick().assertIsNotEnabled()
+        compose.onNodeWithTag(ConversationTestTags.SPEECH_OUTPUT).assertIsOff().assertIsNotEnabled()
+        compose.runOnIdle {
+            assertEquals(1, prepares)
+            preparation.value = ConversationPreparation.ERROR
+            readiness.value = SpeechOutputReadiness.INITIALIZATION_FAILED
+        }
+        compose.onNodeWithTag(ConversationTestTags.OUTPUT_READINESS).performScrollTo()
+            .assertTextContains(context.getString(R.string.conversation_failure_preparation))
+        compose.onNodeWithTag(ConversationTestTags.PREPARE).performScrollTo().assertIsEnabled()
+        compose.onNodeWithTag(ConversationTestTags.SESSION_ACTION).assertIsEnabled()
+        compose.onNodeWithTag(ConversationTestTags.SPEECH_OUTPUT).assertIsOff().assertIsEnabled()
+    }
+
+    @Test fun outputOnlyStartupBlockerStillAllowsSilentEscapeWithoutAnOwner() {
+        val enabled = mutableStateOf(true)
+        compose.setContent { MaterialTheme {
+            ConversationScreen(ConversationState(), emptyList(), ConversationPreparation.IDLE, false, false, {}, {},
+                ownerAvailable = false, configurationProblem = ConfigurationProblem.UNSUPPORTED_VOICE,
+                speechOutputEnabled = enabled.value, onToggleSpeechOutput = { enabled.value = false })
+        } }
+        compose.onNodeWithTag(ConversationTestTags.SESSION_ACTION).assertIsNotEnabled()
+        compose.onNodeWithTag(ConversationTestTags.SPEECH_OUTPUT).assertIsEnabled().assertIsOn().performClick().assertIsOff()
+        compose.onNodeWithTag(ConversationTestTags.SESSION_ACTION).assertIsNotEnabled()
+    }
+    @Test fun narrowFontTwoPanelKeepsSpeakerStopAttributionAndRecoveryTouchableWhileTextScrolls() {
+        val state = mutableStateOf(ConversationState(sessionActive = true, captureActive = true, phase = ConversationPhase.TRANSLATING,
+            transcripts = listOf(ConversationTranscript(1, original = "A long original. ".repeat(24),
+                translation = "Длинный перевод для чтения. ".repeat(24), status = ConversationTranscriptStatus.COMPLETE))))
+        val pixelsPerDp = InstrumentationRegistry.getInstrumentation().targetContext.resources.displayMetrics.density
+        compose.setContent {
+            val configuration = Configuration(LocalConfiguration.current).apply {
+                screenWidthDp = 320
+                screenHeightDp = 360
+                fontScale = 2f
+                setLocales(LocaleList(Locale.forLanguageTag("ru")))
+            }
+            val context = LocalContext.current.createConfigurationContext(configuration)
+            val density = LocalDensity.current
+            CompositionLocalProvider(LocalConfiguration provides configuration, LocalContext provides context,
+                LocalResources provides context.resources, LocalDensity provides Density(density.density, 2f)) {
+                MaterialTheme {
+                    Box(Modifier.width(320.dp).height(360.dp)) {
+                        ConversationScreen(state.value, readyModels(), ConversationPreparation.IDLE, true, false, {}, {},
+                            provider = MlKitTranslationEngine.descriptor, speechOutputEnabled = false,
+                            speechOutputUnavailable = true, systemOutput = true,
+                            outputReadiness = SpeechOutputReadiness.MISSING_LOCAL_VOICE, canInstallVoiceData = true)
+                    }
+                }
+            }
+        }
+        fun assertPanel() {
+            compose.onNodeWithTag(ConversationTestTags.CAPTURE_STATUS).assertIsDisplayed().assertHasNoClickAction()
+            compose.onNodeWithContentDescription(localizedAttribution("ru")).assertIsDisplayed()
+            val speaker = compose.onNodeWithTag(ConversationTestTags.SPEECH_OUTPUT).assertIsDisplayed().assertIsEnabled().assertIsOff()
+            val stop = compose.onNodeWithTag(ConversationTestTags.SESSION_ACTION).assertIsDisplayed().assertIsEnabled()
+            for (node in listOf(speaker, stop)) {
+                val bounds = node.assertHeightIsAtLeast(48.dp).assertWidthIsAtLeast(48.dp).fetchSemanticsNode().boundsInRoot
+                assertTrue("Pinned controls must retain unclipped physical touch targets",
+                    bounds.width >= 48 * pixelsPerDp && bounds.height >= 48 * pixelsPerDp)
+            }
+            val speakerBounds = speaker.fetchSemanticsNode().boundsInRoot
+            val stopBounds = stop.fetchSemanticsNode().boundsInRoot
+            assertTrue("The speaker must stay beside, not overlap, Stop", speakerBounds.right <= stopBounds.left)
+            val statusBounds = compose.onNodeWithTag(ConversationTestTags.CAPTURE_STATUS).fetchSemanticsNode().boundsInRoot
+            assertEquals("The primary action must stay on the screen axis, independently of the speaker",
+                statusBounds.center.x, stopBounds.center.x, 1f)
+            assertEquals("The speaker and primary action must share a vertical center",
+                stopBounds.center.y, speakerBounds.center.y, 1f)
+            assertTrue("The speaker must remain visually grouped with the primary action",
+                stopBounds.left - speakerBounds.right <= speakerBounds.width)
+        }
+        assertPanel()
+        compose.onNodeWithTag(ConversationTestTags.INSTALL_VOICES).performScrollTo().assertIsDisplayed().assertIsNotEnabled()
+        compose.onNodeWithText(requireNotNull(state.value.transcripts.last().translation)).performScrollTo().assertIsDisplayed()
+        assertPanel()
+        compose.runOnIdle { state.value = state.value.copy(captureActive = false, phase = ConversationPhase.SPEAKING) }
+        compose.onNodeWithTag(ConversationTestTags.CAPTURE_REASON, useUnmergedTree = true).assertIsDisplayed()
+        assertPanel()
+    }
 
 
     @Test fun recognitionInstallerIsReachableAtLargeFontButNeverEnablesStaleStartOrIncompatibleLaunch() {
@@ -326,10 +547,13 @@ class ConversationScreenTest {
                 role = SpeechModelRole.VAD),
             SpeechModelStatus("unselected", "Unselected", "https://example.test", "test", 1_000, SpeechModelInstallState.DOWNLOADING,
                 downloadedBytes = 1_000, role = SpeechModelRole.ASR, languages = setOf(LanguageCatalog.FRENCH)),
+            SpeechModelStatus("voice", "Voice", "https://example.test", "test", 1_000, SpeechModelInstallState.READY,
+                role = SpeechModelRole.TTS, languages = setOf(LanguageCatalog.ENGLISH)),
         ))
         compose.setContent { MaterialTheme {
             ConversationScreen(ConversationState(), models.value, ConversationPreparation.INSTALLING, false, false, {}, {},
-                systemRecognition = true, recognitionReadiness = SpeechRecognitionReadiness.DOWNLOADING)
+                systemRecognition = true, recognitionReadiness = SpeechRecognitionReadiness.DOWNLOADING,
+                speechOutputEnabled = false)
         } }
         compose.onNodeWithTag(ConversationTestTags.PREPARATION_PROGRESS).performScrollTo()
             .assertIsDisplayed().assertTextContains("62%", substring = true)
@@ -349,18 +573,15 @@ class ConversationScreenTest {
         val state = mutableStateOf(ConversationState())
         compose.setContent { Screen(state.value, ConversationPreparation.TRANSLATION, false) }
         compose.onNodeWithTag(ConversationTestTags.SESSION_ACTION).assertIsNotEnabled()
-        compose.onNodeWithTag(ConversationTestTags.PHASE).assertDoesNotExist()
+        compose.onNodeWithTag(ConversationTestTags.CAPTURE_STATUS).assertIsDisplayed().assertHasNoClickAction()
         for (phase in listOf(ConversationPhase.PREPARING, ConversationPhase.SPEAKING, ConversationPhase.ERROR)) {
             compose.runOnIdle { state.value = state.value.copy(phase = phase, sessionActive = true, captureActive = false) }
-            compose.onNodeWithTag(ConversationTestTags.PHASE).assertIsDisplayed()
             compose.onNodeWithTag(ConversationTestTags.SESSION_ACTION).assertIsDisplayed().assertIsEnabled()
             compose.onNodeWithTag(ConversationTestTags.PREPARE).performScrollTo().assertIsNotEnabled()
         }
         compose.runOnIdle { state.value = state.value.copy(sessionActive = false) }
         compose.onNodeWithTag(ConversationTestTags.SESSION_ACTION).assertIsNotEnabled()
-        compose.onNodeWithTag(ConversationTestTags.PHASE).assertIsDisplayed()
         compose.runOnIdle { state.value = ConversationState() }
-        compose.onNodeWithTag(ConversationTestTags.PHASE).assertDoesNotExist()
     }
 
     @Test fun newTurnReplacesCurrentAndKeepsImmediatelyPreviousEvenWhenItFailed() {
@@ -370,7 +591,7 @@ class ConversationScreenTest {
             status = ConversationTranscriptStatus.ERROR, failure = ConversationFailure.PLAYBACK_FAILED)
         val current = ConversationTranscript(3)
         val state = mutableStateOf(ConversationState(phase = ConversationPhase.UNDERSTANDING, sessionActive = true,
-            transcripts = listOf(old, failed, current)))
+            captureActive = true, transcripts = listOf(old, failed, current)))
         compose.setContent { Screen(state.value, ConversationPreparation.IDLE, true) }
         compose.onNodeWithText(old.original).assertDoesNotExist()
         compose.onNodeWithText(requireNotNull(old.translation)).assertDoesNotExist()
@@ -383,13 +604,13 @@ class ConversationScreenTest {
             transcripts = listOf(old, failed, translating)) }
         compose.onNodeWithText(translating.original).assertExists()
         val speaking = translating.copy(translation = "Где пятая платформа?", status = ConversationTranscriptStatus.SPEAKING)
-        compose.runOnIdle { state.value = state.value.copy(phase = ConversationPhase.SPEAKING,
+        compose.runOnIdle { state.value = state.value.copy(phase = ConversationPhase.SPEAKING, captureActive = false,
             transcripts = listOf(old, failed, speaking)) }
         compose.onNodeWithText(requireNotNull(speaking.translation)).assertExists()
         compose.onNodeWithText(failed.original).assertExists()
         val interrupted = speaking.copy(status = ConversationTranscriptStatus.INTERRUPTED)
         val next = ConversationTranscript(4, original = "The next person is speaking")
-        compose.runOnIdle { state.value = state.value.copy(phase = ConversationPhase.UNDERSTANDING,
+        compose.runOnIdle { state.value = state.value.copy(phase = ConversationPhase.UNDERSTANDING, captureActive = true,
             transcripts = listOf(old, failed, interrupted, next)) }
         compose.onNodeWithText(failed.original).assertDoesNotExist()
         compose.onNodeWithText(requireNotNull(failed.translation)).assertDoesNotExist()
@@ -405,18 +626,21 @@ class ConversationScreenTest {
             translation = longTranslation, status = ConversationTranscriptStatus.ERROR, failure = ConversationFailure.PLAYBACK_FAILED)
         val state = mutableStateOf(ConversationState(failure = ConversationFailure.CAPTURE_FAILED, droppedSegments = 1,
             transcripts = listOf(row)))
+        val speechOutputEnabled = mutableStateOf(true)
         compose.setContent {
             val density = LocalDensity.current
             CompositionLocalProvider(LocalDensity provides Density(density.density, fontScale = 2f)) {
                 Box(Modifier.fillMaxWidth().height(260.dp)) {
                     MaterialTheme {
                         ConversationScreen(state.value, readyModels(), ConversationPreparation.ERROR, false, true, {}, {},
-                            provider = MlKitTranslationEngine.descriptor)
+                            provider = MlKitTranslationEngine.descriptor, speechOutputEnabled = speechOutputEnabled.value,
+                            onToggleSpeechOutput = { speechOutputEnabled.value = !speechOutputEnabled.value })
                     }
                 }
             }
         }
         compose.onNodeWithTag(ConversationTestTags.SESSION_ACTION).assertIsDisplayed().assertHeightIsAtLeast(48.dp)
+        compose.onNodeWithTag(ConversationTestTags.SPEECH_OUTPUT).assertIsDisplayed().assertHeightIsAtLeast(48.dp).assertWidthIsAtLeast(48.dp)
         val badge = compose.onNodeWithContentDescription(localizedAttribution())
         badge.assertIsDisplayed()
         for (tag in listOf(ConversationTestTags.LANGUAGE_FIRST, ConversationTestTags.LANGUAGE_SECOND)) {
@@ -436,6 +660,9 @@ class ConversationScreenTest {
         val content = compose.onNodeWithTag(ConversationTestTags.CONTENT)
         val position = content.fetchSemanticsNode().config[SemanticsProperties.VerticalScrollAxisRange].value()
         assertTrue("Reading a long translation must scroll only the working area", position > 0f)
+        compose.onNodeWithTag(ConversationTestTags.SPEECH_OUTPUT).performClick().assertIsOff()
+        compose.waitForIdle()
+        assertEquals(position, content.fetchSemanticsNode().config[SemanticsProperties.VerticalScrollAxisRange].value(), 1f)
         compose.runOnIdle { state.value = state.value.copy(transcripts = listOf(row.copy(status = ConversationTranscriptStatus.COMPLETE))) }
         compose.waitForIdle()
         assertEquals(position, content.fetchSemanticsNode().config[SemanticsProperties.VerticalScrollAxisRange].value(), 1f)
@@ -574,7 +801,7 @@ class ConversationScreenTest {
         compose.onNodeWithTag(ConversationTestTags.EMPTY_STATE).performScrollTo().assertIsDisplayed()
         compose.onNodeWithTag(ConversationTestTags.CURRENT_TURN).assertDoesNotExist()
         compose.onNodeWithTag(ConversationTestTags.SESSION_ACTION).assertIsDisplayed().assertIsEnabled()
-        compose.runOnIdle { state.value = state.value.copy(sessionActive = true, phase = ConversationPhase.LISTENING) }
+        compose.runOnIdle { state.value = state.value.copy(sessionActive = true, captureActive = true, phase = ConversationPhase.LISTENING) }
         compose.onNodeWithTag(ConversationTestTags.EMPTY_STATE).performScrollTo().assertIsDisplayed()
         compose.onNodeWithTag(ConversationTestTags.CURRENT_TURN).assertDoesNotExist()
         compose.onNodeWithTag(ConversationTestTags.SESSION_ACTION).assertIsDisplayed().assertIsEnabled().performClick()
@@ -582,7 +809,7 @@ class ConversationScreenTest {
         val first = ConversationTranscript(1, direction = LanguagePair(LanguageCatalog.ENGLISH, LanguageCatalog.RUSSIAN),
             original = "Which platform should I use?", translation = "С какой платформы отправляться?",
             status = ConversationTranscriptStatus.SPEAKING)
-        compose.runOnIdle { state.value = state.value.copy(phase = ConversationPhase.SPEAKING, transcripts = listOf(first)) }
+        compose.runOnIdle { state.value = state.value.copy(phase = ConversationPhase.SPEAKING, captureActive = false, transcripts = listOf(first)) }
         compose.onNodeWithTag(ConversationTestTags.EMPTY_STATE).assertDoesNotExist()
         compose.onNodeWithTag(ConversationTestTags.CURRENT_TURN).performScrollTo().assertIsDisplayed()
         compose.onNodeWithText(first.original).performScrollTo().assertIsDisplayed()
@@ -639,7 +866,7 @@ class ConversationScreenTest {
         val previous = ConversationTranscript(1, original = "A previous request", translation = "Предыдущий запрос",
             status = ConversationTranscriptStatus.ERROR, failure = ConversationFailure.PLAYBACK_FAILED)
         val current = ConversationTranscript(2, original = "A new request")
-        val state = mutableStateOf(ConversationState(sessionActive = true, phase = ConversationPhase.UNDERSTANDING,
+        val state = mutableStateOf(ConversationState(sessionActive = true, captureActive = true, phase = ConversationPhase.UNDERSTANDING,
             transcripts = listOf(previous, current)))
         val provider = mutableStateOf<TranslationProviderDescriptor?>(MlKitTranslationEngine.descriptor)
         val attribution = localizedAttribution()
@@ -698,6 +925,8 @@ class ConversationScreenTest {
         } }
         val badge = compose.onNodeWithContentDescription(attribution)
         val action = compose.onNodeWithTag(ConversationTestTags.SESSION_ACTION)
+        val speaker = compose.onNodeWithTag(ConversationTestTags.SPEECH_OUTPUT)
+        val speakerBounds = speaker.assertIsDisplayed().assertHeightIsAtLeast(48.dp).assertWidthIsAtLeast(48.dp).fetchSemanticsNode().boundsInRoot
         val badgeBounds = badge.assertIsDisplayed().fetchSemanticsNode().boundsInRoot
         val actionBounds = action.assertIsDisplayed().assertIsEnabled().assertHeightIsAtLeast(48.dp).fetchSemanticsNode().boundsInRoot
         fun assertFixedFooter() {
@@ -706,14 +935,10 @@ class ConversationScreenTest {
             val actualAction = action.assertIsDisplayed().assertHeightIsAtLeast(48.dp).fetchSemanticsNode().boundsInRoot
             assertBoundsUnchanged(badgeBounds, actualBadge)
             assertBoundsUnchanged(actionBounds, actualAction)
-            assertTrue("The badge must remain above the action", actualBadge.bottom <= actualAction.top)
-            if (state.value.sessionActive || state.value.phase == ConversationPhase.ERROR) {
-                val phase = compose.onNodeWithTag(ConversationTestTags.PHASE).assertIsDisplayed().fetchSemanticsNode().boundsInRoot
-                assertTrue("Variable phase text must remain above the badge/action pair", phase.bottom <= actualBadge.top)
-            }
+            assertBoundsUnchanged(speakerBounds, speaker.assertIsDisplayed().fetchSemanticsNode().boundsInRoot)
         }
         compose.onNodeWithTag(ConversationTestTags.EMPTY_STATE).assertExists()
-        compose.runOnIdle { state.value = ConversationState(sessionActive = true, phase = ConversationPhase.LISTENING) }
+        compose.runOnIdle { state.value = ConversationState(sessionActive = true, captureActive = true, phase = ConversationPhase.LISTENING) }
         assertFixedFooter()
         action.assertIsEnabled()
         compose.onNodeWithTag(ConversationTestTags.EMPTY_STATE).assertExists()
@@ -727,7 +952,8 @@ class ConversationScreenTest {
             ConversationPhase.LISTENING to translated,
             ConversationPhase.ERROR to translated.copy(status = ConversationTranscriptStatus.ERROR,
                 failure = ConversationFailure.PLAYBACK_FAILED))) {
-            compose.runOnIdle { state.value = state.value.copy(phase = phase, transcripts = listOf(previous, row)) }
+            compose.runOnIdle { state.value = state.value.copy(phase = phase, captureActive = phase != ConversationPhase.ERROR,
+                transcripts = listOf(previous, row)) }
             compose.onNodeWithTag(ConversationTestTags.EMPTY_STATE).assertDoesNotExist()
             assertFixedFooter()
             action.assertIsEnabled()

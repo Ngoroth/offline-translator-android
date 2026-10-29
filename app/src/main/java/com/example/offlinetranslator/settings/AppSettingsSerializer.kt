@@ -41,6 +41,9 @@ class AppSettingsSerializer : Serializer<AppSettings> {
             return AppSettings(
                 languagePair = languagePair(root),
                 speechOutputBackend = backend,
+                speechOutputEnabled = if (root.has("speechOutputEnabled")) {
+                    root.get("speechOutputEnabled").let { require(it is Boolean); it }
+                } else true,
                 speechRecognitionBackend = recognitionBackend,
                 speechRecognitionService = recognitionService(root),
                 translationEngineId = identifier(root, "translationEngineId"),
@@ -62,6 +65,7 @@ class AppSettingsSerializer : Serializer<AppSettings> {
             .put("schemaVersion", 7)
             .put("languagePair", JSONObject().put("source", t.languagePair.source.value).put("target", t.languagePair.target.value))
             .put("speechOutputBackend", t.speechOutputBackend.persistedId)
+            .put("speechOutputEnabled", t.speechOutputEnabled)
             .put("speechRecognitionBackend", t.speechRecognitionBackend.persistedId)
             .put("speechRecognitionService", t.speechRecognitionService ?: JSONObject.NULL)
             .put("translationEngineId", t.translationEngineId)
@@ -106,7 +110,7 @@ class AppSettingsSerializer : Serializer<AppSettings> {
     companion object {
         const val MAX_BYTES = 64 * 1024
         private val FIELDS = setOf(
-            "schemaVersion", "languagePair", "speechOutputBackend", "speechRecognitionBackend",
+            "schemaVersion", "languagePair", "speechOutputBackend", "speechOutputEnabled", "speechRecognitionBackend",
             "speechRecognitionService", "translationEngineId", "translationSetupComplete",
             "vadModelId", "vadMinSilenceMs", "ttsSpeedPercent",
         )

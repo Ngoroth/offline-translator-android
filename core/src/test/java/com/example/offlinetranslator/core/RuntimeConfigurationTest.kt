@@ -6,6 +6,19 @@ import org.junit.Assert.assertThrows
 import org.junit.Test
 
 class RuntimeConfigurationTest {
+    @Test fun silentPiperPairBuildsRecognitionConfigurationWithoutResolvingUnsupportedVoices() {
+        val settings = AppSettings(languagePair = LanguagePair(LanguageCatalog.DUTCH, LanguageCatalog.ENGLISH),
+            speechOutputBackend = SpeechOutputBackend.PIPER, speechOutputEnabled = false)
+        val config = settings.conversationConfig()
+        assertEquals(settings.languagePair, config.pairFor(LanguageCatalog.DUTCH))
+        assertEquals(settings.languagePair.reverse(), config.pairFor(LanguageCatalog.ENGLISH))
+        val unavailable = assertThrows(InvalidConfigurationException::class.java) { config.ttsModelIds }
+        assertEquals(ConfigurationProblem.UNSUPPORTED_VOICE, unavailable.problem)
+        assertThrows(IllegalArgumentException::class.java) {
+            settings.copy(ttsSpeedPercent = 126).conversationConfig()
+        }
+    }
+
     @Test fun canonicalLanguageIdentityAndSameLanguagePairRejection() {
         assertEquals(LanguageCatalog.GERMAN, LanguageId("DE"))
         assertEquals("en-us", LanguageId("EN-US").value)

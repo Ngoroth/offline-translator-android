@@ -47,11 +47,11 @@ class ConversationProductionIntegrationTest {
         val recognition = WhisperConversationRecognitionEngine(store, defaultConfig)
         try {
             withTimeout(1_200_000) {
-                models.install()
+                models.install(speechOutputRequired = true)
                 recognition.install()
             }
             assertEquals(ModelAvailability.READY, translation.prepare())
-            assertTrue("Selected native VAD/Piper resources must be verified", models.isConversationReady())
+            assertTrue("Selected native VAD/Piper resources must be verified", models.isConversationReady(speechOutputRequired = true))
             assertEquals("Selected joint Whisper recognition must also be installed", SpeechRecognitionReadiness.READY, recognition.readiness())
         } finally {
             try { recognition.closeAndJoin() } finally {
@@ -138,7 +138,7 @@ class ConversationProductionIntegrationTest {
         val scenario = ActivityScenario.launch(MainActivity::class.java)
         var terminalFailure: Throwable? = null
         try {
-            assertTrue("Prepare models online before the offline invocation", models.isConversationReady())
+            assertTrue("Prepare models online before the offline invocation", models.isConversationReady(speechOutputRequired = true))
             assertEquals(ModelAvailability.READY, translation.modelAvailability())
             assertEquals("Wi-Fi must be disabled for offline proof", 0, android.provider.Settings.Global.getInt(context.contentResolver, "wifi_on"))
             assertEquals("Airplane mode must be enabled for offline proof", 1, android.provider.Settings.Global.getInt(context.contentResolver, "airplane_mode_on"))

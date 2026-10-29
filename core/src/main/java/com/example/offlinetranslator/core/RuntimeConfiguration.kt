@@ -24,12 +24,14 @@ class ConversationSessionConfig(
     val speechRecognitionService: String? = null,
 ) {
     val languages: List<LanguageId> = languages.toList()
-    val ttsModelIds: Map<LanguageId, String> = if (speechOutputBackend == SpeechOutputBackend.PIPER) {
-        this.languages.associateWith { language ->
-            RecommendedConversationVoices.modelId(language)
-                ?: throw InvalidConfigurationException(ConfigurationProblem.UNSUPPORTED_VOICE)
-        }
-    } else emptyMap()
+    val ttsModelIds: Map<LanguageId, String> by lazy {
+        if (speechOutputBackend == SpeechOutputBackend.PIPER) {
+            this.languages.associateWith { language ->
+                RecommendedConversationVoices.modelId(language)
+                    ?: throw InvalidConfigurationException(ConfigurationProblem.UNSUPPORTED_VOICE)
+            }
+        } else emptyMap()
+    }
     init {
         require(this.languages.size == 2 && this.languages.distinct().size == 2)
         require(vadMinSilenceMs in 300..1500 && ttsSpeedPercent in 75..125)

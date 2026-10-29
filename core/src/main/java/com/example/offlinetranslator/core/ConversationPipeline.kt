@@ -5,6 +5,9 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.NonCancellable
+import kotlinx.coroutines.Deferred
+import kotlinx.coroutines.async
+import kotlinx.coroutines.supervisorScope
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -59,6 +62,7 @@ class ConversationPipeline(
     private val translation: TranslationEngine,
     private val output: ConversationSpeechOutput,
     private val ownerScope: CoroutineScope,
+    speechOutputEnabled: Boolean = true,
 ) {
     private val control = Mutex()
     private val releaseLock = Any()
@@ -67,6 +71,92 @@ class ConversationPipeline(
     @Volatile private var active: Session? = null
     private val mutableState = MutableStateFlow(ConversationState())
     val state: StateFlow<ConversationState> = mutableState.asStateFlow()
+    val releaseFailed: Boolean get() = synchronized(releaseLock) { releaseResult.isFailure }
+    fun throwIfReleaseFailed() { synchronized(releaseLock) { releaseResult.exceptionOrNull() }?.let { throw it } }
+    private val outputLock = Any()
+    private val outputControl = Mutex()
+    private val mutableSpeechOutputEnabled = MutableStateFlow(speechOutputEnabled)
+    val speechOutputEnabled: StateFlow<Boolean> = mutableSpeechOutputEnabled.asStateFlow()
+    private var outputGeneration = 0L
+    private var outputWork: Deferred<*>? = null
+
+    /** Revoke before any gate or disk wait; only the independent output child is cancelled. */
+    fun disableSpeechOutput(): Long {
+        val generation = synchronized(outputLock) {
+            mutableSpeechOutputEnabled.value = false
+            outputGeneration++
+            outputWork?.cancel()
+            outputGeneration
+        }
+        try { output.interruptCurrent() } catch (failure: Throwable) {
+            recordReleaseFailure(failure, ConversationFailure.PLAYBACK_FAILED)
+            active?.let { failSession(it, ConversationFailure.PLAYBACK_FAILED) }
+        }
+        return generation
+    }
+
+    fun isSpeechOutputRequestCurrent(generation: Long): Boolean =
+        synchronized(outputLock) { outputGeneration == generation } && !releaseFailed
+
+    /** Call only after local validation/readiness and the current-owner persistence commit. */
+    fun enableSpeechOutput(generation: Long): Boolean = synchronized(outputLock) {
+        if (outputGeneration != generation || releaseFailed) false else {
+            mutableSpeechOutputEnabled.value = true
+            true
+        }
+    }
+
+    suspend fun checkSpeechOutput(
+        readiness: suspend () -> SpeechOutputReadiness = { output.readiness() },
+    ): SpeechOutputReadiness? {
+        val generation = synchronized(outputLock) { outputGeneration.takeIf { mutableSpeechOutputEnabled.value } } ?: return null
+        return runOutput(generation, readiness)
+    }
+    /** Final local attestation for an explicit enable commit, even while effectively off. */
+    suspend fun checkSpeechOutputForEnable(): SpeechOutputReadiness? {
+        val generation = synchronized(outputLock) { outputGeneration }
+        return runOutput(generation) { output.readiness() }
+    }
+
+
+    /** Enable never installs. It shares the output-only revocation and actual native barrier. */
+    suspend fun prepareSpeechOutput(
+        generation: Long,
+        readiness: suspend () -> SpeechOutputReadiness = { output.readiness() },
+    ): SpeechOutputReadiness? = runOutput(generation) {
+        val ready = readiness()
+        if (ready != SpeechOutputReadiness.READY) return@runOutput ready
+        output.prepare()
+        output.readiness()
+    }
+
+    private suspend fun <T> runOutput(generation: Long, action: suspend () -> T): T? = outputControl.withLock {
+        coroutineContext.ensureActive()
+        if (!isSpeechOutputRequestCurrent(generation)) return@withLock null
+        supervisorScope {
+            val child = async(start = CoroutineStart.LAZY) { action() }
+            synchronized(outputLock) {
+                if (outputGeneration == generation) outputWork = child else child.cancel()
+            }
+            try {
+                child.start()
+                child.await()
+            } catch (cancelled: CancellationException) {
+                // Only a revoked output generation is benign. Parent Stop/owner loss still wins.
+                coroutineContext.ensureActive()
+                if (isSpeechOutputRequestCurrent(generation)) throw cancelled
+                null
+            } finally {
+                withContext(NonCancellable) { child.join() }
+                synchronized(outputLock) { if (outputWork === child) outputWork = null }
+                try { output.throwIfReleaseFailed() } catch (failure: Throwable) {
+                    recordReleaseFailure(failure, ConversationFailure.PLAYBACK_FAILED)
+                    active?.let { failSession(it, ConversationFailure.PLAYBACK_FAILED) }
+                    throw failure
+                }
+            }
+        }
+    }
 
     private class Session {
         val queue = Channel<SpeechSegment>(MAX_QUEUED_SEGMENTS)
@@ -92,6 +182,7 @@ class ConversationPipeline(
 
     /** Foreground loss and Stop revoke ownership before any asynchronous cleanup can suspend. */
     fun interruptCurrent() {
+        synchronized(outputLock) { outputGeneration++; outputWork?.cancel() }
         val session = active
         if (session != null) {
             synchronized(session) {
@@ -144,20 +235,27 @@ class ConversationPipeline(
 
     private suspend fun runSession(session: Session) {
         try {
-            if (!models.isConversationReady() || translation.modelAvailability() != ModelAvailability.READY ||
-                output.readiness() != SpeechOutputReadiness.READY) {
+            if (!models.isConversationReady(speechOutputRequired = false) || translation.modelAvailability() != ModelAvailability.READY) {
                 failSession(session, ConversationFailure.MODELS_MISSING)
                 return
             }
             recognition.prepare()
             check(translation.prepare() == ModelAvailability.READY) { "Translation preparation failed" }
-            output.prepare()
+            val generation = synchronized(outputLock) { outputGeneration.takeIf { mutableSpeechOutputEnabled.value } }
+            if (generation != null) {
+                val resourcesReady = runOutput(generation) { models.isConversationReady(speechOutputRequired = true) }
+                if (resourcesReady == false && isSpeechOutputRequestCurrent(generation)) {
+                    failSession(session, ConversationFailure.MODELS_MISSING)
+                    return
+                }
+                val ready = prepareSpeechOutput(generation)
+                if (ready != null && ready != SpeechOutputReadiness.READY && isSpeechOutputRequestCurrent(generation)) {
+                    failSession(session, ConversationFailure.MODELS_MISSING)
+                    return
+                }
+            }
             coroutineContext.ensureActive()
             if (!isCurrent(session)) return
-            if (output.readiness() != SpeechOutputReadiness.READY) {
-                failSession(session, ConversationFailure.MODELS_MISSING)
-                return
-            }
             startCapture(session)
             for (segment in session.queue) {
                 synchronized(session) {
@@ -259,43 +357,52 @@ class ConversationPipeline(
             coroutineContext.ensureActive()
             if (!isCurrent(session)) return
             require(translated.isNotEmpty() && translated.length <= MAX_TEXT_CHARACTERS)
-            updateRow(session, id) { it.copy(translation = translated, status = ConversationTranscriptStatus.SPEAKING) }
-            failureStage = ConversationFailure.CAPTURE_FAILED
-            // Reject reader callbacks before stopping it, so the phone cannot translate its own voice.
-            session.capturing = false
-            paused = true
-            update(session) { it.copy(captureActive = false) }
-            if (!interruptCapture()) failSession(session, ConversationFailure.CAPTURE_FAILED)
-            // The independent reader must release its microphone even if Stop cancels this pause.
-            withContext(NonCancellable) {
-                try {
-                    capture.stop(flush = false)
-                } catch (failure: Throwable) {
-                    if (!isCurrent(session) || failure !is Exception) {
-                        recordReleaseFailure(failure, ConversationFailure.CAPTURE_FAILED)
-                        failSession(session, ConversationFailure.CAPTURE_FAILED)
-                    } else {
-                        // A failed ordinary pause can release the reader and recover by listening again.
-                        throw failure
+            val generation = synchronized(outputLock) { outputGeneration.takeIf { mutableSpeechOutputEnabled.value } }
+            updateRow(session, id) { it.copy(translation = translated) }
+            if (generation == null) {
+                updateRow(session, id) { it.copy(status = ConversationTranscriptStatus.COMPLETE) }
+                return
+            }
+            runOutput(generation) {
+                if (!isCurrent(session) || !isSpeechOutputRequestCurrent(generation)) return@runOutput
+                failureStage = ConversationFailure.CAPTURE_FAILED
+                // Reject reader callbacks before stopping it, so the phone cannot translate its own voice.
+                session.capturing = false
+                paused = true
+                update(session) { it.copy(captureActive = false) }
+                if (!interruptCapture()) failSession(session, ConversationFailure.CAPTURE_FAILED)
+                // The independent reader must release its microphone even if Stop cancels this pause.
+                withContext(NonCancellable) {
+                    try {
+                        capture.stop(flush = false)
+                    } catch (failure: Throwable) {
+                        if (!isCurrent(session) || failure !is Exception) {
+                            recordReleaseFailure(failure, ConversationFailure.CAPTURE_FAILED)
+                            failSession(session, ConversationFailure.CAPTURE_FAILED)
+                        } else {
+                            // A failed ordinary pause can release the reader and recover by listening again.
+                            throw failure
+                        }
                     }
                 }
-            }
-            coroutineContext.ensureActive()
-            if (!isCurrent(session)) return
-            update(session) { it.copy(phase = ConversationPhase.SPEAKING, captureActive = false) }
-            failureStage = ConversationFailure.PLAYBACK_FAILED
-            output.speak(utterance.direction.target, translated) { start ->
-                val end = segment.speechEndNanos
-                val presentation = start.presentationTimeNanos
-                val validInterval = end != null && presentation != null && end >= 0 && presentation >= end
-                val latency = if (validInterval) {
-                    val nanos = requireNotNull(presentation) - requireNotNull(end)
-                    nanos / 1_000_000 + if (nanos % 1_000_000 == 0L) 0 else 1
-                } else null
-                updateRow(session, id) { it.copy(
-                    latencyMillis = latency,
-                    latencyMeasured = validInterval && segment.speechEndMeasured && start.measured,
-                ) }
+                coroutineContext.ensureActive()
+                if (!isCurrent(session)) return@runOutput
+                update(session) { it.copy(phase = ConversationPhase.SPEAKING, captureActive = false) }
+                updateRow(session, id) { it.copy(status = ConversationTranscriptStatus.SPEAKING) }
+                failureStage = ConversationFailure.PLAYBACK_FAILED
+                output.speak(utterance.direction.target, translated) { start ->
+                    val end = segment.speechEndNanos
+                    val presentation = start.presentationTimeNanos
+                    val validInterval = end != null && presentation != null && end >= 0 && presentation >= end
+                    val latency = if (validInterval) {
+                        val nanos = requireNotNull(presentation) - requireNotNull(end)
+                        nanos / 1_000_000 + if (nanos % 1_000_000 == 0L) 0 else 1
+                    } else null
+                    if (isSpeechOutputRequestCurrent(generation)) updateRow(session, id) { it.copy(
+                        latencyMillis = latency,
+                        latencyMeasured = validInterval && segment.speechEndMeasured && start.measured,
+                    ) }
+                }
             }
             coroutineContext.ensureActive()
             if (!isCurrent(session)) return
@@ -313,7 +420,7 @@ class ConversationPipeline(
                 typed is TranslationFailure.RuntimeLoad || typed is TranslationFailure.Memory) {
                 failSession(session, ConversationFailure.MODELS_MISSING)
             }
-            if (failureStage == ConversationFailure.PLAYBACK_FAILED) {
+            if (failureStage == ConversationFailure.PLAYBACK_FAILED && speechOutputEnabled.value && isCurrent(session)) {
                 val playbackReady = try {
                     output.readiness() == SpeechOutputReadiness.READY
                 } catch (cancelled: CancellationException) {

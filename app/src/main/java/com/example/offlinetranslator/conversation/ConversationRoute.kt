@@ -32,7 +32,8 @@ fun ConversationRoute(
     val settings = settingsState.settings ?: AppSettings()
     val loaded = !settingsState.loading && !settingsState.loadError && settingsState.settings != null
     val conversationProblem = remember(settings) { runtime.conversationProblems(settings).firstOrNull() }
-    val config = remember(settings) { if (conversationProblem == null) runCatching { settings.conversationConfig() }.getOrNull() else null }
+    val structuralSettings = remember(settings) { settings.copy(speechOutputEnabled = true) }
+    val config = remember(structuralSettings) { runCatching { structuralSettings.conversationConfig() }.getOrNull() }
     val descriptor = remember(settings.translationEngineId) { runtime.registry.descriptors.firstOrNull { it.id == settings.translationEngineId } }
     val coverage = remember(settings) { runtime.conversationLanguageCoverage(settings) }
     val teardownFailed by runtime.owners.teardownFailed.collectAsStateWithLifecycle()
@@ -52,11 +53,13 @@ fun ConversationRoute(
     var pendingStart by remember { mutableStateOf<ConversationViewModel?>(null) }
     var transitionJob by remember { mutableStateOf<Job?>(null) }
     var mounted by remember { mutableStateOf(true) }
+    var speechOutputSaving by remember { mutableStateOf(false) }
+    var speechOutputSaveError by remember { mutableStateOf(false) }
     var foreground by remember { mutableStateOf(lifecycleOwner.lifecycle.currentState.isAtLeast(Lifecycle.State.STARTED)) }
 
     LaunchedEffect(config, conversationProblem, loaded, changing, teardownFailed, foreground, captureFactory, ownershipVersion) {
         if (changing || !foreground) return@LaunchedEffect
-        if (!loaded || config == null || teardownFailed) {
+        if (!loaded || config == null || conversationProblem != null || teardownFailed) {
             val old = viewModel
             viewModel = null
             try {
@@ -83,7 +86,9 @@ fun ConversationRoute(
                 else runtime.createConversationOwner(config, captureFactory)
             if (owner != null) {
                 guardedCreation = true
-                viewModel = ConversationViewModel(owner, runtime.owners)
+                viewModel = ConversationViewModel(owner, runtime.owners,
+                    saveSpeechOutput = { enabled, fresh -> runtime.saveSpeechOutput(owner, enabled, fresh) },
+                    speechOutputProblem = { runtime.speechOutputProblem(owner.config) })
                 if (languageError == ConversationLanguageChangeError.OPEN) languageError = null
             } else {
                 val currentSettings = runtime.settings.state.value.settings ?: return@LaunchedEffect
@@ -194,6 +199,11 @@ fun ConversationRoute(
     val recognitionReadiness = shown?.recognitionReadiness?.collectAsStateWithLifecycle()?.value
     val translationPreparation = shown?.translationPreparation?.collectAsStateWithLifecycle()?.value
     val preparationFailure = shown?.preparationFailure?.collectAsStateWithLifecycle()?.value
+    val speechOutputEnabled = shown?.speechOutputEnabled?.collectAsStateWithLifecycle()?.value ?: settings.speechOutputEnabled
+    val speechOutputChanging = shown?.speechOutputChanging?.collectAsStateWithLifecycle()?.value ?: speechOutputSaving
+    val speechOutputUnavailable = shown?.speechOutputUnavailable?.collectAsStateWithLifecycle()?.value ?: false
+    val speechOutputProblem = shown?.speechOutputConfigurationProblem?.collectAsStateWithLifecycle()?.value
+    val outputSaveError = shown?.speechOutputSaveError?.collectAsStateWithLifecycle()?.value ?: speechOutputSaveError
     val localRecognitionEligible = remember(settings) {
         settings.speechRecognitionBackend == SpeechRecognitionBackend.SYSTEM_OFFLINE &&
             runtime.conversationProblems(settings.copy(speechRecognitionBackend = SpeechRecognitionBackend.WHISPER)).isEmpty()
@@ -203,6 +213,34 @@ fun ConversationRoute(
         ready = ready && installRequest == null && !changing && !teardownFailed, permissionDenied = permissionDenied,
         ownerAvailable = shown != null,
         translationPreparation = translationPreparation, preparationFailure = preparationFailure,
+        speechOutputEnabled = speechOutputEnabled,
+        speechOutputChanging = speechOutputChanging || changing || !foreground || teardownFailed || !loaded,
+        speechOutputUnavailable = speechOutputUnavailable,
+        speechOutputProblem = speechOutputProblem,
+        speechOutputSaveError = outputSaveError,
+        onToggleSpeechOutput = toggle@{
+            if (!mounted || !foreground || changing || teardownFailed || !loaded) return@toggle
+            if (shown != null) {
+                shown.toggleSpeechOutput()
+            } else if (settings.speechOutputEnabled && !speechOutputSaving) {
+                // Output-only validation can prevent owner creation; the escape mute still persists.
+                speechOutputSaving = true
+                speechOutputSaveError = false
+                scope.launch {
+                    try {
+                        val saved = runtime.saveSpeechOutput(null, false) {
+                            mounted && foreground && !changing &&
+                                runtime.settings.state.value.settings?.copy(speechOutputEnabled = true) == structuralSettings
+                        }
+                        if (mounted) speechOutputSaveError = !saved
+                    } catch (cancelled: CancellationException) {
+                        throw cancelled
+                    } catch (_: Exception) {
+                        if (mounted) speechOutputSaveError = true
+                    } finally { if (mounted) speechOutputSaving = false }
+                }
+            }
+        },
         onPrepare = { if (installRequest == null && !changing && !teardownFailed) shown?.prepareLanguages() },
         onSessionAction = {
             if (shown?.state?.value?.sessionActive == true) { pendingStart = null; shown.stop() }
@@ -227,7 +265,8 @@ fun ConversationRoute(
         onOpenAdvancedSettings = open@{
             val latest = runtime.settings.state.value.settings ?: return@open
             if (mounted && foreground && !changing && !runtime.owners.busy.value && !teardownFailed &&
-                latest == settings && latest.speechRecognitionBackend == SpeechRecognitionBackend.SYSTEM_OFFLINE) {
+                latest == settings && (latest.speechRecognitionBackend == SpeechRecognitionBackend.SYSTEM_OFFLINE ||
+                    speechOutputUnavailable || conversationProblem == ConfigurationProblem.UNSUPPORTED_VOICE)) {
                 onOpenAdvancedSettings()
             }
         },

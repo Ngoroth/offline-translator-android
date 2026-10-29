@@ -19,7 +19,7 @@ The initial quality scope is everyday communication: travel, meeting people, sho
 The near-term priority is a simple, working first version. **First launch offers a compact Fast (ML Kit) / Accurate (Tencent) translation choice shared by Text and Conversation. Whisper recognition and System offline speech output remain defaults.** Reset restores Tencent/Whisper/System while preserving the pair, interface language and completed setup. This development iteration uses current settings schema 7 without previous-version migration. Choice labels and defaults are product priorities, not model-quality or release qualification. Release is the development goal, not authorization to publish immediately. The first release's language set is not fixed to English/Russian.
 
 - Make preparation, supported pairs, understandable errors, offline operation after restart, and correct stopping/resource release reliable. Intermediate-English translation is allowed; directness is not a product-wide gate.
-- Use Whisper as the default recognition path while retaining explicit Android on-device recognition. System offline output still requires genuine installed voices for both participants; neither an API nor a Google service name guarantees local resources for every language/device.
+- Use Whisper as the default recognition path while retaining explicit Android on-device recognition. Enabled System offline output requires genuine installed voices for both participants; neither an API nor a Google service name guarantees local resources for every language/device. Deliberately disabled output removes voice-only requirements, not recognition or translation requirements.
 - **Retain ML Kit, System recognition and Piper speech as supported options.** The obsolete Russian/English Sherpa conversation recognizer and separate language identification are retired; the shared sherpa-onnx library, VAD, Whisper and evaluator ASR remain. Alternative application-managed output for every language is deferred in `docs/backlog/provide-offline-speech-output-for-all-languages.md`; Piper keeps its current RU/EN limits and licensing obligations.
 - Keep one conversation pipeline with shared preparation, lifecycle, stopping and presentation. Translation, recognition and output remain independently selectable through Settings; starting a conversation must not require model expertise. Do not add a placeholder provider switch.
 - Complete functional preparation, offline and lifecycle checks for the selected path before dedicated speed measurements and engine comparisons. Opening the app or resetting settings must not initiate downloads or recording. The latency target below remains a goal, not a measured claim or a reason to skip later device qualification.
@@ -29,10 +29,10 @@ Research into larger ASR models or alternative NMT engines is not a prerequisite
 ## Primary Conversation Experience
 
 1. Two people choose their languages directly on the conversation screen.
-2. The application selects a verified combination of speech recognition, translation, and voices. Users do not need to choose engines or model names.
-3. If resources are missing, the application shows preparation progress and readiness, with download size when publicly known. Android-managed speech-pack sizes may be unknown and must be labelled honestly. If the selected provider cannot supply a resource, explain the missing capability rather than promising a working conversation.
+2. The application selects a verified combination of speech recognition, translation, and, when output is enabled, voices. Users do not need to choose engines or model names.
+3. If required resources are missing, the application shows preparation progress and readiness, with download size when publicly known. Android-managed speech-pack sizes may be unknown and must be labelled honestly. Explain unavailable capabilities; an explicit speaker-off choice can bypass output-only blockers, not missing recognition or translation.
 4. Users prepare the languages online in advance and start the conversation once.
-5. The application listens to successive utterances, determines which selected language was spoken, translates into the other selected language, and speaks the result without a button press before each utterance.
+5. The application listens to successive utterances, determines which selected language was spoken, translates into the other selected language, and, when enabled, speaks the result without a button press before each utterance.
 6. Users can stop the conversation using controls that remain accessible.
 
 Language choice is part of the conversation, not a technical setting hidden in a settings sheet. Text translation remains an auxiliary feature and must not determine or complicate the primary conversation experience.
@@ -41,19 +41,20 @@ Language choice is part of the conversation, not a technical setting hidden in a
 
 - Focus on the current utterance and the immediately preceding turn, not an accumulating chat feed.
 - Make the translation visually prominent while keeping the original text and language direction understandable.
-- Keep conversation controls available independently of long-text scrolling.
+- Keep one pinned lower control panel available independently of long-text scrolling: prominent microphone status plus a speaker toggle beside Start/Stop. Show “You can speak” only for fresh active capture, including while recognition/translation is processing; otherwise show “Please wait” with the actual reason or “Microphone off” when idle. Use icons and text, not color alone.
 - Show preparation and actionable errors when relevant. Keep detailed instructions and diagnostics available on demand rather than permanently filling the main screen.
 - Do not require model expertise to understand whether a selected pair is ready to use.
+- Remember speech output between launches, defaulting to on. Mute stops current speech without losing text or the conversation; enabling applies to subsequent results only. If selected output is unavailable, retain the silent conversation and explain recovery without implicit downloads or a provider fallback. Reset restores output on; ordinary settings changes preserve the choice.
 
 ## Utterance Timing and Speed
 
-For the initial experience, the translation is presented and spoken after the speaker finishes an utterance. Simultaneous spoken translation while the speaker continues is outside the initial scope and may be reconsidered in later versions.
+For the initial experience, the translation is presented after the speaker finishes an utterance and spoken if output is enabled. Silent operation skips synthesis, playback and playback waiting; it does not claim faster recognition or translation. Simultaneous spoken translation while the speaker continues is outside the initial scope and may be reconsidered in later versions.
 
 The target delay is **no more than two seconds from the actual end of the speaker's utterance to the start of audible translated speech**. Lower latency is preferred. End-of-utterance detection and all processing before playback count toward that interval; measuring only translation inference does not prove the target.
 
 Preliminary processing may be evaluated as an internal optimization, but must not expose an unstable spoken translation or change the agreed utterance-based experience. Streaming is a possible engineering technique, not a product goal by itself.
 
-Interrupting playback with new human speech is deferred. Future work may revisit it, but must prevent the application's own voice from triggering recognition and must preserve the beginning of the new utterance. The initial implementation must not claim reliable interruption before it is demonstrated.
+Interrupting playback with new human speech is deferred. The speaker button provides manual interruption only; microphone capture resumes after actual output release. Future speech-triggered interruption must prevent the application's own voice from triggering recognition and must preserve the beginning of the new utterance. The initial implementation must not claim reliable acoustic interruption before it is demonstrated.
 
 ## Translation Quality
 

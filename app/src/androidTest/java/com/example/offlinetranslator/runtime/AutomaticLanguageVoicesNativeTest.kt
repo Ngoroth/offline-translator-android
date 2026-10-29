@@ -59,7 +59,7 @@ class AutomaticLanguageVoicesNativeTest {
                 val resources = SelectedSpeechResources.forConversation(store, config,
                     setOf(com.example.offlinetranslator.sherpa.WhisperConversationRecognitionEngine.MODEL_ID))
                 try {
-                    assertTrue(resources.isConversationReady())
+                    assertTrue(resources.isConversationReady(speechOutputRequired = true))
                     val output = SherpaConversationSpeechOutput(context, store, config)
                     try {
                         for ((language, phrase) in listOf(

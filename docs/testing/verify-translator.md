@@ -50,11 +50,14 @@ System service, System/Piper output, silence and Reset. Recovery links must open
 Advanced directly. Verify Apply versus Close/Back, immediate locale changes,
 and reachable actions in portrait, landscape and font scale2.
 
-Reset immediately restores Tencent/Whisper/System while preserving pair, locale
-and completed setup; Close must not undo it or reopen setup. Schema7 is the
-current-only format; previous-version migration and replacement notifications
-are intentionally outside this iteration. Shared-device preservation remains
-required unless the resource owner explicitly grants disposable use.
+Reset immediately restores Tencent/Whisper/System and speech output on while
+preserving pair, locale and completed setup; Close must not undo it or reopen setup.
+Ordinary Apply and pair changes preserve the latest speaker choice. Schema7 is
+the current-only format; documents without `speechOutputEnabled` default to true,
+but older schema7 binaries reject the newly written field. Restore their original
+raw settings before reinstalling one. Earlier-schema migration and replacement
+notifications remain outside this development scope. Shared-device preservation
+is required unless the resource owner explicitly grants disposable use.
 
 For an actual default-route check, confirm all selected providers, explicitly
 prepare the resources, disable connectivity and restart the process. Exercise
@@ -65,6 +68,66 @@ Existing System-recognition or ML Kit-specific cases below are separate checks,
 not proof of this combined route. Record UI, inference and restoration outcomes
 separately. Insufficient model storage is **BLOCKED**, not a passing inference
 check or permission to delete another owner's model packs.
+
+### Optional Conversation speech output and actual capture status
+
+For the bounded output-control checks, prepare pinned RU/EN Whisper and VAD,
+the selected Tencent model, genuine offline System voices and the existing Piper
+RU/EN voices. The unavailable-Piper case also uses prepared Whisper/Tencent
+EN↔NL; it must not install or pretend to support a Dutch Piper voice. Verify no
+active networks. Install and record the exact current app/test APK hashes, keep
+one device operator, and run:
+
+```powershell
+pwsh -NoProfile -File tools/android/run-device-gate.ps1 `
+  -Adb $adb -Device emulator-5554 `
+  -CaseList 'com.example.offlinetranslator.runtime.ConversationSpeechOutputNativeTest,com.example.offlinetranslator.runtime.SharedLanguagePairNativeTest#speechOutputChoiceKeepsTheLiveOwnerAndPersistsSilentTurnsAfterReopen,com.example.offlinetranslator.runtime.SharedLanguagePairNativeTest#unavailablePiperEnableKeepsTheSelectedPairAndCapturesAnotherSilentTurn' `
+  -EvidenceDir "$env:TEMP/conversation-output-$([Guid]::NewGuid().ToString('N'))"
+```
+
+The direct-owner cases use production Whisper/VAD/Tencent/System/Piper and fixed
+paced capture, with only narrow test-local observers. Inspect
+`files/conversation-speech-output-proof/{system-offline,piper}.json`: actual
+translated silent turns with no output preparation/request, genuine new-turn
+speech after enable, mute during in-progress output, retained session/text,
+another silent turn, and stopped state. System evidence includes genuine local
+non-silent PCM and SDK stop; Piper observes its actual production playback start
+and joined continuation. These are not physical microphone/speaker measurements
+or translation-quality qualification.
+
+The focused Home/Route cases click the actual toggle, preserve the live capture
+owner, reopen with output still off, and continue after unsupported Piper enable
+without changing the selected backend/pair. Inspect their new
+`files/whisper-recognition-proof/conversation-output-*-ui.{png,txt}` artifacts;
+do not confuse them with old proof files or only an isolated composable.
+
+For supported RU/EN Piper with missing/damaged voice data, verify the separate
+resource-recovery boundary in `ConversationViewModelTest`, especially
+`missingPiperVoiceRecoveryPreparesOnlyAfterStopAndRequiresExplicitEnable`.
+Failed enable must retain its real missing-voice reason and silent capture;
+preparation is rejected while active, then explicit Prepare after Stop includes
+the selected voice resources while effective/saved output stays off. Later
+enable must succeed only once local voices are ready. Ordinary silent Prepare
+must still omit voices; failed voice recovery and background cancellation must
+not prevent a later silent Start when base resources remain usable. The matching
+`ConversationScreenTest#missingPiperVoiceShowsActualReasonAndPreparationBecomesEligibleOnlyAfterStop`
+checks actual reason and active-to-idle recovery eligibility. These controlled
+boundary tests do not claim a network download or missing-voice device run.
+
+Run `ConversationScreenTest` through the same runner separately. Also inspect the
+actual full MainActivity/Home window in portrait, landscape and font scale2.
+Observe capture during recognition/translation, true waiting during output,
+silent capture, both speaker states and failed-enable recovery. Check the pinned
+panel, touch targets, Start/Stop, recovery and attribution while content scrolls.
+The microphone cue follows fresh active capture, not phase alone; neutral
+completion text must not claim audible playback. Keep meaningful assertions and
+fixed fixtures unchanged when a model gives an undesirable result.
+
+Pull proof before cleanup; stop all recording/playback and restore the verified
+current baseline, including raw settings before an older APK, private/external
+state, grants, locale, font, orientation and connectivity. Verify restoration and
+declare the exact serial free before another operator uses it.
+
 
 
 First exercise **Prepare languages through the actual app UI**. Record missing, unsupported, scheduled, failed and ready states; Start must not become ready merely because a download was scheduled. Open the actual selected engine's voice-data installer when necessary. Do not replace consumer preparation evidence with preinstalled resources from a helper.

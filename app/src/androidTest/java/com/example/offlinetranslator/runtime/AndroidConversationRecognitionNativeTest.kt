@@ -221,7 +221,7 @@ class AndroidConversationRecognitionNativeTest {
             logReadiness(pair, state, recognition)
             assertEquals("BLOCKED: exact selected request must have BOTH local models installed for ${pair.id}", SpeechRecognitionReadiness.READY, state)
             assertTrue(config.ttsModelIds.isEmpty())
-            val resourcesReady = owner.models.isConversationReady()
+            val resourcesReady = owner.models.isConversationReady(speechOutputRequired = true)
             assertTrue("BLOCKED: selected native VAD and the owner's exact recognizer must be ready", resourcesReady)
             if (engineId == "tencent") {
                 // Explicit local initialization after owner creation; offline prerequisite forbids network repair.

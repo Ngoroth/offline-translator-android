@@ -4,6 +4,15 @@ Notable capability, behavior and developer-facing compatibility changes. Entries
 
 ## Unreleased
 
+### Development prerelease 0.1.5
+
+### Conversation controls — 2026-10-28
+
+- Added a saved speaker toggle on Conversation; mute stops current speech without stopping translation.
+- Silent conversations skip voice preparation, synthesis and playback.
+- Added prominent, centered microphone status with a clear reason while speaking is unavailable.
+- Centered the Start/Stop button and shortened its labels.
+
 ### Development prerelease 0.1.4
 
 - Added a first-launch Fast (ML Kit) / Accurate (Tencent) choice shared by text and conversation.

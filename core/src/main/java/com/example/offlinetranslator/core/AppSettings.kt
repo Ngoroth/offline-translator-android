@@ -13,6 +13,7 @@ enum class SpeechRecognitionBackend(val persistedId: String) {
 data class AppSettings(
     val languagePair: LanguagePair = LanguagePair(LanguageCatalog.RUSSIAN, LanguageCatalog.ENGLISH),
     val speechOutputBackend: SpeechOutputBackend = SpeechOutputBackend.SYSTEM_OFFLINE,
+    val speechOutputEnabled: Boolean = true,
     val speechRecognitionBackend: SpeechRecognitionBackend = SpeechRecognitionBackend.WHISPER,
     val translationEngineId: String = "tencent",
     val translationSetupComplete: Boolean = false,

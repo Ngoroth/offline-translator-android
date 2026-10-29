@@ -84,6 +84,25 @@ class AppSettingsRepository internal constructor(
         notice.value = false
         return saved
     }
+    /** Patch the actual latest document inside DataStore, rejecting revoked live requests. */
+    suspend fun updateSpeechOutput(enabled: Boolean, isFresh: () -> Boolean): Boolean {
+        check(!closed)
+        val loaded = state.first { !it.loading }
+        if (loaded.loadError) throw IOException("Settings unavailable")
+        var applied = false
+        val saved = store.updateData { latest ->
+            if (!isFresh()) latest else {
+                applied = true
+                latest.copy(speechOutputEnabled = enabled)
+            }
+        }
+        if (applied) {
+            mutableState.value = SettingsLoadState(settings = saved, loading = false)
+            notice.value = false
+        }
+        return applied
+    }
+
 
     suspend fun closeAndJoin() {
         synchronized(this) { closed = true; collection?.cancel() }

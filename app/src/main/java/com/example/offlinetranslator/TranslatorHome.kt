@@ -44,6 +44,7 @@ fun TranslatorHome(
             validate = runtime::validationProblems,
             completeSetup = runtime::completeTranslationSetup,
             persist = runtime::applySettings,
+            persistReset = runtime::resetSettings,
             teardownFailed = runtime.owners.teardownFailed,
             recognitionServices = { AndroidRecognitionServices.choices(discoveryContext).map { it.component to it.label } },
         )

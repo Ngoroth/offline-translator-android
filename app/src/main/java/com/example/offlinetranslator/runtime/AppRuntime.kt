@@ -56,7 +56,11 @@ class AppRuntime private constructor(context: Context) {
     fun conversationLanguageCoverage(value: AppSettings): Set<LanguageId> = validator.conversationLanguageCoverage(value)
 
     /** Advanced settings never carry a stale main-screen pair across the shared ownership gate. */
-    suspend fun applySettings(value: AppSettings): Boolean {
+    suspend fun applySettings(value: AppSettings): Boolean = applySettings(value, resetSpeechOutput = false)
+
+    suspend fun resetSettings(value: AppSettings): Boolean = applySettings(value, resetSpeechOutput = true)
+
+    private suspend fun applySettings(value: AppSettings, resetSpeechOutput: Boolean): Boolean {
         check(!closed)
         var changed: AppSettings? = null
         suspend fun latestPatch(): AppSettings {
@@ -66,6 +70,7 @@ class AppRuntime private constructor(context: Context) {
                 speechRecognitionBackend = value.speechRecognitionBackend,
                 speechRecognitionService = value.speechRecognitionService,
                 speechOutputBackend = value.speechOutputBackend,
+                speechOutputEnabled = if (resetSpeechOutput) true else latest.speechOutputEnabled,
                 translationEngineId = value.translationEngineId,
                 vadModelId = value.vadModelId,
                 vadMinSilenceMs = value.vadMinSilenceMs,
@@ -77,11 +82,41 @@ class AppRuntime private constructor(context: Context) {
                 val patched = latestPatch()
                 when (owner) {
                     is TextRuntimeOwner -> owner.config == patched.textConfig()
-                    is ConversationRuntimeOwner -> matches(patched, owner.config)
+                    is ConversationRuntimeOwner -> matches(patched, owner.config) &&
+                        owner.pipeline.speechOutputEnabled.value == patched.speechOutputEnabled
                     else -> false
                 }
             },
         ) { settings.save(latestPatch()) }
+    }
+    /** Latest-value patch only: never replace an owner or relax the general settings gate. */
+    suspend fun saveSpeechOutput(
+        owner: ConversationRuntimeOwner?,
+        enabled: Boolean,
+        isFresh: () -> Boolean,
+    ): Boolean {
+        check(!closed)
+        if (owner == null && enabled) return false
+        return owners.saveSpeechOutput(owner, { !closed && isFresh() }) {
+            val latest = settings.current()
+            if (!isFresh() || (owner != null && !matches(latest, owner.config))) return@saveSpeechOutput false
+            coroutineContext.ensureActive()
+            if (enabled) {
+                val currentOwner = requireNotNull(owner)
+                speechOutputProblem(currentOwner.config)?.let { throw InvalidConfigurationException(it) }
+                val readiness = currentOwner.pipeline.checkSpeechOutputForEnable() ?: return@saveSpeechOutput false
+                if (readiness != SpeechOutputReadiness.READY) throw SpeechOutputUnavailableException(readiness)
+                if (!isFresh()) return@saveSpeechOutput false
+            }
+            settings.updateSpeechOutput(enabled, isFresh)
+        }
+    }
+
+    fun speechOutputProblem(config: ConversationSessionConfig): ConfigurationProblem? {
+        val current = settings.state.value.settings ?: return null
+        if (!matches(current, config)) return null
+        val without = conversationProblems(current.copy(speechOutputEnabled = false)).toSet()
+        return conversationProblems(current.copy(speechOutputEnabled = true)).firstOrNull { it !in without }
     }
 
     /** First selection never constructs or displaces a route owner, or prepares resources. */
@@ -182,7 +217,8 @@ class AppRuntime private constructor(context: Context) {
                 SpeechOutputBackend.SYSTEM_OFFLINE -> SystemConversationSpeechOutput(context, config)
                 SpeechOutputBackend.PIPER -> SherpaConversationSpeechOutput(context, speechModels, config)
             }
-            return ConversationRuntimeOwner(config, models, capture, recognition, translation, output, ownerScope)
+            return ConversationRuntimeOwner(config, models, capture, recognition, translation, output, ownerScope,
+                speechOutputEnabled = settings.current().speechOutputEnabled)
         } catch (failure: Throwable) {
             withContext(NonCancellable) {
                 try { capture?.closeAndJoin() } catch (closing: Throwable) {
@@ -212,20 +248,24 @@ class AppRuntime private constructor(context: Context) {
 
 
     suspend fun conversationReady(owner: ConversationRuntimeOwner): Boolean = owners.use(owner) {
-        owner.output.readiness() == SpeechOutputReadiness.READY &&
-            owner.models.isConversationReady() && owner.translation.modelAvailability() == ModelAvailability.READY
+        owner.pipeline.throwIfReleaseFailed()
+        val output = owner.pipeline.checkSpeechOutput()
+        (!owner.pipeline.speechOutputEnabled.value || output == SpeechOutputReadiness.READY) &&
+            owner.models.isConversationReady(owner.pipeline.speechOutputEnabled.value) && owner.translation.modelAvailability() == ModelAvailability.READY
     } ?: false
 
     suspend fun prepareConversation(owner: ConversationRuntimeOwner): Boolean = owners.use(owner) {
-        owner.models.install()
+        owner.pipeline.throwIfReleaseFailed()
+        owner.models.install(owner.pipeline.speechOutputEnabled.value)
         val recognitionPending = when (owner.recognition.readinessState.value) {
             SpeechRecognitionReadiness.SCHEDULED, SpeechRecognitionReadiness.DOWNLOADING,
             SpeechRecognitionReadiness.DOWNLOAD_FAILED -> true
             else -> false
         }
-        owner.translation.prepare() == ModelAvailability.READY &&
-            owner.output.readiness() == SpeechOutputReadiness.READY && !recognitionPending &&
-            owner.models.isConversationReady()
+        val translationReady = owner.translation.prepare() == ModelAvailability.READY
+        val output = if (translationReady) owner.pipeline.checkSpeechOutput() else null
+        translationReady && (!owner.pipeline.speechOutputEnabled.value || output == SpeechOutputReadiness.READY) && !recognitionPending &&
+            owner.models.isConversationReady(owner.pipeline.speechOutputEnabled.value)
     } ?: false
 
     suspend fun startConversation(owner: ConversationRuntimeOwner): Boolean = owners.use(owner) { owner.pipeline.start() } ?: false
@@ -291,6 +331,9 @@ class AppRuntime private constructor(context: Context) {
     }
 }
 
+internal class SpeechOutputUnavailableException(val readiness: SpeechOutputReadiness) :
+    IllegalStateException("Speech output is unavailable")
+
 /** Pure metadata validation: no provider factories, installed-data probes, digests, downloads or JNI. */
 class SettingsValidator(
     private val catalog: SpeechModelCatalog,
@@ -325,9 +368,9 @@ class SettingsValidator(
                 LanguageCatalog.find(language) == null) {
                 result += ConfigurationProblem.UNKNOWN_LANGUAGE
             }
-            if (settings.speechOutputBackend == SpeechOutputBackend.PIPER) {
+            if (settings.speechOutputEnabled && settings.speechOutputBackend == SpeechOutputBackend.PIPER) {
                 modelProblem(RecommendedConversationVoices.modelId(language), SpeechModelRole.TTS, setOf(language))?.let(result::add)
-            } else if (LanguageCatalog.find(language) == null) {
+            } else if (settings.speechOutputEnabled && LanguageCatalog.find(language) == null) {
                 result += ConfigurationProblem.UNSUPPORTED_VOICE
             }
         }
@@ -342,7 +385,7 @@ class SettingsValidator(
                 SpeechRecognitionBackend.WHISPER ->
                     modelProblem(WhisperConversationRecognitionEngine.MODEL_ID, SpeechModelRole.ASR, setOf(language)) == null
             }
-            recognitionSupported && if (settings.speechOutputBackend == SpeechOutputBackend.PIPER) {
+            recognitionSupported && if (settings.speechOutputEnabled && settings.speechOutputBackend == SpeechOutputBackend.PIPER) {
                 modelProblem(RecommendedConversationVoices.modelId(language), SpeechModelRole.TTS, setOf(language)) == null
             } else true
         }.toSet()

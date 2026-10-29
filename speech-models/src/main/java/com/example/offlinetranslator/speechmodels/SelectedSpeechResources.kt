@@ -14,8 +14,9 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import java.util.concurrent.atomic.AtomicBoolean
 
@@ -27,7 +28,6 @@ object SelectedSpeechResources {
         recognitionModelIds: Set<String>,
     ): ConversationModelRepository {
         val selections = linkedSetOf(config.vadModelId)
-        val installedByOwner = linkedSetOf(config.vadModelId)
         requireModel(store, config.vadModelId, SpeechModelRole.VAD)
         val recognitionModels = recognitionModelIds.map(store.catalog::model)
         for (model in recognitionModels) {
@@ -42,15 +42,7 @@ object SelectedSpeechResources {
         require(recognitionModels.isEmpty() || recognitionModels.flatMap { it.languages }.containsAll(config.languages)) {
             "Selected recognition models do not cover the conversation languages"
         }
-        if (config.speechOutputBackend == SpeechOutputBackend.PIPER) {
-            for (language in config.languages) {
-                val tts = config.ttsModelIds.getValue(language)
-                requireModel(store, tts, SpeechModelRole.TTS, setOf(language))
-                selections += tts
-                installedByOwner += tts
-            }
-        }
-        return ConversationResources(store, selections, store.catalog.requiredPackages(installedByOwner))
+        return ConversationResources(store, selections, config)
     }
 
     fun forRecognition(
@@ -80,14 +72,21 @@ object SelectedSpeechResources {
         protected val store: SpeechModelStore,
         modelIds: Set<String>,
     ) : AutoCloseable {
-        private val selected = modelIds.map(store.catalog::model)
+        private val selected = MutableStateFlow(modelIds.map(store.catalog::model))
+        private var selectedIds = modelIds
         protected val packageIds = store.catalog.requiredPackages(modelIds)
+        protected fun selectModels(modelIds: Set<String>) = synchronized(selected) {
+            if (selectedIds != modelIds) {
+                selectedIds = modelIds
+                selected.value = modelIds.map(store.catalog::model)
+            }
+        }
         private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
         private val closed = AtomicBoolean(false)
-        val models: StateFlow<List<SpeechModelStatus>> = store.packages.map(::project)
-            .stateIn(scope, SharingStarted.Eagerly, project(store.packages.value))
+        val models: StateFlow<List<SpeechModelStatus>> = combine(store.packages, selected, ::project)
+            .stateIn(scope, SharingStarted.Eagerly, project(store.packages.value, selected.value))
 
-        private fun project(packages: List<SpeechModelStatus>): List<SpeechModelStatus> {
+        private fun project(packages: List<SpeechModelStatus>, selected: List<SpeechModelDefinition>): List<SpeechModelStatus> {
             val byId = packages.associateBy { it.id }
             return selected.map { model ->
                 val dependencies = model.requiredRefs.map { it.packageId }.distinct().map(byId::getValue)
@@ -120,12 +119,30 @@ object SelectedSpeechResources {
 
     private class ConversationResources(
         store: SpeechModelStore,
-        selections: Set<String>,
-        private val nativePackageIds: Set<String>,
+        private val selections: Set<String>,
+        private val config: ConversationSessionConfig,
     ) : Resources(store, selections), ConversationModelRepository {
-        // Recognition owns its LID/ASR dependencies. Only capture/output packages belong here.
-        override suspend fun install() { ensureOpen(); store.install(nativePackageIds) }
-        override suspend fun isConversationReady(): Boolean { ensureOpen(); return store.availability(nativePackageIds) }
+        private val basePackages = store.catalog.requiredPackages(setOf(config.vadModelId))
+        private val outputModels: Set<String> by lazy {
+            if (config.speechOutputBackend == SpeechOutputBackend.PIPER) {
+                config.languages.map { language ->
+                    config.ttsModelIds.getValue(language).also {
+                        requireModel(store, it, SpeechModelRole.TTS, setOf(language))
+                    }
+                }.toSet()
+            } else emptySet()
+        }
+        private val outputSelections by lazy { selections + outputModels }
+        private val outputPackages by lazy { basePackages + store.catalog.requiredPackages(outputModels) }
+        private fun requiredPackages(speechOutputRequired: Boolean): Set<String> {
+            ensureOpen()
+            selectModels(if (speechOutputRequired) outputSelections else selections)
+            return if (speechOutputRequired) outputPackages else basePackages
+        }
+        // Recognition owns its dependencies. Output packages are resolved only on explicit demand.
+        override suspend fun install(speechOutputRequired: Boolean) = store.install(requiredPackages(speechOutputRequired))
+        override suspend fun isConversationReady(speechOutputRequired: Boolean): Boolean =
+            store.availability(requiredPackages(speechOutputRequired))
     }
 
     private class RecognitionResources(

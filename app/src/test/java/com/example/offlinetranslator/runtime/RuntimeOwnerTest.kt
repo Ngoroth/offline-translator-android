@@ -27,6 +27,74 @@ import java.util.concurrent.atomic.AtomicInteger
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class RuntimeOwnerTest {
+    @Test fun liveOutputPatchRetainsActiveOwnerAndDoesNotOpenGeneralSettingsGate() = runTest {
+        val observation = SupervisorJob()
+        val controller = RuntimeOwnerController(CoroutineScope(coroutineContext + observation))
+        val native = NativeResources().apply { ready = true }
+        val recognition = SelectedRecognition().apply { readinessState.value = SpeechRecognitionReadiness.READY }
+        val capture = SelectedCapture()
+        val owner = controller.replace {
+            conversationOwner(native, recognition, CoroutineScope(coroutineContext + SupervisorJob()), capture)
+        }
+        var saved = AppSettings(translationSetupComplete = true, ttsSpeedPercent = 115)
+        try {
+            owner.pipeline.start()
+            runCurrent()
+            assertTrue(owner.pipeline.state.value.captureActive)
+            assertFalse(controller.saveIfIdle({ true }) { saved = AppSettings() })
+            owner.pipeline.disableSpeechOutput()
+            assertTrue(controller.saveSpeechOutput(owner, { true }) {
+                saved = saved.copy(speechOutputEnabled = false)
+                true
+            })
+            assertTrue(controller.isCurrent(owner))
+            assertTrue(owner.pipeline.state.value.sessionActive)
+            assertTrue(owner.pipeline.state.value.captureActive)
+            assertFalse(saved.speechOutputEnabled)
+            assertEquals(115, saved.ttsSpeedPercent)
+            assertTrue(saved.translationSetupComplete)
+            assertEquals(1, capture.starts)
+            val barrier = CompletableDeferred<Unit>()
+            val holding = async(start = CoroutineStart.UNDISPATCHED) { controller.use(owner) { barrier.await() } }
+            var fresh = true
+            val stale = async { controller.saveSpeechOutput(owner, { fresh }) {
+                saved = saved.copy(speechOutputEnabled = true)
+                true
+            } }
+            runCurrent()
+            fresh = false
+            barrier.complete(Unit)
+            holding.await()
+            assertFalse(stale.await())
+            assertFalse(saved.speechOutputEnabled)
+            controller.release(owner)
+            val successor = controller.replace { TestOwner(2) }
+            assertFalse(controller.saveSpeechOutput(owner, { true }) { saved = AppSettings(); true })
+            assertFalse(controller.saveSpeechOutput(null, { true }) { saved = AppSettings(); true })
+            assertTrue(controller.isCurrent(successor))
+            assertFalse(saved.speechOutputEnabled)
+        } finally { controller.closeAndJoin(); observation.cancelAndJoin() }
+    }
+
+    @Test fun unownedOutputEscapePatchRejectsARevokedRequestWithoutConstructingAnOwner() = runTest {
+        val controller = RuntimeOwnerController(this)
+        var saved = AppSettings(speechOutputBackend = SpeechOutputBackend.PIPER,
+            languagePair = LanguagePair(LanguageCatalog.DUTCH, LanguageCatalog.ENGLISH))
+        assertFalse(controller.saveSpeechOutput(null, { false }) {
+            saved = saved.copy(speechOutputEnabled = false)
+            true
+        })
+        assertTrue(saved.speechOutputEnabled)
+        assertTrue(controller.saveSpeechOutput(null, { true }) {
+            saved = saved.copy(speechOutputEnabled = false)
+            true
+        })
+        assertFalse(saved.speechOutputEnabled)
+        assertEquals(LanguagePair(LanguageCatalog.DUTCH, LanguageCatalog.ENGLISH), saved.languagePair)
+        assertEquals(0L, controller.ownershipVersion.value)
+        controller.closeAndJoin()
+    }
+
     private class TestOwner(val id: Int) : RuntimeOwner {
         val busyState = MutableStateFlow(false)
         override val activity: StateFlow<Boolean> = busyState.asStateFlow()
@@ -880,17 +948,17 @@ class RuntimeOwnerTest {
         try {
             assertSame(native.models, owner.models.models)
             assertSame(recognition, owner.recognition)
-            assertFalse(owner.models.isConversationReady())
+            assertFalse(owner.models.isConversationReady(speechOutputRequired = true))
             assertEquals(0, native.installations)
             assertEquals(0, recognition.installations)
-            owner.models.install()
+            owner.models.install(speechOutputRequired = true)
             assertEquals(1, native.installations)
             assertEquals(1, recognition.installations)
-            assertTrue(owner.models.isConversationReady())
+            assertTrue(owner.models.isConversationReady(speechOutputRequired = true))
             recognition.readinessState.value = SpeechRecognitionReadiness.SCHEDULED
-            assertFalse(owner.models.isConversationReady())
+            assertFalse(owner.models.isConversationReady(speechOutputRequired = true))
             recognition.readinessState.value = SpeechRecognitionReadiness.READY
-            assertTrue(owner.models.isConversationReady())
+            assertTrue(owner.models.isConversationReady(speechOutputRequired = true))
             assertEquals(1, recognition.installations)
         } finally { owner.closeAndJoin().getOrThrow() }
         assertEquals(1, native.closes)
@@ -924,11 +992,11 @@ class RuntimeOwnerTest {
         val capture = SelectedCapture()
         val owner = conversationOwner(native, recognition, CoroutineScope(coroutineContext + SupervisorJob()), capture)
         try {
-            val failure = runCatching { owner.models.install() }.exceptionOrNull()
+            val failure = runCatching { owner.models.install(speechOutputRequired = true) }.exceptionOrNull()
             assertSame(recognition.installFailure, failure)
             assertTrue(native.ready)
             assertEquals(SpeechRecognitionReadiness.DOWNLOAD_FAILED, owner.recognition.readinessState.value)
-            assertFalse(owner.models.isConversationReady())
+            assertFalse(owner.models.isConversationReady(speechOutputRequired = true))
             assertEquals(1, native.installations)
             assertEquals(1, recognition.installations)
             assertEquals(0, capture.starts)
@@ -949,7 +1017,7 @@ class RuntimeOwnerTest {
         }
         try {
             val checking = async(start = CoroutineStart.UNDISPATCHED) {
-                controller.use(owner) { owner.models.isConversationReady() }
+                controller.use(owner) { owner.models.isConversationReady(speechOutputRequired = true) }
             }
             var built = false
             val replacement = async(start = CoroutineStart.UNDISPATCHED) {
@@ -979,8 +1047,8 @@ class RuntimeOwnerTest {
         var installations = 0
         var closes = 0
         override val models = MutableStateFlow<List<SpeechModelStatus>>(emptyList())
-        override suspend fun install() { installations++; ready = true }
-        override suspend fun isConversationReady() = ready
+        override suspend fun install(speechOutputRequired: Boolean) { installations++; ready = true }
+        override suspend fun isConversationReady(speechOutputRequired: Boolean) = ready
         override fun close() { closes++ }
     }
 
@@ -1030,6 +1098,7 @@ class RuntimeOwnerTest {
             override suspend fun speak(language: LanguageId, text: String, onPlaybackStarted: (SpeechPlaybackStart) -> Unit) =
                 error("No phrase in readiness tests")
             override fun interruptCurrent() = Unit
+            override fun throwIfReleaseFailed() = Unit
             override fun close() = Unit
         }, scope)
 }

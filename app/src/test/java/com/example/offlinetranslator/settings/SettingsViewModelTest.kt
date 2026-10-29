@@ -20,6 +20,34 @@ class SettingsViewModelTest {
     @get:Rule val temp = TemporaryFolder()
     private val frenchSpanish = LanguagePair(LanguageCatalog.FRENCH, LanguageCatalog.SPANISH)
 
+    @Test fun liveOutputChoiceUpdatesAnOpenDraftAndNormalApplyWhileResetRestoresOn() = runTest {
+        val dispatcher = StandardTestDispatcher(testScheduler)
+        Dispatchers.setMain(dispatcher)
+        val repo = AppSettingsRepository(File(temp.root, "output-draft.json"), dispatcher)
+        val vm = SettingsViewModel(repo, MutableStateFlow(true), { emptyList() },
+            { repo.save(it); true }, MutableStateFlow(false),
+            completeSetup = { error("Unexpected setup action") })
+        try {
+            runCurrent()
+            vm.beginEditing()
+            val stale = vm.state.value.draft.copy(ttsSpeedPercent = 120)
+            vm.updateDraft(stale)
+            assertTrue(repo.updateSpeechOutput(false) { true })
+            runCurrent()
+            assertFalse(vm.state.value.draft.speechOutputEnabled)
+            vm.updateDraft(stale)
+            assertFalse(vm.state.value.draft.speechOutputEnabled)
+            vm.apply()
+            runCurrent()
+            assertEquals(120, repo.current().ttsSpeedPercent)
+            assertFalse(repo.current().speechOutputEnabled)
+            vm.reset()
+            runCurrent()
+            assertTrue(repo.current().speechOutputEnabled)
+            assertEquals(AppSettings(), repo.current())
+        } finally { vm.viewModelScope.cancel(); repo.closeAndJoin(); Dispatchers.resetMain() }
+    }
+
     @Test fun invalidAdvancedDraftAndBusyApplyNeverPersist() = runTest {
         val dispatcher = StandardTestDispatcher(testScheduler)
         Dispatchers.setMain(dispatcher)

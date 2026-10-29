@@ -11,6 +11,7 @@ import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertSame
 import org.junit.Assert.assertThrows
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -400,7 +401,7 @@ class SherpaConversationSpeechOutputTest {
         }
     }
 
-    @Test fun interruptWithFailedPauseReleasesAudioWithoutThrowingThroughTheCaller() = runBlocking {
+    @Test fun interruptWithFailedPauseRetainsActualReleaseFaultAfterCancelledSynthesis() = runBlocking {
         val harness = OutputPlaybackHarness()
         lateinit var output: SherpaConversationSpeechOutput
         val voice = TestConversationVoice(generator = { _, callback ->
@@ -422,8 +423,12 @@ class SherpaConversationSpeechOutputTest {
             assertEquals(1, harness.tracks.single().flushCalls.get())
             assertEquals(1, harness.focuses.single().abandonCalls.get())
             assertEquals(0, voice.closeCalls.get())
+            val retained = assertThrows(IllegalStateException::class.java) { output.throwIfReleaseFailed() }
+            assertSame(retained, assertThrows(IllegalStateException::class.java) { output.throwIfReleaseFailed() })
+            val closeFailure = runCatching { output.closeAndJoin() }.exceptionOrNull()
+            assertTrue(generateSequence(closeFailure) { it.cause }.any { it === retained })
         } finally {
-            output.close()
+            runCatching { output.closeAndJoin() }
         }
         assertEquals(1, voice.closeCalls.get())
     }

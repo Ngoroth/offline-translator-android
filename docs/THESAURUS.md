@@ -74,16 +74,16 @@ skill: ubiquitous-language
 ## Terms
 
 ### App settings
-- **Definition**: Persisted user choices for the shared language pair, common translation engine, explicit Translation setup completion, speech output backend and speech-processing parameters.
+- **Definition**: Persisted user choices for the shared language pair, common translation engine, explicit Translation setup completion, speech output backend, whether speech output is enabled, and speech-processing parameters.
 - **NOT**: Installed models or the current processing phase; Whisper handles the selected recognition pair and Piper voices are selected automatically from the languages.
 - **Related**: Language pair, Speech output backend.
-- **Evidence**: `core/src/main/java/com/example/offlinetranslator/core/AppSettings.kt:8-22`, `RuntimeConfiguration.kt:23-46` in the same directory.
+- **Evidence**: `core/src/main/java/com/example/offlinetranslator/core/AppSettings.kt:13-35`.
 
 ### Conversation
-- **Definition**: Sequential processing of utterances in two selected languages with automatic translation direction and half-duplex speech output.
-- **NOT**: Text input or simultaneous listening and playback; recording pauses while the translation is played.
+- **Definition**: Sequential processing of utterances in two selected languages with automatic translation direction and optional half-duplex speech output.
+- **NOT**: Text input or simultaneous listening and playback; recording pauses for enabled output, not merely because recognition or translation is processing.
 - **Related**: Utterance recognition, Speech output, Conversation utterance.
-- **Evidence**: `core/src/main/java/com/example/offlinetranslator/core/ConversationPipeline.kt:51-58`.
+- **Evidence**: `core/src/main/java/com/example/offlinetranslator/core/ConversationPipeline.kt:46-79`.
 
 ### Conversation failure
 - **Definition**: A typed cause of failure during conversation preparation, capture, language identification, recognition, translation or playback.
@@ -92,8 +92,8 @@ skill: ubiquitous-language
 
 ### Conversation phase
 - **Definition**: The conversation pipeline's current activity: ready, preparing, listening, understanding, translating, speaking or error.
-- **NOT**: Utterance status or Conversation preparation; the phase belongs to the running pipeline.
-- **Evidence**: `core/src/main/java/com/example/offlinetranslator/core/ConversationPipeline.kt:23,41-44`.
+- **NOT**: Utterance status, Conversation preparation or microphone availability; phase describes pipeline activity, while fresh capture state determines whether the user can speak.
+- **Evidence**: `core/src/main/java/com/example/offlinetranslator/core/ConversationPipeline.kt:26-55`.
 
 ### Conversation preparation
 - **Definition**: The displayed state of explicit preparation for the selected languages, distinguishing checks, required user action, speech resources, translation preparation and errors.
@@ -204,10 +204,10 @@ skill: ubiquitous-language
 - **Evidence**: `core/src/main/java/com/example/offlinetranslator/core/SpeechModelRepository.kt:14-25`.
 
 ### Speech output
-- **Definition**: Local synthesis and playback of translated text in the target language, including the ability to interrupt current speech.
-- **NOT**: Speech capture or Translation engine; synthesis and audio presentation are parts of speech output, not synonyms for translation.
+- **Definition**: Optional local synthesis and playback of translated text in the target language, including interruption of current speech without discarding translated text.
+- **NOT**: Speech capture or Translation engine; disabling output skips synthesis and playback rather than merely setting speaker volume to zero.
 - **Related**: Speech output backend, Speech output readiness, Playback start.
-- **Evidence**: `core/src/main/java/com/example/offlinetranslator/core/ConversationEngines.kt:63-71`.
+- **Evidence**: `core/src/main/java/com/example/offlinetranslator/core/ConversationEngines.kt:49-60`, `ConversationPipeline.kt:78-107` in the same directory.
 
 ### Speech output backend
 - **Definition**: The explicit choice between Android system offline speech output and local Piper voices.
@@ -216,8 +216,8 @@ skill: ubiquitous-language
 
 ### Speech output readiness
 - **Definition**: Speech-output availability, distinguishing ready, missing local voice, engine unavailable and initialization failed states.
-- **NOT**: Translation model readiness or the presence of recognition models.
-- **Evidence**: `core/src/main/java/com/example/offlinetranslator/core/ConversationEngines.kt:61`.
+- **NOT**: Translation model readiness, recognition-model presence or the user's enabled/disabled choice; unavailable output does not block intentionally silent Conversation.
+- **Evidence**: `core/src/main/java/com/example/offlinetranslator/core/ConversationEngines.kt:49-60`, `app/src/main/java/com/example/offlinetranslator/conversation/ConversationViewModel.kt` (`resourcesReady`, `toggleSpeechOutput`).
 
 ### Speech resource package
 - **Definition**: An identifiable downloadable archive or file with a verifiable set of speech-resource files, size, source and license.

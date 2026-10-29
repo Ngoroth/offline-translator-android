@@ -501,6 +501,7 @@ class SystemConversationSpeechOutput internal constructor(
         releaseFailure?.let { throw it }
     }
 
+    override fun throwIfReleaseFailed(): Unit = thread.call { releaseFailure?.let { throw it }; Unit }
     override fun close(): Unit = thread.call {
         if (!closed) {
             closed = true

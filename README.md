@@ -20,13 +20,14 @@ Recorded on an emulator with networking disabled and languages prepared. Test au
 
 ## The experience
 
-Choose two languages, prepare their resources, and start a conversation. Either person can speak a turn; the app recognizes, translates and reads it aloud. Listening resumes after playback. **Text** uses the same language pair without the microphone.
+Choose two languages, prepare their resources, and start a conversation. Either person can speak a turn; the app recognizes and translates it. The speaker button beside Start/Stop enables or disables reading translations aloud. With speech output enabled, listening resumes after playback; with it disabled, synthesis and playback are skipped. **Text** uses the same language pair without the microphone.
 
 - **Translation choice:** first launch offers Fast (Google ML Kit) or Accurate (Tencent Hy-MT2), with one saved choice for Text and Conversation. These labels describe priorities, not guaranteed speed or correctness.
 - **Speech alternatives:** Whisper is the recognition default; Android on-device recognition and System/Piper output remain in Advanced settings. Piper retains its curated Russian/English coverage.
+- **Conversation controls:** the pinned lower panel shows actual microphone availability, independently of recognition/translation progress. Speech output is on by default and its choice survives reopening. Mute interrupts current speech without discarding translated text or stopping the conversation; enabling affects subsequent results, not old translations. Unavailable voices leave output off without switching providers or downloading implicitly. For supported Piper languages with missing voice data, Stop and explicitly prepare the voices; preparation keeps output off until you enable it again.
 - **17 languages:** a shared language pair across Conversation and Text, with a localized interface.
 
-Basic Settings contains translation choice, interface language and voice speed; Advanced contains recognition/service, output, end-of-speech silence and Reset. Reset immediately restores Tencent, Whisper and System output while preserving the language pair, interface language and completed setup. Opening, choosing or resetting does not download models or record. Current settings use schema 7 only; upgrading older settings is not supported in this development iteration.
+Basic Settings contains translation choice, interface language and voice speed; Advanced contains recognition/service, output, end-of-speech silence and Reset. Reset immediately restores Tencent, Whisper, System output and speech output on while preserving the language pair, interface language and completed setup. Ordinary Apply and pair changes preserve the latest speaker choice. Opening, choosing or resetting does not download models or record. Current settings use schema 7 only; older schemas are not supported in this development iteration. Schema-7 documents without the speaker flag default to on; older binaries cannot read the newly written field, so downgrading requires restoring their original settings first.
 
 The catalog is `en`, `vi`, `es`, `id`, `it`, `zh`, `ko`, `de`, `pl`, `pt`, `ru`, `th`, `tr`, `fr`, `hi`, `ja`, `nl`. Chinese means Mainland Simplified Mandarin. Dutch uses `nl` for ML Kit and `nl-NL` for Android recognition/output. Whisper covers the current 17 recognition codes through one shared Small INT8 download; it does not expand Piper voices or install System voices. Coverage is not quality qualification or proof of installed Android resources.
 
@@ -37,7 +38,10 @@ flowchart LR
     A[Microphone] --> B[Voice activity detection]
     B --> C["On-device recognition<br/>and selected-pair language resolution"]
     C --> D[Selected local translation]
-    D --> E[Local speech output]
+    D --> E[Translated text]
+    E --> F{Speech output enabled?}
+    F -->|Yes| G[Local synthesis and playback]
+    F -->|No| H[Continue without speech output]
 ```
 
 ML Kit can use English as an intermediary for non-English pairs. Source-language resolution follows the explicitly selected recognition backend's policy. Downloads are a separate, explicit preparation step—not part of inference.
@@ -147,7 +151,7 @@ main route opens; restart does not repeat completed setup.
 After installation:
 
 1. Choose the two languages.
-2. Use **Prepare languages** while online and resolve any missing system recognition or voice resources.
+2. Use **Prepare languages** while online and resolve missing recognition resources. With speech output enabled, also prepare the selected voices. Switch the speaker button off to converse without output-only voice requirements.
 3. Wait for readiness, then start Conversation and grant microphone permission—or use Text.
 4. Disconnect networking to use the prepared app offline.
 
@@ -158,7 +162,7 @@ After installation:
 
 To use System recognition instead of Whisper, explicitly select it in Settings and Apply. Its **Recognition service** preference defaults to **Android on-device service**; you can explicitly select the supported Google **Speech Recognition and Synthesis** service instead. Both selected recognition languages must be installed; use **Install recognition language data** on Conversation when needed. See [service requirements and offline-policy boundaries](docs/EXTENSIBILITY.md#selected-recognition-and-request-local-routing).
 
-Recognition and speech output are separate choices. **System offline speech** uses Android's default TTS engine and needs offline voices for both languages. For the reported GrapheneOS RU/EN setup, keep Google selected in Android's **Text-to-speech output → Preferred engine** as well as in the app's recognition setting. Switching the TTS default back to GrapheneOS Speech Services was reported to break Conversation; the exact error was not captured. There is no in-app TTS-engine selector.
+Recognition and speech output are separate choices. **System offline speech**, when enabled, uses Android's default TTS engine and needs offline voices for both languages. Disabling output does not replace missing recognition or translation resources. For the reported GrapheneOS RU/EN setup, keep Google selected in Android's **Text-to-speech output → Preferred engine** as well as in the app's recognition setting. Switching the TTS default back to GrapheneOS Speech Services was reported to break Conversation; the exact error was not captured. There is no in-app TTS-engine selector.
 
 ### Tencent model preparation and boundaries
 

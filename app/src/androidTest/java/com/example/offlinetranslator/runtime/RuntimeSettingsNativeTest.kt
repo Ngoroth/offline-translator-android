@@ -53,7 +53,9 @@ class RuntimeSettingsNativeTest {
                 pacedCapture = it
             }
         }
-        val viewModel = ConversationViewModel(owner, runtime.owners)
+        val viewModel = ConversationViewModel(owner, runtime.owners,
+            saveSpeechOutput = { enabled, fresh -> runtime.saveSpeechOutput(owner, enabled, fresh) },
+            speechOutputProblem = { runtime.speechOutputProblem(owner.config) })
 
         try {
             assertTrue("Selected speech resources must be ready", runtime.conversationReady(owner))

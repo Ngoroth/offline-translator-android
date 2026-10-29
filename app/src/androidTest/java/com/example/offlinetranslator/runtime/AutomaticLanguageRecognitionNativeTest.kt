@@ -39,7 +39,7 @@ class AutomaticLanguageRecognitionNativeTest {
             val resources = SelectedSpeechResources.forConversation(runtime.speechModels, config,
                 setOf(WhisperConversationRecognitionEngine.MODEL_ID))
             try {
-                assertTrue("Selected conversation resources must already be ready", resources.isConversationReady())
+                assertTrue("Selected conversation resources must already be ready", resources.isConversationReady(speechOutputRequired = true))
                 val engine = WhisperConversationRecognitionEngine(runtime.speechModels, config)
                 try {
                     withTimeout(120_000) { engine.prepare() }

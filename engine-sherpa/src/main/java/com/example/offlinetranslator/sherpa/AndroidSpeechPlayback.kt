@@ -30,6 +30,15 @@ internal class AndroidSpeechPlayback(
     private val ownerLock = Any()
     private val pcm = SpeechPcmBuffer()
     private var active: Session? = null
+    private var releaseFailure: Throwable? = null
+
+    fun throwIfReleaseFailed() { synchronized(ownerLock) { releaseFailure }?.let { throw it } }
+
+    private fun recordReleaseFailure(failure: Throwable) = synchronized(ownerLock) {
+        val previous = releaseFailure
+        if (previous == null) releaseFailure = failure
+        else if (previous !== failure) previous.addSuppressed(failure)
+    }
 
     fun open(
         register: (Session) -> Unit = {},
@@ -45,7 +54,11 @@ internal class AndroidSpeechPlayback(
                     active = it
                 }
             } catch (failure: Throwable) {
-                track.release()
+                try { track.release() } catch (closing: Throwable) {
+                    recordReleaseFailure(closing)
+                    if (closing !== failure) closing.addSuppressed(failure)
+                    throw closing
+                }
                 throw failure
             }
         }
@@ -247,6 +260,7 @@ internal class AndroidSpeechPlayback(
                     failure.addSuppressed(caught)
                 }
                 terminalFailure = failure
+                recordReleaseFailure(failure)
                 throw failure
             }
         }
@@ -281,13 +295,21 @@ internal class AndroidSpeechPlayback(
                     } finally {
                         if (!released) {
                             released = true
-                            track.release()
+                            try { track.release() } catch (failure: Throwable) {
+                                recordReleaseFailure(failure)
+                                throw failure
+                            }
                         }
                     }
                 }
             } finally {
                 try {
-                    synchronized(lock) { abandonFocusLocked() }
+                    synchronized(lock) {
+                        try { abandonFocusLocked() } catch (failure: Throwable) {
+                            recordReleaseFailure(failure)
+                            throw failure
+                        }
+                    }
                 } finally {
                     synchronized(ownerLock) {
                         if (active === this) {
