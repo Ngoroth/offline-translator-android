@@ -4,6 +4,14 @@ Notable capability, behavior and developer-facing compatibility changes. Entries
 
 ## Unreleased
 
+### Development prerelease 0.1.6
+
+- Text and Conversation automatically initialize verified installed models locally; downloads and repairs remain explicit Wi-Fi Prepare actions.
+- A compatible prepared translator is shared across foreground Text/Conversation switches, with awaited cancellation and safe release on backgrounding, memory pressure or configuration changes.
+- Removed false missing-model/preparation messages and layout jumps during warm screen switches without bypassing readiness or speech safeguards.
+- Shortened preparation hints in all 17 interface languages; full model details remain in Help, with size and download-network information retained in Settings.
+- Existing experimental recognition/translation quality and unqualified phone-performance limits remain applicable.
+
 ### Development prerelease 0.1.5
 
 ### Conversation controls — 2026-10-28
