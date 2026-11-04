@@ -160,22 +160,37 @@ class ConversationViewModel(
     private var sessionAction: Job? = null
     private var cleanupJob: Deferred<Result<Unit>>? = null
     private var foregroundCleanup: Job? = null
-    private var readinessJob: Job = checkReadiness()
+    private var readinessJob: Job = checkReadiness(prepareLocal = true)
 
-    private fun checkReadiness(recheckSystem: Boolean = false) = viewModelScope.launch {
+    private fun checkReadiness(recheckSystem: Boolean = false, prepareLocal: Boolean = false) = viewModelScope.launch {
         try {
             foregroundCleanup?.join()
             currentCoroutineContext().ensureActive()
             if (disposed || !foreground || !hasCurrentOwner) return@launch
-            val ready = owners.use(owner) { resourcesReady(recheckSystem) } ?: false
+            val ready = owners.use(owner) { resourcesReady(recheckSystem, prepareLocal) } ?: false
             currentCoroutineContext().ensureActive()
             mutableReady.value = ready && !disposed && foreground && hasCurrentOwner
+            if (!disposed && foreground && hasCurrentOwner && mutablePreparation.value == ConversationPreparation.TRANSLATION) {
+                mutablePreparation.value = ConversationPreparation.IDLE
+            }
         } catch (cancelled: CancellationException) {
+            if (!disposed && foreground && hasCurrentOwner && readinessJob === currentCoroutineContext()[Job] &&
+                preparationJob?.isActive != true && translationPreparation.value.phase == TranslationPreparationPhase.MISSING) {
+                mutableReady.value = false
+                mutablePreparationFailure.value = translationPreparation.value.lastFailure
+                mutablePreparation.value = ConversationPreparation.IDLE
+            }
             throw cancelled
-        } catch (_: Exception) {
-            mutableReady.value = false
+        } catch (failure: Exception) {
+            currentCoroutineContext().ensureActive()
+            if (!disposed && foreground && hasCurrentOwner) {
+                mutableReady.value = false
+                mutablePreparationFailure.value = failure as? TranslationFailure
+                mutablePreparation.value = ConversationPreparation.ERROR
+            }
         } finally {
-            if (!disposed && mutablePreparation.value == ConversationPreparation.CHECKING) {
+            if (!disposed && foreground && hasCurrentOwner && readinessJob === currentCoroutineContext()[Job] &&
+                preparationJob?.isActive != true && mutablePreparation.value == ConversationPreparation.CHECKING) {
                 mutablePreparation.value = ConversationPreparation.IDLE
             }
         }
@@ -205,6 +220,28 @@ class ConversationViewModel(
         recognitionReadiness.collect { readiness ->
             if (readiness != SpeechRecognitionReadiness.READY) {
                 mutableReady.value = false
+                if (state.value.sessionActive) stop()
+            }
+        }
+    }
+
+    private val translationObservation = viewModelScope.launch(start = CoroutineStart.UNDISPATCHED) {
+        var previous = translationPreparation.value
+        translationPreparation.collect { current ->
+            if (current == previous) return@collect
+            previous = current
+            if (disposed || !foreground || !hasCurrentOwner) return@collect
+            // Progress (including ML Kit availability's LOADING) is not an eviction signal.
+            if (current.phase in setOf(TranslationPreparationPhase.MISSING, TranslationPreparationPhase.FAILED) &&
+                (mutableReady.value || state.value.sessionActive ||
+                    (current.phase == TranslationPreparationPhase.FAILED && !readinessJob.isActive &&
+                        preparationJob?.isActive != true))) {
+                mutableReady.value = false
+                readinessJob.cancel()
+                preparationJob?.cancel()
+                mutablePreparationFailure.value = current.lastFailure
+                mutablePreparation.value = if (current.lastFailure != null) ConversationPreparation.ERROR
+                    else ConversationPreparation.IDLE
                 if (state.value.sessionActive) stop()
             }
         }
@@ -249,6 +286,12 @@ class ConversationViewModel(
                 mutablePreparation.value = if (ready && (!recoveringSpeechOutput || !speechOutputUnavailable.value))
                     ConversationPreparation.IDLE else ConversationPreparation.ERROR
             } catch (cancelled: CancellationException) {
+                if (!disposed && foreground && hasCurrentOwner && preparationJob === currentCoroutineContext()[Job] &&
+                    !readinessJob.isActive && translationPreparation.value.phase == TranslationPreparationPhase.MISSING) {
+                    mutableReady.value = false
+                    mutablePreparationFailure.value = translationPreparation.value.lastFailure
+                    mutablePreparation.value = ConversationPreparation.IDLE
+                }
                 throw cancelled
             } catch (failure: Exception) {
                 currentCoroutineContext().ensureActive()
@@ -316,9 +359,11 @@ class ConversationViewModel(
     }
 
     fun enterForeground() {
-        if (disposed) return
+        if (disposed || foreground) return
         foreground = true
-        refreshReadiness()
+        mutableReady.value = false
+        mutablePreparation.value = ConversationPreparation.CHECKING
+        readinessJob = checkReadiness(prepareLocal = true)
     }
 
     fun leaveForeground() {
@@ -354,7 +399,7 @@ class ConversationViewModel(
         sessionAction = barrier
     }
 
-    private suspend fun resourcesReady(recheckSystem: Boolean = false): Boolean {
+    private suspend fun resourcesReady(recheckSystem: Boolean = false, prepareLocal: Boolean = false): Boolean {
         pipeline.throwIfReleaseFailed()
         val required = speechOutputEnabled.value
         val output = if (!required) null else pipeline.checkSpeechOutput {
@@ -365,8 +410,16 @@ class ConversationViewModel(
         if (required == stillRequired) {
             mutableOutputReadiness.value = if (required || speechOutputUnavailable.value) output ?: mutableOutputReadiness.value else null
         }
-        return owner.models.isConversationReady(stillRequired) &&
-            owner.translation.modelAvailability() == ModelAvailability.READY && (!stillRequired || output == SpeechOutputReadiness.READY)
+        if (!owner.models.isConversationReady(stillRequired) ||
+            (stillRequired && output != SpeechOutputReadiness.READY)) return false
+        if (prepareLocal) {
+            currentCoroutineContext().ensureActive()
+            if (disposed || !foreground || !hasCurrentOwner) return false
+            mutablePreparationFailure.value = null
+            mutablePreparation.value = ConversationPreparation.TRANSLATION
+            return owner.translation.prepareLocal() == ModelAvailability.READY
+        }
+        return owner.translation.modelAvailability() == ModelAvailability.READY
     }
 
     /** One cleanup result survives route cancellation and propagates actual native teardown errors. */
@@ -388,6 +441,7 @@ class ConversationViewModel(
             readinessJob.join()
             readinessObservation.join()
             recognitionObservation.join()
+            translationObservation.join()
             preparing?.join()
             action?.join()
             outputAction?.join()
@@ -401,6 +455,7 @@ class ConversationViewModel(
         readinessJob.cancel()
         readinessObservation.cancel()
         recognitionObservation.cancel()
+        translationObservation.cancel()
         preparing?.cancel()
         result.start()
         return result

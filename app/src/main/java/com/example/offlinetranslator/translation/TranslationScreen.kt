@@ -34,6 +34,7 @@ import androidx.compose.ui.unit.dp
 import com.example.offlinetranslator.R
 import com.example.offlinetranslator.core.ConfigurationProblem
 import com.example.offlinetranslator.core.TranslationEngine
+import com.example.offlinetranslator.core.TranslationPreparationPhase
 import com.example.offlinetranslator.core.TranslationProviderDescriptor
 import com.example.offlinetranslator.ui.languageName
 import com.example.offlinetranslator.core.LanguagePair
@@ -76,6 +77,9 @@ fun TranslationScreen(
     Scaffold(contentWindowInsets = WindowInsets.safeDrawing) { padding ->
         val blocked = !ownerAvailable || languageChanging || languageChangeError == TranslationLanguageChangeError.OPEN ||
             languageChangeError == TranslationLanguageChangeError.TEARDOWN
+        val confirmedMissing = ownerAvailable && state.modelStatus == ModelUiStatus.MISSING &&
+            !state.operationInProgress && state.error == null && state.failure == null &&
+            state.preparation?.lastFailure == null && state.preparation?.phase != TranslationPreparationPhase.FAILED
         Column(
             modifier = Modifier.fillMaxSize().padding(padding).consumeWindowInsets(padding),
             horizontalAlignment = Alignment.CenterHorizontally,
@@ -125,7 +129,7 @@ fun TranslationScreen(
                 )
                 ResultPanel(state)
                 configurationProblem?.let { Text(configurationProblemMessage(it), color = MaterialTheme.colorScheme.error) }
-                StatusPanel(state)
+                StatusPanel(state, confirmedMissing)
                 }
             }
             Surface(tonalElevation = 3.dp) {
@@ -134,7 +138,8 @@ fun TranslationScreen(
                     verticalArrangement = Arrangement.spacedBy(8.dp),
                     horizontalAlignment = Alignment.CenterHorizontally,
                 ) {
-                    if (state.error != null) {
+                    if (state.error != null || state.failure != null || state.preparation?.lastFailure != null ||
+                        state.preparation?.phase == TranslationPreparationPhase.FAILED) {
                         Button(
                             onClick = onRetry,
                             enabled = !blocked,
@@ -142,7 +147,7 @@ fun TranslationScreen(
                         ) { Text(stringResource(R.string.retry_action)) }
                     }
                     ProviderAttribution(provider)
-                    TranslationActions(state, onPrepare, onTranslate, configurationProblem, blocked)
+                    TranslationActions(state, onPrepare, onTranslate, configurationProblem, blocked, confirmedMissing)
                 }
             }
         }
@@ -173,8 +178,18 @@ private fun ResultPanel(state: TranslationUiState) {
 }
 
 @Composable
-private fun StatusPanel(state: TranslationUiState) {
-    if (state.operationInProgress && !state.isPreparing) {
+private fun StatusPanel(state: TranslationUiState, confirmedMissing: Boolean) {
+    val preparation = state.preparation
+    val activePreparation = state.isPreparing || state.modelStatus in setOf(
+        ModelUiStatus.DOWNLOADING, ModelUiStatus.VERIFYING, ModelUiStatus.LOADING,
+    )
+    val visiblePreparation = preparation?.phase == TranslationPreparationPhase.FAILED ||
+        (!state.isTranslating && activePreparation && preparation?.phase in setOf(
+            TranslationPreparationPhase.VERIFYING, TranslationPreparationPhase.LOADING,
+            TranslationPreparationPhase.DOWNLOADING,
+        ))
+    if (state.isTranslating || (!visiblePreparation && state.modelStatus in setOf(
+            ModelUiStatus.DOWNLOADING, ModelUiStatus.VERIFYING, ModelUiStatus.LOADING))) {
         Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
             CircularProgressIndicator(
                 modifier = Modifier.height(24.dp).testTag(TranslationTestTags.PROGRESS),
@@ -182,7 +197,7 @@ private fun StatusPanel(state: TranslationUiState) {
             )
             Text(
                 when {
-                    state.modelStatus == ModelUiStatus.CHECKING -> stringResource(R.string.status_checking)
+                    state.isTranslating -> stringResource(R.string.status_translating)
                     state.modelStatus == ModelUiStatus.DOWNLOADING -> stringResource(R.string.status_downloading)
                     state.modelStatus == ModelUiStatus.VERIFYING -> stringResource(R.string.translation_verifying)
                     state.modelStatus == ModelUiStatus.LOADING -> stringResource(R.string.translation_loading)
@@ -192,14 +207,16 @@ private fun StatusPanel(state: TranslationUiState) {
         }
     }
 
-    if (state.isPreparing && state.preparation != null) {
-        com.example.offlinetranslator.ui.TranslationPreparation(state.preparation)
+    if (visiblePreparation && preparation != null) {
+        com.example.offlinetranslator.ui.TranslationPreparation(preparation)
+    } else preparation?.lastFailure?.let {
+        Text(stringResource(com.example.offlinetranslator.ui.translationFailureLabel(it)), color = MaterialTheme.colorScheme.error)
     }
     if (state.failure != null) {
         Text(stringResource(com.example.offlinetranslator.ui.translationFailureLabel(state.failure)), color = MaterialTheme.colorScheme.error)
     } else state.error?.let { Text(errorMessage(it), color = MaterialTheme.colorScheme.error) }
-    if (state.modelStatus == ModelUiStatus.MISSING && state.error == null) {
-        Text(stringResource(if (state.provider?.id == "tencent") R.string.tencent_model_explanation else R.string.model_missing_explanation))
+    if (confirmedMissing) {
+        Text(stringResource(if (state.provider?.id == "tencent") R.string.model_prepare_hint else R.string.model_missing_explanation))
     }
 }
 
@@ -210,9 +227,10 @@ private fun TranslationActions(
     onTranslate: () -> Unit,
     configurationProblem: ConfigurationProblem?,
     blocked: Boolean,
+    confirmedMissing: Boolean,
 ) {
 
-    if (state.modelStatus == ModelUiStatus.MISSING && state.error == null) {
+    if (confirmedMissing) {
         Button(
             onClick = onPrepare,
             enabled = !blocked && configurationProblem == null && state.canPrepare,
@@ -220,7 +238,7 @@ private fun TranslationActions(
         ) { Text(stringResource(R.string.prepare_action)) }
     }
 
-    if (state.modelStatus == ModelUiStatus.READY) {
+    if (state.modelStatus == ModelUiStatus.READY || state.modelStatus == ModelUiStatus.CHECKING) {
         Button(
             onClick = onTranslate,
             enabled = !blocked && configurationProblem == null && state.canTranslate,

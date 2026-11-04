@@ -29,7 +29,7 @@ import kotlinx.coroutines.sync.withLock
 import java.io.File
 import kotlin.coroutines.coroutineContext
 
-/** Process metadata/settings/installers; native owners live only for the selected foreground route. */
+/** Process metadata/settings/installers and one retained translator; speech stays route-owned. */
 class AppRuntime private constructor(context: Context) {
     private val context = context.applicationContext
     private val job = SupervisorJob()
@@ -40,7 +40,12 @@ class AppRuntime private constructor(context: Context) {
     val coordinator = MlKitPreparationCoordinator(this.context)
     private val tencentArtifacts = com.example.offlinetranslator.tencent.TencentArtifactPreparation(this.context)
     val registry = TranslationEngineRegistry(this.context, coordinator, tencentArtifacts)
+    private val translationLifetime = TranslationEngineLifetime(scope, registry)
     internal val owners = RuntimeOwnerController(scope)
+
+    fun enterForeground() = translationLifetime.enterForeground()
+    fun leaveForeground() = translationLifetime.leaveForeground()
+    fun trimMemory() = translationLifetime.trimMemory()
     internal val conversationCaptureFactory: (SpeechModelStore, ConversationSessionConfig) -> SpeechCaptureEngine =
         { store, selected -> SherpaSpeechCaptureEngine(this.context, store, selected.vadModelId, selected.vadMinSilenceMs) }
     val busy = owners.busy
@@ -87,7 +92,11 @@ class AppRuntime private constructor(context: Context) {
                     else -> false
                 }
             },
-        ) { settings.save(latestPatch()) }
+        ) {
+            val selected = latestPatch()
+            translationLifetime.invalidateSelection(selected.translationEngineId, selected.languagePair)
+            settings.save(selected)
+        }
     }
     /** Latest-value patch only: never replace an owner or relax the general settings gate. */
     suspend fun saveSpeechOutput(
@@ -143,6 +152,7 @@ class AppRuntime private constructor(context: Context) {
             val changed = latest.copy(languagePair = selectedPair)
             requireValid(changed)
             coroutineContext.ensureActive()
+            translationLifetime.invalidateSelection(changed.translationEngineId, changed.languagePair)
             settings.save(changed)
             true
         }
@@ -153,7 +163,7 @@ class AppRuntime private constructor(context: Context) {
         val current = settings.current()
         requireTextValid(current)
         if (current.textConfig() != config) throw CancellationException("Stale text configuration")
-        TextRuntimeOwner(config, registry.create(config.engineId, setOf(config.pair)))
+        TextRuntimeOwner(config, translationLifetime.lease(config.engineId, setOf(config.pair)))
     }
 
     suspend fun createTextOwnerIfUnowned(config: TextRuntimeConfig): TextRuntimeOwner? = owners.createIfUnowned(
@@ -165,7 +175,7 @@ class AppRuntime private constructor(context: Context) {
                 true
             }
         },
-        build = { TextRuntimeOwner(config, registry.create(config.engineId, setOf(config.pair))) },
+        build = { TextRuntimeOwner(config, translationLifetime.lease(config.engineId, setOf(config.pair))) },
     )
 
     suspend fun createConversationOwner(
@@ -207,7 +217,7 @@ class AppRuntime private constructor(context: Context) {
         try {
             val recognitionModelIds = recognitionModelIds(config)
             models = SelectedSpeechResources.forConversation(speechModels, config, recognitionModelIds)
-            translation = registry.create(config.engineId, config.pairs)
+            translation = translationLifetime.lease(config.engineId, config.pairs)
             capture = captureFactory(speechModels, config)
             recognition = when (config.speechRecognitionBackend) {
                 SpeechRecognitionBackend.SYSTEM_OFFLINE -> AndroidConversationRecognitionEngine(context, config)
@@ -278,10 +288,14 @@ class AppRuntime private constructor(context: Context) {
     suspend fun closeAndJoin() {
         val result = withContext(NonCancellable) {
             closed = true
+            translationLifetime.leaveForeground()
             closeLock.withLock {
                 closeResult?.let { return@withLock it }
                 var failure: Throwable? = null
                 try { owners.closeAndJoin() } catch (closing: Throwable) {
+                    failure = appendReleaseFailure(failure, closing)
+                }
+                try { translationLifetime.closeAndJoin() } catch (closing: Throwable) {
                     failure = appendReleaseFailure(failure, closing)
                 }
                 try { settings.closeAndJoin() } catch (closing: Throwable) {

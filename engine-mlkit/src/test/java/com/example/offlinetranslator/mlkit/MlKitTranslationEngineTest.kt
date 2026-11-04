@@ -732,6 +732,52 @@ class MlKitTranslationEngineTest {
         }
     }
 
+    @Test fun awaitIdleDrainsCancelledSdkInferenceWithoutClosingReusableClient() = runTest {
+        val clients = ControlledClients(pending = true)
+        val engine = MlKitTranslationEngine(setOf(enDe), coordinator(ControlledModels(setOf(de))), clients::create)
+        val call = async { engine.translate(enDe, "first") }
+        runCurrent()
+        call.cancelAndJoin()
+        val idle = async { engine.awaitIdle() }
+        try {
+            runCurrent()
+            val client = clients.created.getValue(enDe)
+            assertFalse(idle.isCompleted)
+            assertEquals(0, client.closeCalls)
+            client.tasks.single().setResult("actual completion")
+            idle.await()
+            assertEquals(0, client.closeCalls)
+            client.pending = false
+            assertEquals("translated", engine.translate(enDe, "successor"))
+        } finally {
+            clients.finishPending()
+            idle.cancelAndJoin()
+            engine.closeAndJoin()
+        }
+    }
+
+    @Test fun awaitIdleDrainsCancelledPreparationWarmupWithoutLockInversion() = runTest {
+        val clients = ControlledClients(pending = true)
+        val engine = MlKitTranslationEngine(setOf(enDe), coordinator(ControlledModels(setOf(de))), clients::create)
+        val preparing = async { engine.prepare() }
+        runCurrent()
+        val idle = async { engine.awaitIdle() }
+        runCurrent()
+        assertFalse(idle.isCompleted)
+        preparing.cancelAndJoin()
+        try {
+            runCurrent()
+            assertFalse(idle.isCompleted)
+            clients.finishPending()
+            idle.await()
+            assertEquals(0, clients.created.getValue(enDe).closeCalls)
+        } finally {
+            clients.finishPending()
+            idle.cancelAndJoin()
+            engine.closeAndJoin()
+        }
+    }
+
     @Test fun cancelledWarmupStillHoldsActualClientLeaseUntilSdkTaskFinishes() = runTest {
         val clients = ControlledClients(pending = true)
         val engine = MlKitTranslationEngine(setOf(enDe), coordinator(ControlledModels(setOf(de))), clients::create)

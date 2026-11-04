@@ -194,7 +194,9 @@
     <string name="translation_limit_error">Vượt giới hạn ngữ cảnh hoặc đầu ra. Rút ngắn văn bản nguồn; không giữ bản dịch chưa hoàn tất.</string>
     <string name="translation_encoding_error">Nguồn chứa Unicode không hợp lệ. Sửa văn bản và thử lại.</string>
     <string name="translation_timeout">Chuẩn bị dịch mất quá lâu. Kiểm tra trạng thái chuẩn bị và thử lại.</string>
-    <string name="tencent_model_explanation">Tencent Hy-MT2 dùng một mô hình 1,13 GB cho mọi ngôn ngữ, chỉ tải bằng Chuẩn bị qua Wi‑Fi. Sau khi mở lại cũng cần chuẩn bị cục bộ. Có thể cần vài GB bộ nhớ; chất lượng và hiệu năng trên điện thoại chưa được xác nhận.</string>
+    <string name="model_prepare_hint">Chuẩn bị mô hình.</string>
+    <string name="tencent_model_download_hint">1,13 GB · tải qua Wi‑Fi</string>
+    <string name="tencent_model_explanation">Tencent Hy-MT2 dùng một mô hình 1,13 GB cho mọi ngôn ngữ, chỉ tải bằng Chuẩn bị qua Wi‑Fi. Sau khi mở lại, Hội thoại tự khởi tạo mô hình đã cài đặt và xác minh khi tài nguyên giọng nói cần thiết đã sẵn sàng cục bộ, không tự tải xuống hoặc sửa chữa. Văn bản cũng tự khởi tạo mô hình đã cài đặt và xác minh khi vào; tải xuống và sửa chữa cần nhấn Chuẩn bị rõ ràng qua Wi‑Fi; cả hai chế độ chỉ khởi tạo cục bộ khi cần. Với cùng nhà cung cấp và cặp hai ngôn ngữ đã chọn, Văn bản và Hội thoại ở tiền cảnh dùng chung bộ dịch đã chuẩn bị, không tải lại hay làm nóng lại khi chuyển chế độ. Micrô và các thành phần giọng nói vẫn đóng khi rời Hội thoại. Bộ dịch được lưu đệm sẽ được giải phóng khi ứng dụng vào nền, khi có áp lực bộ nhớ hoặc khi đổi nhà cung cấp hay cặp ngôn ngữ; khi quay lại, mô hình đã cài đặt tự khởi tạo cục bộ nếu cần. Có thể cần vài GB bộ nhớ; chất lượng và hiệu năng trên điện thoại chưa được xác nhận.</string>
     <string name="settings_recognition_service">Dịch vụ nhận dạng giọng nói</string>
     <string name="recognition_service_on_device">Dịch vụ trên thiết bị của Android</string>
     <string name="conversation_recognition_incompatible_service">Dịch vụ nhận dạng đã chọn chưa được xác nhận phù hợp cho hội thoại ngoại tuyến. Hãy chọn dịch vụ tương thích trong cài đặt nâng cao.</string>

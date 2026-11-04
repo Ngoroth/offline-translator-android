@@ -137,13 +137,139 @@ class TranslationScreenTest {
         compose.onNodeWithTag(TranslationTestTags.TRANSLATE).assertDoesNotExist()
     }
 
-    @Test fun checkingStateShowsProgressAndBlocksPrimaryActions() {
+    @Test fun checkingStateIsNeutralAndBlocksPrimaryActions() {
         show(TranslationUiState(modelStatus = ModelUiStatus.CHECKING))
 
-        compose.onNodeWithTag(TranslationTestTags.PROGRESS).assertExists()
+        compose.onNodeWithTag(TranslationTestTags.PROGRESS).assertDoesNotExist()
         compose.onNodeWithTag(TranslationTestTags.INPUT).assertIsNotEnabled()
         compose.onNodeWithTag(TranslationTestTags.PREPARE).assertDoesNotExist()
-        compose.onNodeWithTag(TranslationTestTags.TRANSLATE).assertDoesNotExist()
+        compose.onNodeWithTag(TranslationTestTags.TRANSLATE).assertIsNotEnabled()
+    }
+
+    @Test fun pendingFramesKeepTranslateBoundsAndNeverClaimReadiness() {
+        checkPendingFrames(compact = false)
+    }
+
+    @Test fun compactLargeFontPendingFramesKeepTranslateBoundsAndNeverClaimReadiness() {
+        checkPendingFrames(compact = true)
+    }
+
+    private fun checkPendingFrames(compact: Boolean) {
+        val state = mutableStateOf(TranslationUiState(input = "hello", modelStatus = ModelUiStatus.CHECKING,
+            provider = TencentTranslationEngine.descriptor))
+        val owner = mutableStateOf(false)
+        var translations = 0
+        val context = InstrumentationRegistry.getInstrumentation().targetContext
+        compose.setContent {
+            val density = LocalDensity.current
+            CompositionLocalProvider(LocalDensity provides Density(density.density, if (compact) 2f else 1f)) {
+                MaterialTheme {
+                    Box(if (compact) Modifier.fillMaxWidth().height(260.dp) else Modifier.fillMaxWidth()) {
+                        TranslationScreen(state.value, {}, {}, {}, { translations++ }, {}, homeControls = {},
+                            ownerAvailable = owner.value)
+                    }
+                }
+            }
+        }
+        var bounds: Rect? = null
+        fun assertPendingFrame() {
+            compose.onNodeWithTag(TranslationTestTags.PROGRESS).assertDoesNotExist()
+            compose.onNodeWithTag(TranslationTestTags.PREPARE).assertDoesNotExist()
+            for (label in listOf(R.string.tencent_model_explanation, R.string.model_prepare_hint, R.string.model_missing_explanation,
+                R.string.status_checking, R.string.conversation_resource_ready)) {
+                compose.onNodeWithText(context.getString(label)).assertDoesNotExist()
+            }
+            compose.onNode(SemanticsMatcher.keyIsDefined(SemanticsProperties.ProgressBarRangeInfo)).assertDoesNotExist()
+            compose.onNodeWithTag(TranslationTestTags.INPUT).assertIsNotEnabled()
+            val action = compose.onNodeWithTag(TranslationTestTags.TRANSLATE)
+                .assertIsDisplayed().assertHeightIsAtLeast(48.dp).assertIsNotEnabled()
+            val actual = action.fetchSemanticsNode().boundsInRoot
+            bounds?.let { assertSameBounds("Pending Translate slot", it, actual) } ?: run { bounds = actual }
+            action.performClick()
+            compose.runOnIdle { assertEquals(0, translations) }
+        }
+        assertPendingFrame()
+        for (phase in listOf(null, com.example.offlinetranslator.core.TranslationPreparationPhase.MISSING,
+            com.example.offlinetranslator.core.TranslationPreparationPhase.CHECKING,
+            com.example.offlinetranslator.core.TranslationPreparationPhase.READY)) {
+            compose.runOnIdle {
+                owner.value = true
+                state.value = state.value.copy(isPreparing = true,
+                    preparation = phase?.let { com.example.offlinetranslator.core.TranslationPreparationState(it) })
+            }
+            assertPendingFrame()
+        }
+        compose.runOnIdle {
+            state.value = state.value.copy(modelStatus = ModelUiStatus.READY, isPreparing = false, preparation = null)
+            owner.value = false
+        }
+        compose.onNodeWithTag(TranslationTestTags.TRANSLATE).assertIsNotEnabled().performClick()
+        compose.runOnIdle { assertEquals(0, translations); owner.value = true }
+        val ready = compose.onNodeWithTag(TranslationTestTags.TRANSLATE).assertIsDisplayed().assertIsEnabled()
+        assertSameBounds("READY Translate slot", requireNotNull(bounds), ready.fetchSemanticsNode().boundsInRoot)
+        ready.performClick()
+        compose.runOnIdle { assertEquals(1, translations) }
+    }
+
+    @Test fun actualPreparationPhasesAndTypedFailureRemainVisibleAndRetryable() {
+        val state = mutableStateOf(TranslationUiState(input = "hello", modelStatus = ModelUiStatus.CHECKING,
+            isPreparing = true))
+        var retries = 0
+        var prepares = 0
+        val context = InstrumentationRegistry.getInstrumentation().targetContext
+        compose.setContent { MaterialTheme {
+            TranslationScreen(state.value, {}, {}, { prepares++ }, {}, { retries++ }, homeControls = {})
+        } }
+        for ((phase, label) in listOf(
+            com.example.offlinetranslator.core.TranslationPreparationPhase.VERIFYING to R.string.translation_verifying,
+            com.example.offlinetranslator.core.TranslationPreparationPhase.LOADING to R.string.translation_loading,
+            com.example.offlinetranslator.core.TranslationPreparationPhase.DOWNLOADING to R.string.status_downloading)) {
+            for (knownBytes in listOf(false, true)) {
+                compose.runOnIdle { state.value = state.value.copy(preparation =
+                    com.example.offlinetranslator.core.TranslationPreparationState(phase,
+                        downloadedBytes = if (knownBytes) 25 else null, totalBytes = if (knownBytes) 100 else null)) }
+                compose.onNodeWithText(context.getString(label)).performScrollTo().assertIsDisplayed()
+                if (phase == com.example.offlinetranslator.core.TranslationPreparationPhase.DOWNLOADING && knownBytes) {
+                    compose.onNodeWithText(context.getString(R.string.translation_download_bytes, 25L, 100L))
+                        .performScrollTo().assertIsDisplayed()
+                }
+                compose.onNodeWithTag(TranslationTestTags.TRANSLATE).assertIsNotEnabled()
+            }
+        }
+        val failure = com.example.offlinetranslator.core.TranslationFailure.RuntimeLoad()
+        compose.runOnIdle { state.value = state.value.copy(error = TranslationUiError.PREPARATION_FAILED,
+            preparation = com.example.offlinetranslator.core.TranslationPreparationState(
+                com.example.offlinetranslator.core.TranslationPreparationPhase.FAILED, lastFailure = failure)) }
+        compose.onNodeWithText(context.getString(R.string.translation_runtime_error)).performScrollTo().assertIsDisplayed()
+        compose.onNodeWithTag(TranslationTestTags.RETRY).assertIsEnabled().performClick()
+        compose.runOnIdle {
+            assertEquals(1, retries)
+            state.value = TranslationUiState(modelStatus = ModelUiStatus.MISSING, provider = TencentTranslationEngine.descriptor)
+        }
+        compose.onNodeWithText(context.getString(R.string.model_prepare_hint)).performScrollTo().assertIsDisplayed()
+        compose.onNodeWithTag(TranslationTestTags.PREPARE).assertIsEnabled().performClick()
+        compose.runOnIdle { assertEquals(1, prepares) }
+    }
+
+    @Test fun completedPreparationMetadataDoesNotInventNewWork() {
+        val state = show(TranslationUiState(input = "hello", modelStatus = ModelUiStatus.READY,
+            preparation = com.example.offlinetranslator.core.TranslationPreparationState(
+                com.example.offlinetranslator.core.TranslationPreparationPhase.LOADING)))
+        val context = InstrumentationRegistry.getInstrumentation().targetContext
+        for ((phase, label) in listOf(
+            com.example.offlinetranslator.core.TranslationPreparationPhase.LOADING to R.string.translation_loading,
+            com.example.offlinetranslator.core.TranslationPreparationPhase.VERIFYING to R.string.translation_verifying,
+            com.example.offlinetranslator.core.TranslationPreparationPhase.DOWNLOADING to R.string.status_downloading)) {
+            compose.runOnIdle { state.value = state.value.copy(preparation =
+                com.example.offlinetranslator.core.TranslationPreparationState(phase)) }
+            compose.onNodeWithText(context.getString(label)).assertDoesNotExist()
+            compose.onNode(SemanticsMatcher.keyIsDefined(SemanticsProperties.ProgressBarRangeInfo)).assertDoesNotExist()
+            compose.onNodeWithTag(TranslationTestTags.TRANSLATE).assertIsEnabled()
+        }
+        compose.runOnIdle { state.value = state.value.copy(isTranslating = true) }
+        compose.onNodeWithTag(TranslationTestTags.PROGRESS).assertExists()
+        compose.onNodeWithText(context.getString(R.string.status_translating)).assertIsDisplayed()
+        compose.onNodeWithText(context.getString(R.string.status_downloading)).assertDoesNotExist()
     }
 
     @Test fun downloadingAndTranslatingHaveProgressAndBlockActions() {

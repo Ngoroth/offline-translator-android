@@ -162,27 +162,54 @@ fun ConversationScreen(
     val languageBlocked = languageChangeError == ConversationLanguageChangeError.TEARDOWN ||
         languageChangeError == ConversationLanguageChangeError.OPEN
     val canEditLanguages = languageSelectionEnabled && !languageChanging && !languageBlocked && !preparing
+    val visibleTranslationPreparation = translationPreparation?.phase ==
+        com.example.offlinetranslator.core.TranslationPreparationPhase.FAILED ||
+        (ownerAvailable && preparing && translationPreparation?.phase in setOf(
+            com.example.offlinetranslator.core.TranslationPreparationPhase.VERIFYING,
+            com.example.offlinetranslator.core.TranslationPreparationPhase.LOADING,
+            com.example.offlinetranslator.core.TranslationPreparationPhase.DOWNLOADING,
+        ))
+    val preparationWorkVisible = preparation == ConversationPreparation.INSTALLING ||
+        (visibleTranslationPreparation && translationPreparation?.phase !=
+            com.example.offlinetranslator.core.TranslationPreparationPhase.FAILED)
+    val confirmedMissing = ownerAvailable && preparation == ConversationPreparation.IDLE && !ready
+    val outputRecoveryVisible = speechOutputEnabled || speechOutputUnavailable
+    val preparingSpeechOutput = !systemOutput && outputRecoveryVisible && speechOutputProblem == null &&
+        outputReadiness != null && outputReadiness != SpeechOutputReadiness.READY
+    val preparationRecoveryVisible = confirmedMissing || preparation == ConversationPreparation.ERROR ||
+        visibleTranslationPreparation || preparationFailure != null || translationPreparation?.lastFailure != null ||
+        preparation == ConversationPreparation.INSTALLING || preparingSpeechOutput ||
+        (systemRecognition && recognitionReadiness != null && recognitionReadiness != SpeechRecognitionReadiness.READY)
+    val recoveryVisible = preparationRecoveryVisible || configurationProblem != null || permissionDenied ||
+        languageChangeError != null || (outputRecoveryVisible && installError) || state.failure != null ||
+        state.translationFailure != null || state.phase == ConversationPhase.ERROR ||
+        speechOutputUnavailable || speechOutputSaveError || speechOutputChanging ||
+        (outputRecoveryVisible && (speechOutputProblem != null ||
+            (outputReadiness != null && outputReadiness != SpeechOutputReadiness.READY))) || recognitionInstallError
     val captureActive = state.captureActive && state.sessionActive && ownerAvailable &&
         !languageChanging && !languageBlocked
     val captureStatus = when {
         captureActive -> R.string.conversation_capture_active
         state.failure != null || state.phase == ConversationPhase.ERROR || permissionDenied || languageBlocked ->
             R.string.conversation_capture_stopped
-        state.sessionActive || preparing || languageChanging -> R.string.conversation_capture_wait
+        state.sessionActive || preparationWorkVisible || languageChanging -> R.string.conversation_capture_wait
         else -> R.string.conversation_capture_off
     }
     val captureReason = if (!captureActive && captureStatus == R.string.conversation_capture_wait) when {
         languageChanging -> R.string.conversation_languages_changing
-        preparing -> preparationLabel(preparation)
-        state.phase == ConversationPhase.SPEAKING -> R.string.conversation_speaking
-        state.phase == ConversationPhase.PREPARING -> R.string.conversation_phase_preparing
-        state.phase == ConversationPhase.UNDERSTANDING -> R.string.conversation_understanding
-        state.phase == ConversationPhase.TRANSLATING -> R.string.conversation_translating
+        state.sessionActive && state.phase == ConversationPhase.SPEAKING -> R.string.conversation_speaking
+        state.sessionActive && state.phase == ConversationPhase.PREPARING -> R.string.conversation_phase_preparing
+        state.sessionActive && state.phase == ConversationPhase.UNDERSTANDING -> R.string.conversation_understanding
+        state.sessionActive && state.phase == ConversationPhase.TRANSLATING -> R.string.conversation_translating
+        preparationWorkVisible -> if (preparation == ConversationPreparation.INSTALLING)
+            preparationLabel(preparation) else when (translationPreparation?.phase) {
+                com.example.offlinetranslator.core.TranslationPreparationPhase.VERIFYING -> R.string.translation_verifying
+                com.example.offlinetranslator.core.TranslationPreparationPhase.LOADING -> R.string.translation_loading
+                else -> R.string.status_downloading
+            }
         else -> R.string.conversation_capture_paused
     } else null
-    val outputRecoveryVisible = speechOutputEnabled || speechOutputUnavailable
-    val preparingSpeechOutput = !systemOutput && outputRecoveryVisible && speechOutputProblem == null &&
-        outputReadiness != null && outputReadiness != SpeechOutputReadiness.READY
+
     val outputState = stringResource(if (speechOutputEnabled) R.string.conversation_output_on else R.string.conversation_output_off)
     val outputAction = stringResource(if (speechOutputEnabled) R.string.conversation_output_disable else R.string.conversation_output_enable)
     val sessionActionDescription = stringResource(if (state.sessionActive) R.string.conversation_stop else R.string.conversation_start)
@@ -226,7 +253,7 @@ fun ConversationScreen(
                         modifier = Modifier.testTag(ConversationTestTags.LANGUAGE_CHANGE_ERROR),
                     )
                 }
-                if (systemRecognition && recognitionReadiness != SpeechRecognitionReadiness.READY) {
+                if (systemRecognition && recognitionReadiness != null && recognitionReadiness != SpeechRecognitionReadiness.READY) {
                     Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         recognitionReadiness?.let {
                             Text(stringResource(recognitionReadinessLabel(it, speechRecognitionService != null)),
@@ -343,20 +370,22 @@ fun ConversationScreen(
                     Text(stringResource(R.string.conversation_dropped, state.droppedSegments),
                         color = MaterialTheme.colorScheme.error, modifier = Modifier.testTag(ConversationTestTags.DROPPED))
                 }
-                if (configurationProblem == null && (!ready ||
-                    (systemRecognition && recognitionReadiness != SpeechRecognitionReadiness.READY) ||
-                    preparing || preparation == ConversationPreparation.ERROR || preparingSpeechOutput)) {
+                if (configurationProblem == null && preparationRecoveryVisible) {
                     Card(Modifier.fillMaxWidth().testTag(ConversationTestTags.PREPARATION)) {
                         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                            Text(stringResource(preparationLabel(preparation)), style = MaterialTheme.typography.bodyMedium,
-                                color = if (preparation == ConversationPreparation.ERROR) MaterialTheme.colorScheme.error
-                                    else MaterialTheme.colorScheme.onSurface)
-                            if (provider?.id == "tencent" && !preparing) Text(stringResource(R.string.tencent_model_explanation))
-                            if (translationPreparation != null && (preparation == ConversationPreparation.TRANSLATION ||
-                                translationPreparation.phase == com.example.offlinetranslator.core.TranslationPreparationPhase.VERIFYING ||
-                                translationPreparation.phase == com.example.offlinetranslator.core.TranslationPreparationPhase.FAILED)) {
+                            if (preparation == ConversationPreparation.INSTALLING ||
+                                preparation == ConversationPreparation.ERROR || confirmedMissing) {
+                                Text(stringResource(preparationLabel(preparation)), style = MaterialTheme.typography.bodyMedium,
+                                    color = if (preparation == ConversationPreparation.ERROR) MaterialTheme.colorScheme.error
+                                        else MaterialTheme.colorScheme.onSurface)
+                            }
+                            if (provider?.id == "tencent" && confirmedMissing) Text(stringResource(R.string.model_prepare_hint))
+                            if (translationPreparation != null && visibleTranslationPreparation) {
                                 com.example.offlinetranslator.ui.TranslationPreparation(translationPreparation)
-                            } else preparationFailure?.let {
+                            } else translationPreparation?.lastFailure?.let {
+                                Text(stringResource(com.example.offlinetranslator.ui.translationFailureLabel(it)), color = MaterialTheme.colorScheme.error)
+                            }
+                            preparationFailure?.let {
                                 Text(stringResource(com.example.offlinetranslator.ui.translationFailureLabel(it)), color = MaterialTheme.colorScheme.error)
                             }
                             if (preparation == ConversationPreparation.INSTALLING) {
@@ -394,11 +423,7 @@ fun ConversationScreen(
                     TranscriptCard(current, primary = true)
                     previous?.let { TranscriptCard(it, primary = false) }
                 } else {
-                    val recoveryVisible = !ready || preparing || configurationProblem != null || permissionDenied ||
-                        languageChangeError != null || (outputRecoveryVisible && installError) || state.failure != null ||
-                        speechOutputUnavailable || speechOutputSaveError || speechOutputChanging ||
-                        (outputRecoveryVisible && outputReadiness != null && outputReadiness != SpeechOutputReadiness.READY) ||
-                        (systemRecognition && recognitionReadiness != SpeechRecognitionReadiness.READY)
+
                     Column(
                         Modifier.fillMaxWidth().heightIn(min = if (recoveryVisible) 0.dp else emptyHeight)
                             .testTag(ConversationTestTags.EMPTY_STATE).padding(vertical = 16.dp),

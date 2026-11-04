@@ -233,7 +233,7 @@ internal fun TranslationEngineChoice(
             }
         }
         Text(stringResource(R.string.translation_choice_disclaimer), style = MaterialTheme.typography.bodySmall)
-        if (selected == "tencent") Text(stringResource(R.string.tencent_model_explanation), style = MaterialTheme.typography.bodySmall)
+        if (selected == "tencent") Text(stringResource(R.string.tencent_model_download_hint), style = MaterialTheme.typography.bodySmall)
     }
 }
 

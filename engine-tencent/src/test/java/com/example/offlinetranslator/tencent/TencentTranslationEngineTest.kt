@@ -17,6 +17,77 @@ class TencentTranslationEngineTest {
     @get:Rule val temporary = TemporaryFolder()
     private val pair = LanguagePair(LanguageCatalog.RUSSIAN, LanguageCatalog.ENGLISH)
 
+    @Test fun prepareLocalMissingArtifactNeverChecksWifiConnectsOrCreatesNative() = runBlocking {
+        val root = temporary.newFolder()
+        val artifacts = TencentArtifactPreparation(root,
+            wifiAvailable = { error("Local preparation must not query Wi-Fi") },
+            openConnection = { error("Local preparation must not connect") })
+        val engine = TencentTranslationEngine(setOf(pair), artifacts)
+        try {
+            repeat(2) {
+                assertEquals(ModelAvailability.MISSING, engine.prepareLocal())
+                assertEquals(TranslationPreparationPhase.MISSING, engine.preparation.value.phase)
+                assertNull(engine.preparation.value.lastFailure)
+            }
+            assertFalse(File(root, "tencent-translation/model.part").exists())
+            assertNull(TencentTranslationEngine::class.java.getDeclaredField("native").apply {
+                isAccessible = true
+            }.get(engine))
+        } finally { engine.closeAndJoin() }
+    }
+
+    @Test fun prepareLocalCorruptArtifactThrowsTypedFailureWithoutRepairOrNative() = runBlocking {
+        val root = temporary.newFolder()
+        val bytes = ByteArray(128) { it.toByte() }
+        val digest = MessageDigest.getInstance("SHA-256").digest(bytes).joinToString("") { "%02x".format(it.toInt() and 255) }
+        val pin = TencentTranslationArtifact("https://huggingface.co/pinned.gguf", bytes.size.toLong(), digest)
+        val corrupt = bytes.copyOf().also { it[0] = 9 }
+        val installed = File(root, "tencent-translation/Hy-MT2-1.8B-Q4_K_M.gguf").apply {
+            parentFile.mkdirs(); writeBytes(corrupt)
+        }
+        val artifacts = TencentArtifactPreparation(root, pin,
+            { error("Local preparation must not query Wi-Fi") },
+            { error("Local preparation must not repair or download") })
+        val engine = TencentTranslationEngine(setOf(pair), artifacts)
+        try {
+            repeat(2) {
+                val failure = runCatching { engine.prepareLocal() }.exceptionOrNull()
+                assertTrue(failure is TranslationFailure.ArtifactCorrupt)
+                assertEquals(TranslationPreparationPhase.FAILED, engine.preparation.value.phase)
+                assertSame(failure, engine.preparation.value.lastFailure)
+                assertArrayEquals(corrupt, installed.readBytes())
+            }
+            assertFalse(File(root, "tencent-translation/model.part").exists())
+            assertNull(TencentTranslationEngine::class.java.getDeclaredField("native").apply {
+                isAccessible = true
+            }.get(engine))
+        } finally { engine.closeAndJoin() }
+    }
+
+    @Test fun prepareLocalAfterCloseRejectsWithoutArtifactOrNativeWork() = runBlocking {
+        val engine = TencentTranslationEngine(setOf(pair), artifacts())
+        engine.closeAndJoin()
+        assertTrue(runCatching { engine.prepareLocal() }.exceptionOrNull() is IllegalStateException)
+    }
+
+    @Test fun defaultPrepareLocalOnlyObservesAvailabilityAndNeverCallsPrepare() = runBlocking {
+        var observations = 0
+        var availability = ModelAvailability.MISSING
+        val engine = object : TranslationEngine {
+            override val preparation = kotlinx.coroutines.flow.MutableStateFlow(TranslationPreparationState())
+            override suspend fun modelAvailability(): ModelAvailability { observations++; return availability }
+            override suspend fun prepare(): ModelAvailability = error("Default local preparation must not explicitly prepare")
+            override suspend fun translate(pair: LanguagePair, text: String): String = error("Must not translate")
+            override fun close() = Unit
+        }
+        val initial = engine.preparation.value
+        assertEquals(ModelAvailability.MISSING, engine.prepareLocal())
+        availability = ModelAvailability.READY
+        assertEquals(ModelAvailability.READY, engine.prepareLocal())
+        assertEquals(2, observations)
+        assertSame(initial, engine.preparation.value)
+    }
+
     @Test fun closingDuringDownloadCancelsAndJoinsStagingBeforeReportingReleased() = runBlocking {
         val root = temporary.newFolder()
         val bytes = ByteArray(128 * 1024) { it.toByte() }

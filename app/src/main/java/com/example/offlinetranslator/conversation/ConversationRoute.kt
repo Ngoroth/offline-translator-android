@@ -192,7 +192,7 @@ fun ConversationRoute(
     val shown = currentVm?.takeIf { runtime.matches(settings, it.config) && it.hasCurrentOwner }
     val state = shown?.state?.collectAsStateWithLifecycle()?.value ?: ConversationState()
     val statuses = shown?.modelStatuses?.collectAsStateWithLifecycle()?.value ?: emptyList()
-    val preparation = shown?.preparation?.collectAsStateWithLifecycle()?.value ?: ConversationPreparation.IDLE
+    val preparation = shown?.preparation?.collectAsStateWithLifecycle()?.value ?: ConversationPreparation.CHECKING
     val ready = shown?.ready?.collectAsStateWithLifecycle()?.value ?: false
     val permissionDenied = shown?.permissionDenied?.collectAsStateWithLifecycle()?.value ?: false
     val outputReadiness = shown?.outputReadiness?.collectAsStateWithLifecycle()?.value

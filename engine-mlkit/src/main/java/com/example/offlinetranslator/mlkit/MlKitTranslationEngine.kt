@@ -134,6 +134,13 @@ class MlKitTranslationEngine internal constructor(
         }
     }
 
+    override suspend fun awaitIdle() {
+        preparationSlot.withLock {
+            inferenceSlot.acquire()
+            inferenceSlot.release()
+        }
+    }
+
     override suspend fun closeAndJoin() {
         close()
         withContext(NonCancellable) { closed.await() }

@@ -2,6 +2,12 @@ package com.example.offlinetranslator.settings
 
 import android.content.res.Configuration
 import android.os.LocaleList
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.CompositionLocalProvider
@@ -16,12 +22,16 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.unit.Density
+import androidx.compose.ui.unit.dp
+import androidx.test.platform.app.InstrumentationRegistry
+import com.example.offlinetranslator.R
 import androidx.test.espresso.Espresso.pressBack
 import com.example.offlinetranslator.core.*
 import com.example.offlinetranslator.mlkit.MlKitTranslationEngine
 import com.example.offlinetranslator.tencent.TencentTranslationEngine
 import java.util.Locale
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 
@@ -292,6 +302,55 @@ class SettingsSheetTest {
         selectEngine("tencent")
         compose.onNodeWithTag(SettingsTestTags.RETRY).assertIsDisplayed().assertIsEnabled().performClick()
         compose.onNodeWithTag("mounted_route").assertDoesNotExist()
+    }
+
+    @Test fun tencentChoiceShowsCompactDownloadHintAndPreservesSelection() {
+        val selected = mutableStateOf("tencent")
+        val selections = mutableListOf<String>()
+        val targetContext = InstrumentationRegistry.getInstrumentation().targetContext
+        val config = Configuration(targetContext.resources.configuration).apply {
+            screenHeightDp = 260
+            fontScale = 2f
+            setLocales(LocaleList(Locale.forLanguageTag("ru")))
+        }
+        val context = targetContext.createConfigurationContext(config)
+        compose.setContent {
+            val density = LocalDensity.current
+            CompositionLocalProvider(LocalConfiguration provides config, LocalContext provides context,
+                LocalResources provides context.resources, LocalDensity provides Density(density.density, 2f)) {
+                MaterialTheme {
+                    Box(Modifier.fillMaxWidth().height(260.dp)) {
+                        Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState())) {
+                            TranslationEngineChoice(selected.value, providers, true) {
+                                selections += it
+                                selected.value = it
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        compose.onNodeWithText(context.getString(R.string.tencent_model_download_hint))
+            .performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText(context.getString(R.string.tencent_model_explanation)).assertDoesNotExist()
+        compose.onNode(hasText(context.getString(R.string.translation_choice_accurate_description)) and
+            hasAnyAncestor(hasTestTag(engineTag("tencent"))), useUnmergedTree = true)
+            .performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText(context.getString(R.string.translation_choice_disclaimer))
+            .performScrollTo().assertIsDisplayed()
+        val tencent = compose.onNodeWithTag(engineTag("tencent"))
+            .assertIsSelected().assertIsEnabled().assertHeightIsAtLeast(48.dp)
+        val mlkit = compose.onNodeWithTag(engineTag("mlkit"))
+            .assertIsNotSelected().assertIsEnabled().assertHeightIsAtLeast(48.dp)
+        val first = mlkit.fetchSemanticsNode()
+        val second = tencent.fetchSemanticsNode()
+        assertTrue("Engine rows must not overlap", first.positionInRoot.y + first.size.height <= second.positionInRoot.y)
+        compose.runOnIdle { assertEquals("tencent", selected.value); assertEquals(emptyList<String>(), selections) }
+        mlkit.performScrollTo().performClick()
+        compose.onNodeWithTag(engineTag("mlkit")).assertIsSelected().assertIsEnabled().assertHeightIsAtLeast(48.dp)
+        compose.onNodeWithTag(engineTag("tencent")).assertIsNotSelected().assertIsEnabled().assertHeightIsAtLeast(48.dp)
+        compose.onNodeWithText(context.getString(R.string.tencent_model_download_hint)).assertDoesNotExist()
+        compose.runOnIdle { assertEquals("mlkit", selected.value); assertEquals(listOf("mlkit"), selections) }
     }
 
     private fun expandAdvanced() {

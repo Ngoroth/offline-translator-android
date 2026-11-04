@@ -44,6 +44,22 @@ class MainActivity : ComponentActivity() {
         InterfaceLanguage.ensureDefault(this)
         updateLocaleReadiness()
         super.onStart()
+        com.example.offlinetranslator.runtime.AppRuntime.get(this).enterForeground()
+    }
+
+    override fun onStop() {
+        com.example.offlinetranslator.runtime.AppRuntime.get(this).leaveForeground()
+        super.onStop()
+    }
+
+    override fun onTrimMemory(level: Int) {
+        super.onTrimMemory(level)
+        com.example.offlinetranslator.runtime.AppRuntime.get(this).trimMemory()
+    }
+
+    override fun onLowMemory() {
+        super.onLowMemory()
+        com.example.offlinetranslator.runtime.AppRuntime.get(this).trimMemory()
     }
 
     override fun onConfigurationChanged(newConfig: Configuration) {

@@ -37,10 +37,30 @@ class TranslationViewModel(
     private var disposed = false
     private var cleanupJob: Deferred<Result<Unit>>? = null
     private var preparationObservation: Job? = null
+    private var localPreparation = false
 
     init {
         preparationObservation = viewModelScope.launch {
             owner.translation.preparation.collect { preparation ->
+                if (disposed || !foreground || !hasCurrentOwner) return@collect
+                // Only terminal loss revokes a usable engine; ML Kit may report LOADING on availability checks.
+                if (preparation.phase in setOf(TranslationPreparationPhase.MISSING, TranslationPreparationPhase.FAILED) &&
+                    (mutableState.value.modelStatus == ModelUiStatus.READY ||
+                        (preparation.phase == TranslationPreparationPhase.FAILED && !mutableState.value.operationInProgress))) {
+                    generation++
+                    operation?.cancel()
+                    lastFailedAction = FailedAction.PREPARE
+                    mutableState.update {
+                        it.copy(modelStatus = ModelUiStatus.MISSING, isPreparing = false, isTranslating = false,
+                            preparation = preparation, failure = preparation.lastFailure,
+                            error = preparation.lastFailure?.toUiError())
+                    }
+                    return@collect
+                }
+                if (localPreparation && preparation.phase !in setOf(
+                        TranslationPreparationPhase.CHECKING, TranslationPreparationPhase.VERIFYING,
+                        TranslationPreparationPhase.LOADING,
+                    )) return@collect
                 if (!disposed && foreground && hasCurrentOwner) mutableState.update {
                     it.copy(
                         preparation = preparation,
@@ -54,7 +74,7 @@ class TranslationViewModel(
     }
 
     fun updateInput(value: String) {
-        if (disposed || mutableState.value.operationInProgress) return
+        if (disposed || !foreground || !hasCurrentOwner || mutableState.value.operationInProgress) return
         mutableState.update {
             if (value.length > TranslationEngine.MAX_INPUT_CHARACTERS) {
                 it.copy(inputTooLong = true, error = null, failure = null)
@@ -70,6 +90,7 @@ class TranslationViewModel(
     fun prepare() {
         if (disposed || !foreground || !hasCurrentOwner || !mutableState.value.canPrepare) return
         val request = ++generation
+        localPreparation = false
         mutableState.update { it.copy(modelStatus = ModelUiStatus.DOWNLOADING, isPreparing = true, error = null, failure = null) }
         operation = viewModelScope.launch {
             try {
@@ -78,6 +99,7 @@ class TranslationViewModel(
                     it.copy(modelStatus = availability.toUiStatus(), isPreparing = false, error = null, failure = null)
                 }
             } catch (cancelled: CancellationException) {
+                updateAfterCancellation(request)
                 throw cancelled
             } catch (failure: Throwable) {
                 lastFailedAction = FailedAction.PREPARE
@@ -100,6 +122,7 @@ class TranslationViewModel(
                     it.copy(isTranslating = false, result = translated, error = null)
                 }
             } catch (cancelled: CancellationException) {
+                updateAfterCancellation(request)
                 throw cancelled
             } catch (failure: Throwable) {
                 val repair = failure is TranslationFailure.ModelMissing || failure is TranslationFailure.ArtifactCorrupt ||
@@ -115,7 +138,7 @@ class TranslationViewModel(
     }
 
     fun retry() {
-        if (disposed || mutableState.value.operationInProgress) return
+        if (disposed || !foreground || !hasCurrentOwner || mutableState.value.operationInProgress) return
         when (lastFailedAction) {
             FailedAction.PREPARE -> prepare()
             FailedAction.TRANSLATE -> translate()
@@ -134,7 +157,7 @@ class TranslationViewModel(
         foreground = false
         generation++
         operation?.cancel()
-        mutableState.update { it.copy(isTranslating = false, isPreparing = false, modelStatus = ModelUiStatus.CHECKING, result = "") }
+        mutableState.update { it.copy(isTranslating = false, isPreparing = false, modelStatus = ModelUiStatus.CHECKING) }
     }
 
     fun dispose() { cleanup() }
@@ -165,21 +188,28 @@ class TranslationViewModel(
     }
 
     private fun refreshAvailability() {
+        if (disposed || !foreground || !hasCurrentOwner) return
         val request = ++generation
+        lastFailedAction = FailedAction.PREPARE
+        localPreparation = true
+        mutableState.update {
+            it.copy(modelStatus = ModelUiStatus.CHECKING, isPreparing = true, error = null, failure = null)
+        }
         operation = viewModelScope.launch {
             try {
-                val availability = useEngine { it.modelAvailability() } ?: return@launch
+                val availability = useEngine { it.prepareLocal() } ?: return@launch
                 val failure = owner.translation.preparation.value.lastFailure
                 updateIfCurrent(request) {
-                    it.copy(modelStatus = availability.toUiStatus(), failure = failure,
+                    it.copy(modelStatus = availability.toUiStatus(), isPreparing = false, failure = failure,
                         error = failure?.toUiError())
                 }
             } catch (cancelled: CancellationException) {
+                updateAfterCancellation(request)
                 throw cancelled
             } catch (failure: Throwable) {
                 lastFailedAction = FailedAction.PREPARE
                 updateIfCurrent(request) {
-                    it.copy(modelStatus = ModelUiStatus.MISSING, error = TranslationUiError.PREPARATION_FAILED,
+                    it.copy(modelStatus = ModelUiStatus.MISSING, isPreparing = false, error = failure.toUiError(),
                         failure = failure as? TranslationFailure)
                 }
             }
@@ -188,6 +218,17 @@ class TranslationViewModel(
 
     private suspend fun <T> useEngine(action: suspend (TranslationEngine) -> T): T? =
         owners.use(owner) { owner.operation { action(owner.translation) } }
+
+    private fun updateAfterCancellation(request: Long) {
+        val preparation = owner.translation.preparation.value
+        if (preparation.phase != TranslationPreparationPhase.MISSING) return
+        updateIfCurrent(request) {
+            lastFailedAction = FailedAction.PREPARE
+            it.copy(modelStatus = ModelUiStatus.MISSING, isPreparing = false, isTranslating = false,
+                preparation = preparation, failure = preparation.lastFailure,
+                error = preparation.lastFailure?.toUiError())
+        }
+    }
 
     private inline fun updateIfCurrent(request: Long, transform: (TranslationUiState) -> TranslationUiState) {
         if (!disposed && foreground && hasCurrentOwner && request == generation) mutableState.update(transform)

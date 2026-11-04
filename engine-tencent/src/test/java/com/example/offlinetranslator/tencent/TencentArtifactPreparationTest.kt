@@ -123,6 +123,37 @@ class TencentArtifactPreparationTest {
         }
     }
 
+    @Test fun localVerificationCachesOnlyUnchangedIdentityAndRechecksReplacementWithoutNetwork() = runBlocking {
+        val root = temporary.newFolder()
+        val installed = File(root, "tencent-translation/Hy-MT2-1.8B-Q4_K_M.gguf").apply {
+            parentFile.mkdirs(); writeBytes(bytes)
+        }
+        val selected = TencentArtifactPreparation(root, pin,
+            { error("Local verification must not query Wi-Fi") },
+            { error("Local verification must not connect") })
+        var verifications = 0
+        assertEquals(installed, selected.verifiedFile { verifications++ })
+        assertEquals(installed, selected.verifiedFile { verifications++ })
+        assertEquals(1, verifications)
+
+        val timestamp = Files.getLastModifiedTime(installed.toPath())
+        val corrupt = bytes.copyOf().also { it[0] = 9 }
+        val replacement = File(root, "replacement.gguf").apply { writeBytes(corrupt) }
+        Files.setLastModifiedTime(replacement.toPath(), timestamp)
+        Files.move(replacement.toPath(), installed.toPath(), ATOMIC_MOVE, REPLACE_EXISTING)
+        repeat(2) {
+            assertTrue(runCatching { selected.verifiedFile { verifications++ } }.exceptionOrNull()
+                is TranslationFailure.ArtifactCorrupt)
+        }
+        assertEquals(3, verifications)
+        assertArrayEquals(corrupt, installed.readBytes())
+        assertFalse(File(root, "tencent-translation/model.part").exists())
+
+        assertTrue(installed.delete())
+        assertNull(selected.verifiedFile { verifications++ })
+        assertEquals(3, verifications)
+    }
+
     @Test fun corruptInstalledBytesRemainNonReadyUntilExplicitRepair() = runBlocking {
         val root = temporary.newFolder()
         val store = store(root) { Response(it, bytes) }

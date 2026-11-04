@@ -39,7 +39,7 @@ class TencentTranslationEngine(
                 mutablePreparation.value = TranslationPreparationState(TranslationPreparationPhase.READY)
                 ModelAvailability.READY
             } else {
-                // Installed weights still need explicit local initialization after an owner/process restart.
+                // Installed weights still need local initialization after an owner/process restart.
                 if (ready) discardNative()
                 ready = false
                 mutablePreparation.value = TranslationPreparationState(TranslationPreparationPhase.MISSING)
@@ -53,21 +53,33 @@ class TencentTranslationEngine(
         }
     }
 
-    override suspend fun prepare(): ModelAvailability = operation {
+    override suspend fun prepare(): ModelAvailability = prepare(localOnly = false)
+
+    override suspend fun prepareLocal(): ModelAvailability = prepare(localOnly = true)
+
+    private suspend fun prepare(localOnly: Boolean): ModelAvailability = operation {
         if (ready) return@operation ModelAvailability.READY
         try {
-            coroutineScope {
+            val file = if (localOnly) {
+                artifacts.verifiedFile {
+                    mutablePreparation.value = TranslationPreparationState(TranslationPreparationPhase.VERIFYING)
+                }
+            } else coroutineScope {
                 val observation = launch(start = CoroutineStart.UNDISPATCHED) {
                     artifacts.state.collect { mutablePreparation.value = it }
                 }
-                val file = try { artifacts.prepare() } finally { observation.cancelAndJoin() }
-                mutablePreparation.value = TranslationPreparationState(TranslationPreparationPhase.LOADING)
-                if (withTimeoutOrNull(INITIALIZATION_TIMEOUT_MILLIS) {
-                        nativeOperation { load(file.absolutePath) }
-                        nativeOperation { translate("English", "1") }
-                        true
-                    } != true) throw PreparationFailure.PreparationTimedOut()
+                try { artifacts.prepare() } finally { observation.cancelAndJoin() }
             }
+            if (file == null) {
+                mutablePreparation.value = TranslationPreparationState(TranslationPreparationPhase.MISSING)
+                return@operation ModelAvailability.MISSING
+            }
+            mutablePreparation.value = TranslationPreparationState(TranslationPreparationPhase.LOADING)
+            if (withTimeoutOrNull(INITIALIZATION_TIMEOUT_MILLIS) {
+                    nativeOperation { load(file.absolutePath) }
+                    nativeOperation { translate("English", "1") }
+                    true
+                } != true) throw PreparationFailure.PreparationTimedOut()
             ready = true
             mutablePreparation.value = TranslationPreparationState(TranslationPreparationPhase.READY)
             ModelAvailability.READY
@@ -194,6 +206,10 @@ class TencentTranslationEngine(
             }
         }
         Unit
+    }
+
+    override suspend fun awaitIdle() {
+        slot.withLock { synchronized(lifecycle) { releaseFailure?.let { throw it } } }
     }
 
     override suspend fun closeAndJoin() {

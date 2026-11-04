@@ -42,11 +42,15 @@ class TranslationEngineRegistry internal constructor(
         }
     }
 
-    fun create(engineId: String, pairs: Set<LanguagePair>): TranslationEngine {
+    internal fun validate(engineId: String, pairs: Set<LanguagePair>) {
         descriptor(engineId)
         require(pairs.isNotEmpty() && pairs.size <= 2) { "Select one or two directed translation pairs" }
+        pairs.forEach { capability(engineId, it).requireSupported() }
+    }
+
+    fun create(engineId: String, pairs: Set<LanguagePair>): TranslationEngine {
         val selected = pairs.toSet()
-        selected.forEach { capability(engineId, it).requireSupported() }
+        validate(engineId, selected)
         return when (engineId) {
             "mlkit" -> mlKitFactory(selected)
             "tencent" -> tencentFactory(selected)

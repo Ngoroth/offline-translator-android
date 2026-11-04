@@ -8,6 +8,7 @@ captures/
 .externalNativeBuild/
 .cxx/
 .codex/
+/.empryo/
 /.agents/
 .cache/translator-evaluation/
 /engine-sherpa/libs/*.aar

@@ -138,7 +138,7 @@ fun TranslationRoute(homeControls: @Composable () -> Unit, onLanguageTransitionC
     val shown = currentVm?.takeIf { it.config == config && it.hasCurrentOwner }
     val state = shown?.state?.collectAsStateWithLifecycle()?.value ?: TranslationUiState(
         direction = settings.languagePair, input = input, inputTooLong = inputTooLong,
-        modelStatus = ModelUiStatus.MISSING,
+        modelStatus = ModelUiStatus.CHECKING,
         provider = descriptor, configurationProblem = problem,
     )
     TranslationScreen(

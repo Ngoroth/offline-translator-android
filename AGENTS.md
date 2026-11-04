@@ -60,3 +60,9 @@ Write new repository files, documentation, comments and identifiers in English,
 regardless of the conversation language. Preserve intentional localized UI text
 and language-specific test inputs. Do not rewrite the thesaurus outside its
 dedicated maintenance skill.
+
+## UI Copy
+
+- Keep default screens, action hints, and settings concise: short labels or one brief sentence, not explanatory paragraphs.
+- Keep only decision-critical facts (such as model size and download network) inline. Put technical details, caveats, and lifecycle explanations in Help.
+- Do not remove required safety, privacy, legal, or attribution notices to shorten the UI.

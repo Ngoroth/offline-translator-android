@@ -50,6 +50,154 @@ import org.junit.Test
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class ConversationViewModelTest {
+    @Test fun trimDuringInitialLocalPreparationSettlesIdleAndAllowsRecovery() = runTest {
+        val dispatcher = StandardTestDispatcher(testScheduler)
+        Dispatchers.setMain(dispatcher)
+        val scopeJob = SupervisorJob()
+        val scope = CoroutineScope(dispatcher + scopeJob)
+        val gate = CompletableDeferred<Unit>()
+        var creations = 0
+        var localPreparations = 0
+        var preparations = 0
+        val lifetime = com.example.offlinetranslator.runtime.TranslationEngineLifetime(backgroundScope,
+            com.example.offlinetranslator.runtime.TranslationEngineRegistry({
+                val first = ++creations == 1
+                object : TranslationEngine {
+                    override val preparation = MutableStateFlow(TranslationPreparationState(TranslationPreparationPhase.MISSING))
+                    override suspend fun modelAvailability() = ModelAvailability.READY
+                    override suspend fun prepareLocal(): ModelAvailability {
+                        localPreparations++
+                        preparation.value = TranslationPreparationState(TranslationPreparationPhase.LOADING)
+                        if (first) gate.await()
+                        preparation.value = TranslationPreparationState(TranslationPreparationPhase.READY)
+                        return ModelAvailability.READY
+                    }
+                    override suspend fun prepare(): ModelAvailability { preparations++; return prepareLocal() }
+                    override suspend fun translate(pair: LanguagePair, text: String) = text
+                    override fun close() = Unit
+                }
+            }, { error("Unexpected") }))
+        val controller = RuntimeOwnerController(scope)
+        val models = FakeModels(true)
+        val capture = FakeCapture()
+        val recognition = FakeRecognition()
+        val pair = LanguagePair(LanguageCatalog.RUSSIAN, LanguageCatalog.ENGLISH)
+        val owner = controller.replace {
+            ConversationRuntimeOwner(
+                config = ConversationSessionConfig(listOf(pair.source, pair.target), "mlkit", SpeechRecognitionBackend.SYSTEM_OFFLINE,
+                    "vad", 900, 100, SpeechOutputBackend.SYSTEM_OFFLINE),
+                models = models, capture = capture, recognition = recognition,
+                translation = lifetime.lease("mlkit", setOf(pair, pair.reverse())), output = FakeOutput(),
+                scope = scope, speechOutputEnabled = false,
+            )
+        }
+        val model = ConversationViewModel(owner, controller, saveSpeechOutput = { _, _ -> true })
+        try {
+            runCurrent()
+            assertEquals(ConversationPreparation.TRANSLATION, model.preparation.value)
+            assertEquals(TranslationPreparationPhase.LOADING, model.translationPreparation.value.phase)
+            lifetime.trimMemory()
+            runCurrent()
+            assertFalse(model.ready.value)
+            assertEquals(ConversationPreparation.IDLE, model.preparation.value)
+            assertEquals(TranslationPreparationPhase.MISSING, model.translationPreparation.value.phase)
+            assertTrue(controller.isCurrent(owner))
+            assertFalse(controller.busy.value)
+            model.enterForeground()
+            runCurrent()
+            assertEquals(1, creations)
+            assertEquals(1, localPreparations)
+            assertEquals(0, preparations)
+            assertEquals(0, models.installs)
+            assertEquals(0, recognition.installs)
+            assertEquals(0, capture.starts)
+            model.prepareLanguages()
+            runCurrent()
+            assertTrue(model.ready.value)
+            assertEquals(ConversationPreparation.IDLE, model.preparation.value)
+            assertEquals(2, creations)
+            assertEquals(1, preparations)
+            assertEquals(1, models.installs)
+            assertEquals(1, recognition.installs)
+            model.leaveForeground()
+            lifetime.leaveForeground()
+            runCurrent()
+            lifetime.enterForeground()
+            model.enterForeground()
+            runCurrent()
+            assertTrue(model.ready.value)
+            assertEquals(3, creations)
+            assertEquals(1, preparations)
+            assertEquals(1, models.installs)
+            assertEquals(1, recognition.installs)
+            assertEquals(0, capture.starts)
+        } finally {
+            gate.complete(Unit)
+            model.disposeAndJoin()
+            lifetime.closeAndJoin()
+            scopeJob.cancelAndJoin()
+            Dispatchers.resetMain()
+        }
+    }
+
+    @Test fun retainedTranslationEvictionRevokesIdleReadyWithoutWorkAndForegroundRecovers() = runTest {
+        withModel { fixture ->
+            fixture.translation.preparation.value = TranslationPreparationState(TranslationPreparationPhase.LOADING)
+            runCurrent()
+            assertTrue(fixture.model.ready.value)
+            fixture.translation.preparation.value = TranslationPreparationState(TranslationPreparationPhase.MISSING)
+            runCurrent()
+            assertFalse(fixture.model.ready.value)
+            fixture.model.start()
+            fixture.model.enterForeground()
+            runCurrent()
+            assertEquals(0, fixture.capture.starts)
+            assertEquals(1, fixture.translation.localPreparations)
+            assertEquals(0, fixture.translation.preparations)
+            assertEquals(0, fixture.models.installs)
+            fixture.model.leaveForeground()
+            runCurrent()
+            fixture.model.enterForeground()
+            runCurrent()
+            assertTrue(fixture.model.ready.value)
+            assertEquals(2, fixture.translation.localPreparations)
+        }
+    }
+
+    @Test fun retainedTranslationFailureStopsActualCaptureAndRequiresExplicitRecovery() = runTest {
+        withModel { fixture ->
+            fixture.model.start()
+            runCurrent()
+            fixture.capture.emit()
+            runCurrent()
+            val transcript = fixture.model.state.value.transcripts.single()
+            val interrupts = fixture.capture.interrupts
+            val preparations = fixture.translation.preparations
+            val captures = fixture.capture.starts
+            val failure = com.example.offlinetranslator.core.TranslationFailure.Memory()
+            fixture.translation.preparation.value = TranslationPreparationState(TranslationPreparationPhase.FAILED, lastFailure = failure)
+            runCurrent()
+            assertFalse(fixture.model.ready.value)
+            assertFalse(fixture.model.state.value.sessionActive)
+            assertFalse(fixture.model.state.value.captureActive)
+            assertTrue(fixture.capture.interrupts > interrupts)
+            assertEquals(transcript, fixture.model.state.value.transcripts.single())
+            assertEquals(failure, fixture.model.preparationFailure.value)
+            assertEquals(ConversationPreparation.ERROR, fixture.model.preparation.value)
+            assertEquals(1, fixture.translation.localPreparations)
+            assertEquals(preparations, fixture.translation.preparations)
+            assertEquals(0, fixture.models.installs)
+            fixture.model.prepareLanguages()
+            runCurrent()
+            assertTrue(fixture.model.ready.value)
+            assertEquals(null, fixture.model.preparationFailure.value)
+            assertEquals(preparations + 1, fixture.translation.preparations)
+            assertEquals(captures, fixture.capture.starts)
+            assertFalse(fixture.model.state.value.sessionActive)
+            assertFalse(fixture.model.state.value.captureActive)
+        }
+    }
+
     @Test fun stopRevokesPendingMutePersistenceWithoutHidingTheUnsavedChoiceOrUndoingMute() = runTest {
         withModel { fixture ->
             fixture.model.start()
@@ -629,6 +777,231 @@ class ConversationViewModelTest {
         }
     }
 
+    @Test fun installedTranslationInitializesOnEntryWithoutInstallOrCapture() = runTest {
+        withModel(initiallyReady = false, configure = {
+            it.models.ready = true
+            it.translation.localInstalled = true
+        }) { fixture ->
+            assertTrue("Installed translation must initialize on initial Conversation entry", fixture.model.ready.value)
+            assertEquals(1, fixture.translation.localPreparations)
+            assertEquals(0, fixture.models.installs)
+            assertEquals(0, fixture.recognition.installs)
+            assertEquals(0, fixture.capture.starts)
+        }
+    }
+
+    @Test fun localInitializationRequiresAllRequiredSpeechButNotDisabledOutput() = runTest {
+        for (missing in listOf("models", "recognition", "output", "disabledOutput")) {
+            withModel(initiallyReady = false, speechOutputEnabled = missing != "disabledOutput", configure = {
+                it.models.ready = missing != "models"
+                it.translation.localInstalled = true
+                if (missing == "recognition") it.recognition.readinessState.value = SpeechRecognitionReadiness.MISSING_LOCAL_MODEL
+                if (missing == "output" || missing == "disabledOutput") it.output.readiness = SpeechOutputReadiness.MISSING_LOCAL_VOICE
+            }) { fixture ->
+                val expected = if (missing == "disabledOutput") 1 else 0
+                assertEquals(missing, expected, fixture.translation.localPreparations)
+                assertEquals(missing, expected == 1, fixture.model.ready.value)
+                assertEquals(0, fixture.translation.preparations)
+                assertEquals(0, fixture.models.installs)
+                assertEquals(0, fixture.recognition.installs)
+                assertEquals(0, fixture.capture.starts)
+            }
+        }
+    }
+
+    @Test fun missingLocalTranslationRemainsManualWithoutInstallOrCapture() = runTest {
+        withModel(initiallyReady = false, configure = { it.models.ready = true }) { fixture ->
+            assertFalse(fixture.model.ready.value)
+            assertEquals(ConversationPreparation.IDLE, fixture.model.preparation.value)
+            assertEquals(1, fixture.translation.localPreparations)
+            fixture.model.recheckReadiness()
+            fixture.model.start()
+            runCurrent()
+            assertEquals(1, fixture.translation.localPreparations)
+            assertEquals(0, fixture.translation.preparations)
+            assertEquals(0, fixture.models.installs)
+            assertEquals(0, fixture.recognition.installs)
+            assertEquals(0, fixture.capture.starts)
+            fixture.model.prepareLanguages()
+            runCurrent()
+            assertTrue(fixture.model.ready.value)
+            assertEquals(1, fixture.translation.preparations)
+            assertEquals(1, fixture.models.installs)
+            assertEquals(0, fixture.capture.starts)
+        }
+    }
+
+    @Test fun typedLocalFailureDoesNotRetryOnReadinessOrOutputUpdatesAndManualPrepareRecovers() = runTest {
+        for (failure in listOf(
+            com.example.offlinetranslator.core.TranslationFailure.RuntimeLoad(),
+            com.example.offlinetranslator.core.TranslationFailure.ArtifactCorrupt(),
+        )) {
+            withModel(initiallyReady = false, configure = {
+                it.models.ready = true
+                it.translation.localInstalled = true
+                it.translation.localFailure = failure
+            }) { fixture ->
+                assertFalse(fixture.model.ready.value)
+                assertEquals(ConversationPreparation.ERROR, fixture.model.preparation.value)
+                assertEquals(failure, fixture.model.preparationFailure.value)
+                assertEquals(1, fixture.translation.localPreparations)
+                fixture.recognition.readinessState.value = SpeechRecognitionReadiness.MISSING_LOCAL_MODEL
+                runCurrent()
+                fixture.recognition.readinessState.value = SpeechRecognitionReadiness.READY
+                fixture.models.models.value = listOf(SpeechModelStatus(
+                    "test", "Test", "test", "test", 0L,
+                    com.example.offlinetranslator.core.SpeechModelInstallState.READY,
+                ))
+                fixture.model.recheckReadiness()
+                runCurrent()
+                fixture.model.toggleSpeechOutput()
+                runCurrent()
+                fixture.model.toggleSpeechOutput()
+                runCurrent()
+                assertFalse(fixture.model.ready.value)
+                assertEquals(1, fixture.translation.localPreparations)
+                assertEquals(failure, fixture.model.preparationFailure.value)
+                assertEquals(0, fixture.models.installs)
+                assertEquals(0, fixture.translation.preparations)
+                assertEquals(0, fixture.capture.starts)
+                fixture.model.prepareLanguages()
+                runCurrent()
+                assertTrue(fixture.model.ready.value)
+                assertEquals(ConversationPreparation.IDLE, fixture.model.preparation.value)
+                assertEquals(null, fixture.model.preparationFailure.value)
+                assertEquals(1, fixture.translation.localPreparations)
+                assertEquals(1, fixture.translation.preparations)
+            }
+        }
+    }
+
+    @Test fun foregroundEntryRetriesLocalFailureOnceAndDuplicateEntryDoesNotRetry() = runTest {
+        withModel(initiallyReady = false, configure = {
+            it.models.ready = true
+            it.translation.localInstalled = true
+            it.translation.localFailure = com.example.offlinetranslator.core.TranslationFailure.RuntimeLoad()
+        }) { fixture ->
+            fixture.model.enterForeground()
+            fixture.model.enterForeground()
+            runCurrent()
+            assertEquals(1, fixture.translation.localPreparations)
+            fixture.model.leaveForeground()
+            runCurrent()
+            fixture.translation.localFailure = null
+            fixture.model.enterForeground()
+            fixture.model.enterForeground()
+            runCurrent()
+            assertTrue(fixture.model.ready.value)
+            assertEquals(2, fixture.translation.localPreparations)
+            assertEquals(0, fixture.translation.preparations)
+            assertEquals(0, fixture.models.installs)
+            assertEquals(0, fixture.capture.starts)
+        }
+    }
+
+    @Test fun cancelledLocalInitializationCannotPublishLateReadyOrErrorAndReentryWaits() = runTest {
+        for (failure in listOf(null, com.example.offlinetranslator.core.TranslationFailure.RuntimeLoad())) {
+            withModel(initiallyReady = false, configure = {
+                it.models.ready = true
+                it.translation.localInstalled = true
+                it.translation.localGate = CompletableDeferred()
+                it.translation.localFailure = failure
+            }) { fixture ->
+                assertEquals(ConversationPreparation.TRANSLATION, fixture.model.preparation.value)
+                assertFalse(fixture.model.ready.value)
+                fixture.model.enterForeground()
+                fixture.model.leaveForeground()
+                runCurrent()
+                assertFalse(fixture.model.ready.value)
+                assertEquals(null, fixture.model.preparationFailure.value)
+                fixture.model.enterForeground()
+                fixture.model.enterForeground()
+                runCurrent()
+                assertEquals(1, fixture.translation.localPreparations)
+                fixture.translation.localGate!!.complete(Unit)
+                runCurrent()
+                assertEquals(2, fixture.translation.localPreparations)
+                assertEquals(failure == null, fixture.model.ready.value)
+                assertEquals(failure, fixture.model.preparationFailure.value)
+                assertEquals(0, fixture.capture.starts)
+            }
+        }
+    }
+
+    @Test fun backgroundedLocalInitializationCannotPublishLateReadyOrError() = runTest {
+        for (failure in listOf(null, com.example.offlinetranslator.core.TranslationFailure.RuntimeLoad())) {
+            withModel(initiallyReady = false, configure = {
+                it.models.ready = true
+                it.translation.localInstalled = true
+                it.translation.localGate = CompletableDeferred()
+                it.translation.localFailure = failure
+            }) { fixture ->
+                assertEquals(ConversationPreparation.TRANSLATION, fixture.model.preparation.value)
+                fixture.model.leaveForeground()
+                runCurrent()
+                fixture.translation.localGate!!.complete(Unit)
+                runCurrent()
+                assertFalse(fixture.model.ready.value)
+                assertEquals(null, fixture.model.preparationFailure.value)
+                assertFalse(fixture.model.preparation.value == ConversationPreparation.ERROR)
+                assertEquals(1, fixture.translation.localPreparations)
+                assertEquals(0, fixture.models.installs)
+                assertEquals(0, fixture.capture.starts)
+            }
+        }
+    }
+
+    @Test fun disposalAndReplacementWaitForLocalInitializationAndRejectLateReadyOrError() = runTest {
+        for (failure in listOf(null, com.example.offlinetranslator.core.TranslationFailure.RuntimeLoad())) {
+            withModel(initiallyReady = false, configure = {
+                it.models.ready = true
+                it.translation.localInstalled = true
+                it.translation.localGate = CompletableDeferred()
+                it.translation.localFailure = failure
+            }) { fixture ->
+                assertEquals(ConversationPreparation.TRANSLATION, fixture.model.preparation.value)
+                val disposal = async { fixture.model.disposeAndJoin() }
+                runCurrent()
+                val replacement = async {
+                    fixture.controller.replace {
+                        ConversationRuntimeOwner(
+                            config = fixture.owner.config,
+                            models = FakeModels(true), capture = FakeCapture(), recognition = FakeRecognition(),
+                            translation = FakeTranslation(true), output = FakeOutput(),
+                            scope = CoroutineScope(StandardTestDispatcher(testScheduler) + SupervisorJob()),
+                        )
+                    }
+                }
+                runCurrent()
+                assertFalse(disposal.isCompleted)
+                assertFalse(replacement.isCompleted)
+                assertEquals(0, fixture.translation.closes)
+                assertEquals(0, fixture.capture.closes)
+                assertFalse(fixture.model.ready.value)
+                fixture.translation.localGate!!.complete(Unit)
+                disposal.await()
+                val nextOwner = replacement.await()
+                try {
+                    fixture.model.recheckReadiness()
+                    fixture.model.enterForeground()
+                    fixture.model.prepareLanguages()
+                    fixture.model.start()
+                    runCurrent()
+                    assertFalse(fixture.model.hasCurrentOwner)
+                    assertFalse(fixture.model.ready.value)
+                    assertEquals(null, fixture.model.preparationFailure.value)
+                    assertFalse(fixture.model.preparation.value == ConversationPreparation.ERROR)
+                    assertEquals(1, fixture.translation.localPreparations)
+                    assertEquals(1, fixture.translation.closes)
+                    assertEquals(0, fixture.capture.starts)
+                    assertTrue(fixture.controller.isCurrent(nextOwner))
+                } finally {
+                    fixture.controller.release(nextOwner)
+                }
+            }
+        }
+    }
+
     @Test fun onePreparationActionRequiresSpeechAndTranslationReadiness() = runTest {
         withModel(initiallyReady = false) { fixture ->
             fixture.translation.preparationGate = CompletableDeferred()
@@ -925,6 +1298,42 @@ class ConversationViewModelTest {
         }
     }
 
+    @Test fun retainedTranslationMissingStopsCaptureAndOldFailureCannotDisableSuccessor() = runTest {
+        withModel { fixture ->
+            fixture.model.start()
+            runCurrent()
+            val interrupts = fixture.capture.interrupts
+            fixture.translation.preparation.value = TranslationPreparationState(TranslationPreparationPhase.MISSING)
+            runCurrent()
+            assertFalse(fixture.model.ready.value)
+            assertFalse(fixture.model.state.value.captureActive)
+            assertTrue(fixture.capture.interrupts > interrupts)
+            val successorOwner = fixture.controller.replace {
+                ConversationRuntimeOwner(
+                    config = fixture.owner.config,
+                    models = FakeModels(true), capture = FakeCapture(), recognition = FakeRecognition(),
+                    translation = FakeTranslation(true), output = FakeOutput(),
+                    scope = CoroutineScope(StandardTestDispatcher(testScheduler) + SupervisorJob()),
+                )
+            }
+            val successor = ConversationViewModel(successorOwner, fixture.controller, saveSpeechOutput = { _, _ -> true })
+            try {
+                runCurrent()
+                val oldPreparation = fixture.model.preparation.value
+                fixture.translation.preparation.value = TranslationPreparationState(
+                    TranslationPreparationPhase.FAILED,
+                    lastFailure = com.example.offlinetranslator.core.TranslationFailure.Memory(),
+                )
+                runCurrent()
+                assertTrue(successor.ready.value)
+                assertEquals(oldPreparation, fixture.model.preparation.value)
+                assertEquals(null, fixture.model.preparationFailure.value)
+            } finally {
+                successor.disposeAndJoin()
+            }
+        }
+    }
+
     private fun assertFailureSemantics(expected: Throwable, actual: Throwable?) {
         assertEquals(expected.javaClass, actual?.javaClass)
         val rootCause = generateSequence(actual) { it.cause }.lastOrNull()
@@ -953,6 +1362,7 @@ class ConversationViewModelTest {
             fixture.capture.closeGate?.complete(Unit)
             fixture.models.readinessExitGate?.complete(Unit)
             fixture.translation.preparationExitGate?.complete(Unit)
+            fixture.translation.localGate?.complete(Unit)
             fixture.preference.gate?.complete(Unit)
             fixture.output.prepareGate?.complete(Unit)
             fixture.output.playbackGate?.complete(Unit)
@@ -1133,6 +1543,19 @@ class ConversationViewModelTest {
     }
 
     private class FakeTranslation(private var ready: Boolean) : TranslationEngine {
+        var localInstalled = false
+        var localPreparations = 0
+        var localGate: CompletableDeferred<Unit>? = null
+        var localFailure: com.example.offlinetranslator.core.TranslationFailure? = null
+        override suspend fun prepareLocal(): ModelAvailability {
+            localPreparations++
+            if (!localInstalled) return modelAvailability()
+            // Model a native call that finishes after cancellation and can return or throw late.
+            withContext(NonCancellable) { localGate?.await() }
+            localFailure?.let { throw it }
+            ready = true
+            return ModelAvailability.READY
+        }
         override val preparation = kotlinx.coroutines.flow.MutableStateFlow(TranslationPreparationState(
             if (ready) TranslationPreparationPhase.READY else TranslationPreparationPhase.MISSING,
         ))

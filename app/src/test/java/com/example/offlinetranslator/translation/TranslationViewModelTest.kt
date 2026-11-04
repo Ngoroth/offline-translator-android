@@ -36,6 +36,324 @@ import org.junit.Test
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class TranslationViewModelTest {
+    @Test fun trimDuringInitialLocalPreparationSettlesMissingAndAllowsRecovery() = runTest {
+        val dispatcher = StandardTestDispatcher(testScheduler)
+        Dispatchers.setMain(dispatcher)
+        val gate = CompletableDeferred<Unit>()
+        var creations = 0
+        var localPreparations = 0
+        var preparations = 0
+        val lifetime = com.example.offlinetranslator.runtime.TranslationEngineLifetime(backgroundScope,
+            com.example.offlinetranslator.runtime.TranslationEngineRegistry({
+                val first = ++creations == 1
+                object : TranslationEngine {
+                    override val preparation = kotlinx.coroutines.flow.MutableStateFlow(
+                        TranslationPreparationState(TranslationPreparationPhase.MISSING))
+                    override suspend fun modelAvailability() = ModelAvailability.READY
+                    override suspend fun prepareLocal(): ModelAvailability {
+                        localPreparations++
+                        preparation.value = TranslationPreparationState(TranslationPreparationPhase.LOADING)
+                        if (first) gate.await()
+                        preparation.value = TranslationPreparationState(TranslationPreparationPhase.READY)
+                        return ModelAvailability.READY
+                    }
+                    override suspend fun prepare(): ModelAvailability { preparations++; return prepareLocal() }
+                    override suspend fun translate(pair: LanguagePair, text: String) = text
+                    override fun close() = Unit
+                }
+            }, { error("Unexpected") }))
+        val pair = LanguagePair(LanguageCatalog.RUSSIAN, LanguageCatalog.ENGLISH)
+        val fixture = createFixture(lifetime.lease("mlkit", setOf(pair)), dispatcher, initialInput = "Keep source")
+        try {
+            runCurrent()
+            assertTrue(fixture.model.state.value.isPreparing)
+            assertEquals(TranslationPreparationPhase.LOADING, requireNotNull(fixture.model.state.value.preparation).phase)
+            lifetime.trimMemory()
+            runCurrent()
+            assertFalse(fixture.model.state.value.operationInProgress)
+            assertEquals(ModelUiStatus.MISSING, fixture.model.state.value.modelStatus)
+            assertEquals(TranslationPreparationPhase.MISSING, requireNotNull(fixture.model.state.value.preparation).phase)
+            assertTrue(fixture.model.state.value.canPrepare)
+            assertTrue(fixture.controller.isCurrent(fixture.owner))
+            assertFalse(fixture.controller.busy.value)
+            fixture.model.enterForeground()
+            runCurrent()
+            assertEquals(1, creations)
+            assertEquals(1, localPreparations)
+            assertEquals(0, preparations)
+            fixture.model.retry()
+            runCurrent()
+            assertTrue(fixture.model.state.value.canTranslate)
+            assertEquals(2, creations)
+            assertEquals(1, preparations)
+            fixture.model.leaveForeground()
+            lifetime.leaveForeground()
+            runCurrent()
+            lifetime.enterForeground()
+            fixture.model.enterForeground()
+            runCurrent()
+            assertTrue(fixture.model.state.value.canTranslate)
+            assertEquals(3, creations)
+            assertEquals(1, preparations)
+            assertEquals("Keep source", fixture.model.state.value.input)
+        } finally {
+            gate.complete(Unit)
+            fixture.model.disposeAndJoin()
+            lifetime.closeAndJoin()
+            fixture.observationJob.cancelAndJoin()
+            Dispatchers.resetMain()
+        }
+    }
+
+    @Test fun retainedPreparationEvictionRevokesReadyWithoutAutomaticWorkAndForegroundRecovers() = runTest {
+        val dispatcher = StandardTestDispatcher(testScheduler)
+        Dispatchers.setMain(dispatcher)
+        val engine = FakeEngine(ModelAvailability.READY)
+        val fixture = createFixture(engine, dispatcher, initialInput = "Keep source")
+        try {
+            runCurrent()
+            fixture.model.translate()
+            runCurrent()
+            engine.preparation.value = TranslationPreparationState(TranslationPreparationPhase.LOADING)
+            runCurrent()
+            assertTrue(fixture.model.state.value.canTranslate)
+            engine.preparation.value = TranslationPreparationState(TranslationPreparationPhase.MISSING)
+            runCurrent()
+            assertFalse(fixture.model.state.value.canTranslate)
+            assertEquals("Keep source", fixture.model.state.value.input)
+            assertEquals("translated", fixture.model.state.value.result)
+            fixture.model.translate()
+            fixture.model.enterForeground()
+            runCurrent()
+            assertEquals(1, engine.translateCalls)
+            assertEquals(1, engine.localPrepareCalls)
+            assertEquals(0, engine.prepareCalls)
+            fixture.model.leaveForeground()
+            fixture.model.enterForeground()
+            runCurrent()
+            assertTrue(fixture.model.state.value.canTranslate)
+            assertEquals(2, engine.localPrepareCalls)
+        } finally {
+            fixture.model.disposeAndJoin()
+            fixture.observationJob.cancelAndJoin()
+            Dispatchers.resetMain()
+        }
+    }
+
+    @Test fun retainedPreparationFailurePublishesTypedRecoveryAndStaleOwnerCannotDisableSuccessor() = runTest {
+        val dispatcher = StandardTestDispatcher(testScheduler)
+        Dispatchers.setMain(dispatcher)
+        val engine = FakeEngine(ModelAvailability.READY)
+        val fixture = createFixture(engine, dispatcher, initialInput = "Keep source")
+        try {
+            runCurrent()
+            val failure = com.example.offlinetranslator.core.TranslationFailure.Memory()
+            engine.preparation.value = TranslationPreparationState(TranslationPreparationPhase.FAILED, lastFailure = failure)
+            runCurrent()
+            assertFalse(fixture.model.state.value.canTranslate)
+            assertEquals(failure, fixture.model.state.value.failure)
+            fixture.model.retry()
+            runCurrent()
+            assertTrue(fixture.model.state.value.canTranslate)
+            assertEquals(1, engine.prepareCalls)
+            val successorEngine = FakeEngine(ModelAvailability.READY)
+            val successorOwner = fixture.controller.replace { TextRuntimeOwner(fixture.owner.config, successorEngine) }
+            val successor = TranslationViewModel(successorOwner, fixture.controller, initialInput = "Next source")
+            try {
+                runCurrent()
+                val oldState = fixture.model.state.value
+                engine.preparation.value = TranslationPreparationState(TranslationPreparationPhase.MISSING)
+                runCurrent()
+                assertEquals(oldState, fixture.model.state.value)
+                assertTrue(successor.state.value.canTranslate)
+            } finally {
+                successor.disposeAndJoin()
+            }
+        } finally {
+            fixture.model.disposeAndJoin()
+            fixture.observationJob.cancelAndJoin()
+            Dispatchers.resetMain()
+        }
+    }
+
+    @Test fun installedModelIsInitializedLocallyOnEntryWithoutExplicitPreparation() = runTest {
+        val dispatcher = StandardTestDispatcher(testScheduler)
+        Dispatchers.setMain(dispatcher)
+        val engine = FakeEngine(ModelAvailability.MISSING)
+        engine.localAvailability = ModelAvailability.READY
+        val fixture = createFixture(engine, dispatcher, initialInput = "Keep this source")
+        try {
+            runCurrent()
+            assertEquals(1, engine.localPrepareCalls)
+            assertEquals(0, engine.prepareCalls)
+            assertEquals(ModelUiStatus.READY, fixture.model.state.value.modelStatus)
+            assertTrue(fixture.model.state.value.canTranslate)
+            fixture.model.enterForeground()
+            runCurrent()
+            assertEquals(1, engine.localPrepareCalls)
+        } finally {
+            fixture.model.disposeAndJoin()
+            fixture.observationJob.cancelAndJoin()
+            Dispatchers.resetMain()
+        }
+    }
+
+    @Test fun localProgressBlocksAllActionsWithoutDownloadingAndPreservesInput() = runTest {
+        val dispatcher = StandardTestDispatcher(testScheduler)
+        Dispatchers.setMain(dispatcher)
+        val engine = FakeEngine(ModelAvailability.MISSING)
+        engine.localGate = CompletableDeferred()
+        val source = "Keep\r\nthis source🙂"
+        val fixture = createFixture(engine, dispatcher, initialInput = source)
+        try {
+            runCurrent()
+            assertEquals(ModelUiStatus.CHECKING, fixture.model.state.value.modelStatus)
+            for (phase in listOf(TranslationPreparationPhase.VERIFYING, TranslationPreparationPhase.LOADING)) {
+                engine.preparation.value = TranslationPreparationState(phase)
+                runCurrent()
+                assertEquals(phase.name, fixture.model.state.value.modelStatus.name)
+                assertTrue(fixture.model.state.value.isPreparing)
+                assertFalse(fixture.model.state.value.canPrepare)
+                assertFalse(fixture.model.state.value.canTranslate)
+                fixture.model.updateInput("blocked")
+                fixture.model.translate()
+                fixture.model.prepare()
+                fixture.model.retry()
+                fixture.model.enterForeground()
+                runCurrent()
+                assertEquals(source, fixture.model.state.value.input)
+                assertEquals(0, engine.prepareCalls)
+                assertEquals(0, engine.translateCalls)
+                assertEquals(1, engine.localPrepareCalls)
+            }
+            engine.localGate!!.complete(ModelAvailability.READY)
+            runCurrent()
+            assertTrue(fixture.model.state.value.canTranslate)
+            assertFalse(fixture.model.state.value.isPreparing)
+        } finally {
+            fixture.model.disposeAndJoin()
+            fixture.observationJob.cancelAndJoin()
+            Dispatchers.resetMain()
+        }
+    }
+
+    @Test fun localMissingCorruptAndErrorRequireManualRecoveryWithoutAutomaticRetry() = runTest {
+        val dispatcher = StandardTestDispatcher(testScheduler)
+        Dispatchers.setMain(dispatcher)
+        try {
+            for (failure in listOf(null,
+                    com.example.offlinetranslator.core.TranslationFailure.ArtifactCorrupt(),
+                    com.example.offlinetranslator.core.TranslationFailure.RuntimeLoad())) {
+                val engine = FakeEngine(ModelAvailability.MISSING)
+                engine.localFailure = failure
+                val fixture = createFixture(engine, dispatcher, initialInput = "Keep source")
+                try {
+                    runCurrent()
+                    assertEquals(ModelUiStatus.MISSING, fixture.model.state.value.modelStatus)
+                    assertEquals(failure, fixture.model.state.value.failure)
+                    assertTrue(fixture.model.state.value.canPrepare)
+                    assertEquals("Keep source", fixture.model.state.value.input)
+                    fixture.model.enterForeground()
+                    runCurrent()
+                    assertEquals(1, engine.localPrepareCalls)
+                    assertEquals(0, engine.prepareCalls)
+                    engine.availability = ModelAvailability.READY
+                    fixture.model.retry()
+                    runCurrent()
+                    assertEquals(1, engine.prepareCalls)
+                    assertTrue(fixture.model.state.value.canTranslate)
+                    assertEquals(null, fixture.model.state.value.failure)
+                } finally {
+                    fixture.model.disposeAndJoin()
+                    fixture.observationJob.cancelAndJoin()
+                }
+            }
+        } finally {
+            Dispatchers.resetMain()
+        }
+    }
+
+    @Test fun foregroundReturnReinitializesLocallyAndRejectsCancelledTranslationResult() = runTest {
+        val dispatcher = StandardTestDispatcher(testScheduler)
+        Dispatchers.setMain(dispatcher)
+        val engine = FakeEngine(ModelAvailability.READY, suspendTranslation = true)
+        val fixture = createFixture(engine, dispatcher, initialInput = "Keep source")
+        try {
+            runCurrent()
+            fixture.model.translate()
+            runCurrent()
+            fixture.model.leaveForeground()
+            fixture.model.enterForeground()
+            fixture.model.enterForeground()
+            runCurrent()
+            assertEquals(ModelUiStatus.CHECKING, fixture.model.state.value.modelStatus)
+            engine.completeSuspendedTranslation("stale result")
+            runCurrent()
+            assertEquals("", fixture.model.state.value.result)
+            assertEquals("Keep source", fixture.model.state.value.input)
+            assertEquals(2, engine.localPrepareCalls)
+            assertEquals(0, engine.prepareCalls)
+            assertTrue(fixture.model.state.value.canTranslate)
+        } finally {
+            fixture.model.disposeAndJoin()
+            fixture.observationJob.cancelAndJoin()
+            Dispatchers.resetMain()
+        }
+    }
+
+    @Test fun cancelledLocalPreparationCannotPublishAfterBackgroundOrDisposal() = runTest {
+        val dispatcher = StandardTestDispatcher(testScheduler)
+        Dispatchers.setMain(dispatcher)
+        val engine = FakeEngine(ModelAvailability.MISSING)
+        engine.localGate = CompletableDeferred()
+        engine.nonCancellableLocal = true
+        val fixture = createFixture(engine, dispatcher, initialInput = "Keep source")
+        try {
+            runCurrent()
+            fixture.model.leaveForeground()
+            engine.localGate!!.complete(ModelAvailability.READY)
+            runCurrent()
+            assertEquals(ModelUiStatus.CHECKING, fixture.model.state.value.modelStatus)
+            assertFalse(fixture.model.state.value.isPreparing)
+            engine.localGate = CompletableDeferred()
+            fixture.model.enterForeground()
+            runCurrent()
+            assertEquals(2, engine.localPrepareCalls)
+            val disposal = async { fixture.model.disposeAndJoin() }
+            runCurrent()
+            val disposed = fixture.model.state.value
+            engine.localGate!!.complete(ModelAvailability.READY)
+            disposal.await()
+            runCurrent()
+            assertEquals(disposed, fixture.model.state.value)
+            assertEquals(0, engine.prepareCalls)
+        } finally {
+            fixture.model.disposeAndJoin()
+            fixture.observationJob.cancelAndJoin()
+            Dispatchers.resetMain()
+        }
+    }
+
+    @Test fun localForegroundCheckPreservesCompletedResult() = runTest {
+        val dispatcher = StandardTestDispatcher(testScheduler)
+        Dispatchers.setMain(dispatcher)
+        val fixture = createFixture(FakeEngine(ModelAvailability.READY), dispatcher, initialInput = "Keep source")
+        try {
+            runCurrent()
+            fixture.model.translate()
+            runCurrent()
+            fixture.model.leaveForeground()
+            fixture.model.enterForeground()
+            runCurrent()
+            assertEquals("translated", fixture.model.state.value.result)
+            assertEquals("Keep source", fixture.model.state.value.input)
+        } finally {
+            fixture.model.disposeAndJoin()
+            fixture.observationJob.cancelAndJoin()
+            Dispatchers.resetMain()
+        }
+    }
+
     @Test fun verificationAndLoadingProgressCannotEnableActionsOrReviveDisposedOwner() = runTest {
         val dispatcher = StandardTestDispatcher(testScheduler)
         Dispatchers.setMain(dispatcher)
@@ -568,6 +886,23 @@ private class FakeEngine(
     var translateCalls = 0
     var closeCalls = 0
     private var translationContinuation: Continuation<String>? = null
+
+    var localAvailability: ModelAvailability? = null
+    var localPrepareCalls = 0
+    var localGate: CompletableDeferred<ModelAvailability>? = null
+    var localFailure: Throwable? = null
+    var nonCancellableLocal = false
+
+    override suspend fun prepareLocal(): ModelAvailability {
+        localPrepareCalls++
+        localFailure?.let { throw it }
+        localGate?.let { gate ->
+            return if (nonCancellableLocal) kotlinx.coroutines.withContext(kotlinx.coroutines.NonCancellable) {
+                gate.await()
+            } else gate.await()
+        }
+        return localAvailability ?: modelAvailability()
+    }
 
     override suspend fun modelAvailability(): ModelAvailability {
         availabilityCalls++
