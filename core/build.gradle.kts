@@ -3,7 +3,7 @@ plugins {
 }
 
 android {
-    namespace = "com.example.offlinetranslator.core"
+    namespace = "io.github.ngoroth.offlinetranslator.core"
     compileSdk = 37
 
     defaultConfig {

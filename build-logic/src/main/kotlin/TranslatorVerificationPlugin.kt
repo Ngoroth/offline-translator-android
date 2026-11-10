@@ -1,6 +1,6 @@
 import com.android.build.api.variant.ApplicationAndroidComponentsExtension
 import com.android.build.api.artifact.SingleArtifact
-import com.example.offlinetranslator.testkit.*
+import io.github.ngoroth.offlinetranslator.testkit.*
 import org.gradle.api.Plugin
 import org.gradle.api.Project
 import org.gradle.kotlin.dsl.register

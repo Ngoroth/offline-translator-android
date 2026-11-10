@@ -5,7 +5,7 @@ import java.nio.file.Files
 
 class DeviceLifecycleFaultTest {
     private class FakeAdb(var fail: String=""): AdbClient(File("unused"),"emulator-1234") {
-        val installed=mutableSetOf(AdbClient.TARGET,AdbClient.TEST,"com.example.offlinetranslator","foreign.package")
+        val installed=mutableSetOf(AdbClient.TARGET,AdbClient.TEST,"io.github.ngoroth.offlinetranslator","foreign.package")
         var staging=true;val commands=ArrayList<List<String>>()
         override fun command(vararg args: String,timeoutSeconds: Long,maxBytes: Int): CommandResult {
             commands.add(args.toList());val joined=args.joinToString(" ")
@@ -31,7 +31,7 @@ class DeviceLifecycleFaultTest {
                 finally { OwnedDeviceCleanup.remove(adb) }
             }
             assertEquals(0,OwnedDeviceCleanup.receipt(adb).getInt("packageCount"))
-            assertEquals(setOf("com.example.offlinetranslator","foreign.package"),adb.installed)
+            assertEquals(setOf("io.github.ngoroth.offlinetranslator","foreign.package"),adb.installed)
             assertTrue(adb.commands.filter {it.first()=="uninstall"}.all {it.last() in setOf(AdbClient.TEST,AdbClient.TARGET)})
         }
     }
@@ -61,7 +61,7 @@ class DeviceLifecycleFaultTest {
                         val receipt=OwnedRunRecovery.recover(next,adb)
                         assertEquals("verified",receipt.getString("status"))
                         assertEquals(0,receipt.getInt("orphanCount"));assertFalse(next.journal.exists())
-                        assertEquals(setOf("com.example.offlinetranslator","foreign.package"),adb.installed)
+                        assertEquals(setOf("io.github.ngoroth.offlinetranslator","foreign.package"),adb.installed)
                     } else {
                         assertThrows(IllegalStateException::class.java) {OwnedRunRecovery.recover(next,adb)}
                         assertTrue(next.journal.exists())

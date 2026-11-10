@@ -5,7 +5,7 @@
 namespace {
 void fail(JNIEnv *env, const char *code) noexcept {
     if (env->ExceptionCheck()) return;
-    jclass type = env->FindClass("com/example/offlinetranslator/tencent/TencentNativeException");
+    jclass type = env->FindClass("io/github/ngoroth/offlinetranslator/tencent/TencentNativeException");
     if (!type) return;
     jmethodID constructor = env->GetMethodID(type, "<init>", "(Ljava/lang/String;)V");
     if (!constructor) return;
@@ -37,7 +37,7 @@ std::string bytes(JNIEnv *env, jbyteArray array) {
 }
 }
 
-#define JNI_METHOD(name) Java_com_example_offlinetranslator_tencent_TencentNativeRuntime_##name
+#define JNI_METHOD(name) Java_io_github_ngoroth_offlinetranslator_tencent_TencentNativeRuntime_##name
 extern "C" {
 JNIEXPORT jlong JNICALL JNI_METHOD(nativeCreate)(JNIEnv *env, jobject) {
     jlong handle = 0;

@@ -1,4 +1,4 @@
-import com.example.offlinetranslator.testkit.*
+import io.github.ngoroth.offlinetranslator.testkit.*
 import java.io.File
 import java.net.URI
 import org.json.JSONObject

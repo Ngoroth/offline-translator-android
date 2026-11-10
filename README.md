@@ -93,6 +93,12 @@ bash ./gradlew :engine-sherpa:prepareSherpaArchive --console=plain
 
 The APK is written to `app/build/outputs/apk/debug/app-debug.apk`.
 
+The application ID is `io.github.ngoroth.offlinetranslator`. It installs separately
+from earlier `com.example.offlinetranslator` builds; settings and downloaded models
+are not migrated. Owned Kotlin packages and source namespaces now also use
+`io.github.ngoroth.offlinetranslator`; updating an existing same-ID installation
+preserves its settings and downloaded models.
+
 The explicit stock-input command downloads the official Sherpa 1.13.8 AAR (50,129,134 bytes) to `engine-sherpa/libs/sherpa-onnx-1.13.8.aar`, verifies SHA-256 `633c24321e06b1fe79feafa03ea16cbc0f8a286641e2da3559bac91bdb13bd96`, and reuses valid bytes without network access. It is a preparation input, **not** the paired runtime shipped by the app. Corrupt existing input fails unchanged; inspect it explicitly rather than allowing an ordinary build to repair it.
 
 Prepare the selected-pair Sherpa distribution on Linux/WSL before assembly:

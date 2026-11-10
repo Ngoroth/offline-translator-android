@@ -36,7 +36,7 @@ def native_inputs(root: Path) -> dict[str, str]:
     paths = list((root / "engine-tencent/src/main/cpp").rglob("*"))
     paths += [root / name for name in (
         "engine-tencent/build.gradle.kts", "engine-tencent/src/main/AndroidManifest.xml",
-        "engine-tencent/src/main/java/com/example/offlinetranslator/tencent/TencentNativeRuntime.kt",
+        "engine-tencent/src/main/java/io/github/ngoroth/offlinetranslator/tencent/TencentNativeRuntime.kt",
         "engine-tencent/THIRD_PARTY.md", "tools/android/prepare-tencent-native.py",
         "tools/android/prepare-tencent-native.ps1", "tools/android/tencent-native-tools.json")]
     return {path.relative_to(root).as_posix(): sha256(path)
@@ -291,14 +291,14 @@ def prepare(args: argparse.Namespace) -> None:
             receipt[f"elf.{abi}.needed"] = ",".join(needed)
         members = dict(libraries)
         members["AndroidManifest.xml"] = (b'<manifest xmlns:android="http://schemas.android.com/apk/res/android" '
-            b'package="com.example.offlinetranslator.tencent.nativecpu"><uses-sdk android:minSdkVersion="26"/></manifest>\n')
+            b'package="io.github.ngoroth.offlinetranslator.tencent.nativecpu"><uses-sdk android:minSdkVersion="26"/></manifest>\n')
         jar = io.BytesIO()
         with zipfile.ZipFile(jar, "w"):
             pass
         members["classes.jar"] = jar.getvalue()
         members["R.txt"] = b""
-        members["proguard.txt"] = (b'-keep class com.example.offlinetranslator.tencent.TencentNativeRuntime { *; }\n'
-                                   b'-keep class com.example.offlinetranslator.tencent.TencentNativeException { *; }\n')
+        members["proguard.txt"] = (b'-keep class io.github.ngoroth.offlinetranslator.tencent.TencentNativeRuntime { *; }\n'
+                                   b'-keep class io.github.ngoroth.offlinetranslator.tencent.TencentNativeException { *; }\n')
         license_inputs = [source / "LICENSE"] + sorted((source / "licenses").glob("*"))
         license_inputs += sorted((source / "vendor/hash").rglob("LICENSE*"))
         for path in license_inputs:

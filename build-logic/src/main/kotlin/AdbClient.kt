@@ -60,7 +60,7 @@ open class AdbClient(private val executable: File, var serial: String? = null) {
         return fields[0]
     }
     companion object {
-        const val TARGET = "com.example.offlinetranslator.modelsmoke"
+        const val TARGET = "io.github.ngoroth.offlinetranslator.modelsmoke"
         const val TEST = "$TARGET.test"
         const val DEVICE_ROOT = "/data/local/tmp/offline-translator-evaluation"
         fun quote(value: String) = "'" + value.replace("'", "'\\''") + "'"

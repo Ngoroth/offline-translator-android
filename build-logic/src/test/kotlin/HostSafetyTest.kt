@@ -1,4 +1,4 @@
-import com.example.offlinetranslator.testkit.*
+import io.github.ngoroth.offlinetranslator.testkit.*
 import org.junit.Assert.*
 import org.junit.Test
 import org.json.JSONArray

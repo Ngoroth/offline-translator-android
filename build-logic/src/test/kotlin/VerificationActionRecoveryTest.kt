@@ -9,7 +9,7 @@ import java.nio.file.Files
 /** Executes the real verification action, including its catch/finally and report writer. */
 class VerificationActionRecoveryTest {
     private class FakeAdb(var fault: String) : AdbClient(File("unused")) {
-        val installed=mutableSetOf(TARGET,TEST,"foreign.package","com.example.offlinetranslator")
+        val installed=mutableSetOf(TARGET,TEST,"foreign.package","io.github.ngoroth.offlinetranslator")
         val commands=mutableListOf<List<String>>()
         var staging=true
         var wifi="0"
@@ -102,7 +102,7 @@ class VerificationActionRecoveryTest {
                 assertTrue(File(priorDirectory,"partial-input").isFile)
                 assertEquals("foreign",foreign.readText())
                 if(fault !in setOf("cleanup","network","receipt")) {
-                    assertEquals(setOf(AdbClient.TARGET,AdbClient.TEST,"foreign.package","com.example.offlinetranslator"),adb.installed)
+                    assertEquals(setOf(AdbClient.TARGET,AdbClient.TEST,"foreign.package","io.github.ngoroth.offlinetranslator"),adb.installed)
                     assertTrue(adb.staging);assertEquals("0",adb.wifi);assertEquals("1",adb.airplane)
                 }
                 adb.fault="";adb.serial=null
@@ -111,7 +111,7 @@ class VerificationActionRecoveryTest {
                 assertEquals("verified",next.getJSONObject("cleanup").getString("status"))
                 assertFalse(journal.exists());assertFalse(priorDirectory.exists())
                 assertFalse(adb.staging);assertEquals("1",adb.wifi);assertEquals("0",adb.airplane)
-                assertEquals(setOf("foreign.package","com.example.offlinetranslator"),adb.installed)
+                assertEquals(setOf("foreign.package","io.github.ngoroth.offlinetranslator"),adb.installed)
                 assertEquals("foreign",foreign.readText())
                 assertTrue(adb.commands.filter {it.first()=="uninstall"}.all {it.last() in setOf(AdbClient.TARGET,AdbClient.TEST)})
                 assertTrue(adb.commands.filter {it.joinToString(" ").contains("rm")}.all {it.last().contains(AdbClient.DEVICE_ROOT)})
@@ -137,7 +137,7 @@ class VerificationActionRecoveryTest {
             assertEquals("unverified",action(root,adb).getJSONObject("cleanup").getString("status"))
             assertArrayEquals(original,journal.readBytes())
             assertEquals("preserved",File(directory,"partial-input").readText())
-            assertEquals(setOf(AdbClient.TARGET,AdbClient.TEST,"foreign.package","com.example.offlinetranslator"),adb.installed)
+            assertEquals(setOf(AdbClient.TARGET,AdbClient.TEST,"foreign.package","io.github.ngoroth.offlinetranslator"),adb.installed)
             assertTrue(adb.staging);assertEquals("0",adb.wifi);assertEquals("1",adb.airplane)
             assertFalse(adb.commands.any {it.first()=="uninstall" || it.joinToString(" ").contains("rm")})
         } finally {root.deleteRecursively()}

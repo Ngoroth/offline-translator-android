@@ -13,13 +13,13 @@ plugins {
 
 val generateEvaluationUi = tasks.register<EvaluationSourceSync>("generateEvaluationUi") {
     from(rootProject.file("app/src/main/java")) {
-        include("com/example/offlinetranslator/translation/TranslationScreen.kt", "com/example/offlinetranslator/translation/TranslationUiState.kt",
-            "com/example/offlinetranslator/conversation/ConversationScreen.kt", "com/example/offlinetranslator/conversation/ConversationUiState.kt",
-            "com/example/offlinetranslator/ui/LanguageUiCatalog.kt", "com/example/offlinetranslator/ui/ProviderAttribution.kt",
-            "com/example/offlinetranslator/ui/LanguagePairControls.kt", "com/example/offlinetranslator/ui/TranslatorHelp.kt",
-            "com/example/offlinetranslator/ui/TranslationPreparation.kt",
-            "com/example/offlinetranslator/TranslatorHomeLayout.kt",
-            "com/example/offlinetranslator/conversation/SystemVoiceDataInstaller.kt")
+        include("io/github/ngoroth/offlinetranslator/translation/TranslationScreen.kt", "io/github/ngoroth/offlinetranslator/translation/TranslationUiState.kt",
+            "io/github/ngoroth/offlinetranslator/conversation/ConversationScreen.kt", "io/github/ngoroth/offlinetranslator/conversation/ConversationUiState.kt",
+            "io/github/ngoroth/offlinetranslator/ui/LanguageUiCatalog.kt", "io/github/ngoroth/offlinetranslator/ui/ProviderAttribution.kt",
+            "io/github/ngoroth/offlinetranslator/ui/LanguagePairControls.kt", "io/github/ngoroth/offlinetranslator/ui/TranslatorHelp.kt",
+            "io/github/ngoroth/offlinetranslator/ui/TranslationPreparation.kt",
+            "io/github/ngoroth/offlinetranslator/TranslatorHomeLayout.kt",
+            "io/github/ngoroth/offlinetranslator/conversation/SystemVoiceDataInstaller.kt")
     }
     outputDirectory.set(layout.buildDirectory.dir("generated/evaluationUi/java"))
     into(outputDirectory)
@@ -27,15 +27,17 @@ val generateEvaluationUi = tasks.register<EvaluationSourceSync>("generateEvaluat
 val generateEvaluationResources = tasks.register<EvaluationSourceSync>("generateEvaluationResources") {
     from(rootProject.file("app/src/main/res")) {
         include("values/strings.xml", "values-ru/strings.xml", "drawable-nodpi/powered_by_google_translate.png",
-            "drawable/conversation_empty.xml")
+            "drawable/conversation_empty.xml", "drawable/conversation_microphone.xml",
+            "drawable/conversation_microphone_off.xml", "drawable/conversation_speaker.xml",
+            "drawable/conversation_speaker_off.xml")
     }
     outputDirectory.set(layout.buildDirectory.dir("generated/evaluationUi/res"))
     into(outputDirectory)
 }
 val generateEvaluationUiTests = tasks.register<EvaluationSourceSync>("generateEvaluationUiTests") {
     from(rootProject.file("app/src/androidTest/java")) {
-        include("com/example/offlinetranslator/translation/TranslationScreenTest.kt", "com/example/offlinetranslator/conversation/ConversationScreenTest.kt",
-            "com/example/offlinetranslator/ui/SystemBack.kt")
+        include("io/github/ngoroth/offlinetranslator/translation/TranslationScreenTest.kt", "io/github/ngoroth/offlinetranslator/conversation/ConversationScreenTest.kt",
+            "io/github/ngoroth/offlinetranslator/ui/SystemBack.kt")
     }
     outputDirectory.set(layout.buildDirectory.dir("generated/evaluationUi/androidTest"))
     into(outputDirectory)
@@ -61,15 +63,15 @@ tasks.matching { it.name == "preModelSmokeAndroidTestBuild" || it.name == "merge
 }
 
 android {
-    namespace = "com.example.offlinetranslator"
+    namespace = "io.github.ngoroth.offlinetranslator"
     compileSdk = 37
     testBuildType = "modelSmoke"
 
     defaultConfig {
-        applicationId = "com.example.offlinetranslator.modelsmoke"
+        applicationId = "io.github.ngoroth.offlinetranslator.modelsmoke"
         minSdk = 23
         targetSdk = 36
-        testInstrumentationRunner = "com.example.offlinetranslator.modelsmoke.EvaluationInstrumentation"
+        testInstrumentationRunner = "io.github.ngoroth.offlinetranslator.modelsmoke.EvaluationInstrumentation"
         ndk { abiFilters += setOf("arm64-v8a", "x86_64") }
     }
 

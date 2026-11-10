@@ -1,6 +1,6 @@
 plugins { alias(libs.plugins.android.library) }
 android {
-    namespace = "com.example.offlinetranslator.testkit"
+    namespace = "io.github.ngoroth.offlinetranslator.testkit"
     compileSdk = 37
     defaultConfig { minSdk = 23 }
     compileOptions {

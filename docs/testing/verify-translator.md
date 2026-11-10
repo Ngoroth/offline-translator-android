@@ -81,7 +81,7 @@ one device operator, and run:
 ```powershell
 pwsh -NoProfile -File tools/android/run-device-gate.ps1 `
   -Adb $adb -Device emulator-5554 `
-  -CaseList 'com.example.offlinetranslator.runtime.ConversationSpeechOutputNativeTest,com.example.offlinetranslator.runtime.SharedLanguagePairNativeTest#speechOutputChoiceKeepsTheLiveOwnerAndPersistsSilentTurnsAfterReopen,com.example.offlinetranslator.runtime.SharedLanguagePairNativeTest#unavailablePiperEnableKeepsTheSelectedPairAndCapturesAnotherSilentTurn' `
+  -CaseList 'io.github.ngoroth.offlinetranslator.runtime.ConversationSpeechOutputNativeTest,io.github.ngoroth.offlinetranslator.runtime.SharedLanguagePairNativeTest#speechOutputChoiceKeepsTheLiveOwnerAndPersistsSilentTurnsAfterReopen,io.github.ngoroth.offlinetranslator.runtime.SharedLanguagePairNativeTest#unavailablePiperEnableKeepsTheSelectedPairAndCapturesAnotherSilentTurn' `
   -EvidenceDir "$env:TEMP/conversation-output-$([Guid]::NewGuid().ToString('N'))"
 ```
 
@@ -140,7 +140,7 @@ When a qualified selected language is missing, use **Install recognition languag
 After that public preparation check, the existing selected-resource inventory preparation can run:
 
 ```powershell
-& $adb -s emulator-5554 shell am instrument -w -r -e class 'com.example.offlinetranslator.runtime.AndroidConversationRecognitionNativeTest#prepareSelectedLanguages' com.example.offlinetranslator.test/androidx.test.runner.AndroidJUnitRunner
+& $adb -s emulator-5554 shell am instrument -w -r -e class 'io.github.ngoroth.offlinetranslator.runtime.AndroidConversationRecognitionNativeTest#prepareSelectedLanguages' io.github.ngoroth.offlinetranslator.test/androidx.test.runner.AndroidJUnitRunner
 ```
 
 Preparation can download resources and requires connectivity. It is separate from the offline proof. Preserve the original provider errors; do not retry or swap fixtures to turn a failure into a pass.
@@ -165,7 +165,7 @@ production UI/VAD/recognition/MT/output case:
 ```powershell
 pwsh -NoProfile -File tools/android/run-device-gate.ps1 `
   -Adb $adb -Device emulator-5554 `
-  -CaseList 'com.example.offlinetranslator.runtime.SharedLanguagePairNativeTest#whisperUsesSelectedPairAndRealOfflineVoicesInBothDirectionsForDutchEnglishRussian' `
+  -CaseList 'io.github.ngoroth.offlinetranslator.runtime.SharedLanguagePairNativeTest#whisperUsesSelectedPairAndRealOfflineVoicesInBothDirectionsForDutchEnglishRussian' `
   -EvidenceDir "$env:TEMP/whisper-ui-$([Guid]::NewGuid().ToString('N'))"
 ```
 
@@ -177,7 +177,7 @@ Use the existing System TTS proof with `systemTtsLanguageIds=en,ru,nl` for genui
 offline voice/non-silent PCM/completion/interruption evidence.
 
 ```powershell
-& $adb -s emulator-5554 shell am instrument -w -r -e class 'com.example.offlinetranslator.speech.SystemSpeechOutputNativeTest#allSelectedLocalesHaveGenuineInstalledOfflineVoiceAndCompletedPcm' -e systemTtsLanguageIds 'en,ru,nl' com.example.offlinetranslator.test/androidx.test.runner.AndroidJUnitRunner
+& $adb -s emulator-5554 shell am instrument -w -r -e class 'io.github.ngoroth.offlinetranslator.speech.SystemSpeechOutputNativeTest#allSelectedLocalesHaveGenuineInstalledOfflineVoiceAndCompletedPcm' -e systemTtsLanguageIds 'en,ru,nl' io.github.ngoroth.offlinetranslator.test/androidx.test.runner.AndroidJUnitRunner
 ```
 
 The optional argument selects only those fixed fixtures and rejects unknown or
@@ -185,12 +185,12 @@ missing fixture IDs. Without it, the existing full-catalog gate is unchanged.
 Do not advertise this selected three-language run as full-catalog qualification.
 
 The isolated model-smoke boundary case is
-`com.example.offlinetranslator.modelsmoke.WhisperLanguagePairNativeTest#selectedPairProducesItsOwnTranscriptAndRejectsInvalidConfiguration`.
+`io.github.ngoroth.offlinetranslator.modelsmoke.WhisperLanguagePairNativeTest#selectedPairProducesItsOwnTranscriptAndRejectsInvalidConfiguration`.
 Build **both** APKs with
 `./gradlew.bat :engine-sherpa-model-smoke:assembleModelSmoke :engine-sherpa-model-smoke:assembleModelSmokeAndroidTest`;
 assembling only the test APK does not refresh the target's catalog/native libraries.
 Install both freshly identified APKs and use runner
-`com.example.offlinetranslator.modelsmoke.test/com.example.offlinetranslator.modelsmoke.EvaluationInstrumentation`.
+`io.github.ngoroth.offlinetranslator.modelsmoke.test/io.github.ngoroth.offlinetranslator.modelsmoke.EvaluationInstrumentation`.
 Pass instrumentation argument `whisperModelInput` naming an accessible, absolute canonical owned
 directory. It must contain the three exact catalog package-ID directories,
 each with its declared single file. The existing verified evaluator import
@@ -198,7 +198,7 @@ checks/copies only this selected catalog; it neither downloads nor imports
 private production audio. Invalid/duplicate/unknown/forced-language requests
 must produce no text or direction; the valid case must preserve real speech
 meaning and the native-produced completion status.
-Use the application's canonical `/data/data/com.example.offlinetranslator.modelsmoke/files/...`
+Use the application's canonical `/data/data/io.github.ngoroth.offlinetranslator.modelsmoke/files/...`
 input path; shell `realpath` can instead return the noncanonical `/data/user/0/...` alias.
 For binary stdin staging, use `adb exec-in run-as ...`, not `adb shell` stdin;
 verify every staged SHA256 before execution. Keep the production import checks intact.
@@ -254,7 +254,7 @@ After real UI preparation, verify no active networks and restart the app. The ne
 ```powershell
 pwsh -File tools/android/run-device-gate.ps1 `
   -Adb $adb -Device emulator-5554 `
-  -CaseList 'com.example.offlinetranslator.runtime.TencentTranslationNativeTest,com.example.offlinetranslator.runtime.AndroidConversationRecognitionNativeTest#preparedOfflineTencentRussianEnglishConversation' `
+  -CaseList 'io.github.ngoroth.offlinetranslator.runtime.TencentTranslationNativeTest,io.github.ngoroth.offlinetranslator.runtime.AndroidConversationRecognitionNativeTest#preparedOfflineTencentRussianEnglishConversation' `
   -EvidenceDir "$env:TEMP/tencent-app-$([Guid]::NewGuid().ToString('N'))"
 ```
 
@@ -262,7 +262,7 @@ The Text scenarios use the real selected registry/owner/JNI with a runtime resta
 
 `engine-tencent/src/androidTest/.../TencentNativeRuntimeTest.kt` adds real JNI request isolation, approved newline equivalence, Unicode/NUL/literal-marker input, persistent cancellation/reset and original input-limit coverage. Its `frozenChineseToThaiCompletesWithStrictUnicodeAndRetainsNameTimeAndPrice` regression uses the exact frozen Chinese fixture that failed with InvalidEncoding under unconstrained greedy. It requires a successful complete strictly decoded Thai result and tolerant Anna/08:30/25-euro fact checks, allowing Thai digits, common name transliterations and numeric time formatting rather than a sentence snapshot. Successful native return requires the allowed EOS, not partial output. Script/fact checks do not certify target-language confidence or full semantics, including the platform question, price basis or negation.
 
-Assemble the separate library instrumentation APK with `:engine-tencent:assembleDebugAndroidTest`, install it under the same exclusive owner and pass `-e modelPath <absolute readable pinned GGUF path>` using the [pinned model identity](../../README.md#tencent-model-preparation-and-boundaries). Select `com.example.offlinetranslator.tencent.TencentNativeRuntimeTest#frozenChineseToThaiCompletesWithStrictUnicodeAndRetainsNameTimeAndPrice` for the regression or the whole class for all native checks. This suite never downloads weights; invalid/missing model or incomplete instrumentation fails rather than assuming PASS. It does not alone prove in-decode cancellation; retain actual native callback and app Stop evidence for that claim.
+Assemble the separate library instrumentation APK with `:engine-tencent:assembleDebugAndroidTest`, install it under the same exclusive owner and pass `-e modelPath <absolute readable pinned GGUF path>` using the [pinned model identity](../../README.md#tencent-model-preparation-and-boundaries). Select `io.github.ngoroth.offlinetranslator.tencent.TencentNativeRuntimeTest#frozenChineseToThaiCompletesWithStrictUnicodeAndRetainsNameTimeAndPrice` for the regression or the whole class for all native checks. This suite never downloads weights; invalid/missing model or incomplete instrumentation fails rather than assuming PASS. It does not alone prove in-decode cancellation; retain actual native callback and app Stop evidence for that claim.
 
 Record exact model/runtime/native-AAR/APK identities, both packaged ABIs and 16-KiB LOAD alignment. Separate all-240 execution/target-language evidence from the fixed 34-direction semantic sample. Freeze source fixtures before generation, retain failed/UNKNOWN outputs without replacement, and use a separately pinned host-only FastText lid.176 evaluator (target top1 confidence at least 0.80 and margin at least 0.20); do not bundle it or equate language identification with meaning. Semantic checks need bilingual reasoning for negation, invented names, numbers, prices, times and role relationships. Chinese target assessment also needs Simplified-script checks beyond a `zh` classifier label.
 
@@ -300,9 +300,9 @@ After saving the original radio state, disconnect networking and **verify actual
 Run the original human fixture cohort for both designated and explicit routes, and keep synthetic functional coverage separate:
 
 ```powershell
-& $adb -s emulator-5554 shell am instrument -w -r -e class 'com.example.offlinetranslator.runtime.AndroidConversationRecognitionNativeTest#preparedOfflineProductionConversation' com.example.offlinetranslator.test/androidx.test.runner.AndroidJUnitRunner
-& $adb -s emulator-5554 shell am instrument -w -r -e class 'com.example.offlinetranslator.runtime.AndroidConversationRecognitionNativeTest#preparedOfflineExplicitGoogleProductionConversation' com.example.offlinetranslator.test/androidx.test.runner.AndroidJUnitRunner
-& $adb -s emulator-5554 shell am instrument -w -r -e class 'com.example.offlinetranslator.runtime.AndroidConversationRecognitionNativeTest#preparedOfflineSyntheticProductionConversation' com.example.offlinetranslator.test/androidx.test.runner.AndroidJUnitRunner
+& $adb -s emulator-5554 shell am instrument -w -r -e class 'io.github.ngoroth.offlinetranslator.runtime.AndroidConversationRecognitionNativeTest#preparedOfflineProductionConversation' io.github.ngoroth.offlinetranslator.test/androidx.test.runner.AndroidJUnitRunner
+& $adb -s emulator-5554 shell am instrument -w -r -e class 'io.github.ngoroth.offlinetranslator.runtime.AndroidConversationRecognitionNativeTest#preparedOfflineExplicitGoogleProductionConversation' io.github.ngoroth.offlinetranslator.test/androidx.test.runner.AndroidJUnitRunner
+& $adb -s emulator-5554 shell am instrument -w -r -e class 'io.github.ngoroth.offlinetranslator.runtime.AndroidConversationRecognitionNativeTest#preparedOfflineSyntheticProductionConversation' io.github.ngoroth.offlinetranslator.test/androidx.test.runner.AndroidJUnitRunner
 ```
 
 The human cohort checks the pinned RU/EN inputs across the existing orders/directions. The synthetic cohort exercises installed-local-TTS functional coverage and selected translation/output checks. Synthetic completion is not a substitute for a failed human cohort, natural-speech coverage, all-direction semantic quality or microphone acoustics. Record readiness, source resolution, translation meaning and actual non-silent output completion—not merely a phase callback.
@@ -317,9 +317,9 @@ For a controlled missing-ROM-component experiment, use a separate disposable/roo
 Additional existing boundaries can be checked independently:
 
 ```powershell
-& $adb -s emulator-5554 shell am instrument -w -r -e class 'com.example.offlinetranslator.speech.SystemSpeechOutputNativeTest' com.example.offlinetranslator.test/androidx.test.runner.AndroidJUnitRunner
-& $adb -s emulator-5554 shell am instrument -w -r -e class 'com.example.offlinetranslator.runtime.RuntimeSettingsNativeTest,com.example.offlinetranslator.runtime.SharedLanguagePairNativeTest' com.example.offlinetranslator.test/androidx.test.runner.AndroidJUnitRunner
-& $adb -s emulator-5554 shell am instrument -w -r -e class 'com.example.offlinetranslator.speech.AndroidSpeechPcmWriterNativeTest' com.example.offlinetranslator.test/androidx.test.runner.AndroidJUnitRunner
+& $adb -s emulator-5554 shell am instrument -w -r -e class 'io.github.ngoroth.offlinetranslator.speech.SystemSpeechOutputNativeTest' io.github.ngoroth.offlinetranslator.test/androidx.test.runner.AndroidJUnitRunner
+& $adb -s emulator-5554 shell am instrument -w -r -e class 'io.github.ngoroth.offlinetranslator.runtime.RuntimeSettingsNativeTest,io.github.ngoroth.offlinetranslator.runtime.SharedLanguagePairNativeTest' io.github.ngoroth.offlinetranslator.test/androidx.test.runner.AndroidJUnitRunner
+& $adb -s emulator-5554 shell am instrument -w -r -e class 'io.github.ngoroth.offlinetranslator.speech.AndroidSpeechPcmWriterNativeTest' io.github.ngoroth.offlinetranslator.test/androidx.test.runner.AndroidJUnitRunner
 ```
 
 The whole `SharedLanguagePairNativeTest` class includes the Whisper checks above;
@@ -348,7 +348,7 @@ For retained complete instrumentation output, use the PowerShell 7 [device runne
 pwsh -File tools/android/run-device-gate.ps1 `
   -Adb $adb `
   -Device emulator-5554 `
-  -CaseList 'com.example.offlinetranslator.speech.SystemSpeechOutputNativeTest' `
+  -CaseList 'io.github.ngoroth.offlinetranslator.speech.SystemSpeechOutputNativeTest' `
   -EvidenceDir "$env:TEMP/translator-device-$([Guid]::NewGuid().ToString('N'))"
 ```
 

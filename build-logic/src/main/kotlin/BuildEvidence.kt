@@ -1,4 +1,4 @@
-import com.example.offlinetranslator.testkit.Integrity
+import io.github.ngoroth.offlinetranslator.testkit.Integrity
 import org.json.JSONArray
 import org.json.JSONObject
 import java.io.File

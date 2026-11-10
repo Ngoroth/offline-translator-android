@@ -28,7 +28,7 @@ dependencyResolutionManagement {
                     dirs(rootDir.resolve("engine-tencent/libs"))
                 }
             }
-            filter { includeGroup("com.example.offlinetranslator.native") }
+            filter { includeGroup("io.github.ngoroth.offlinetranslator.native") }
         }
     }
 }

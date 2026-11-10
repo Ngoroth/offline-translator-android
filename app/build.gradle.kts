@@ -62,11 +62,11 @@ tasks.matching { it.name == "preDebugAndroidTestBuild" || it.name == "mergeDebug
 }
 
 android {
-    namespace = "com.example.offlinetranslator"
+    namespace = "io.github.ngoroth.offlinetranslator"
     compileSdk = 37
 
     defaultConfig {
-        applicationId = "com.example.offlinetranslator"
+        applicationId = "io.github.ngoroth.offlinetranslator"
         minSdk = 34
         targetSdk = 36
         versionCode = 7

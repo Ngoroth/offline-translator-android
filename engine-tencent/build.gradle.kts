@@ -14,7 +14,7 @@ val nativeArchive = layout.projectDirectory.file("libs/tencent-native-$nativeVer
 val nativeReceipt = layout.projectDirectory.file("libs/tencent-native-$nativeVersion.receipt.properties")
 val nativeInputFiles = fileTree("src/main/cpp") + files(
     "build.gradle.kts", "src/main/AndroidManifest.xml",
-    "src/main/java/com/example/offlinetranslator/tencent/TencentNativeRuntime.kt",
+    "src/main/java/io/github/ngoroth/offlinetranslator/tencent/TencentNativeRuntime.kt",
     "THIRD_PARTY.md", rootProject.file("tools/android/prepare-tencent-native.py"),
     rootProject.file("tools/android/prepare-tencent-native.ps1"),
     rootProject.file("tools/android/tencent-native-tools.json"),
@@ -118,7 +118,7 @@ val verifyTencentNativeArchive = tasks.register("verifyTencentNativeArchive") {
 }
 
 android {
-    namespace = "com.example.offlinetranslator.tencent"
+    namespace = "io.github.ngoroth.offlinetranslator.tencent"
     compileSdk = 37
     defaultConfig {
         minSdk = 26
@@ -132,7 +132,7 @@ android {
 
 dependencies {
     implementation(project(":core"))
-    implementation("com.example.offlinetranslator.native:tencent-native:$nativeVersion") {
+    implementation("io.github.ngoroth.offlinetranslator.native:tencent-native:$nativeVersion") {
         artifact { type = "aar" }
     }
     implementation(libs.kotlinx.coroutines.android)

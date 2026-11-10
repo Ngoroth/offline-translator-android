@@ -1,4 +1,4 @@
-import com.example.offlinetranslator.testkit.*
+import io.github.ngoroth.offlinetranslator.testkit.*
 import org.gradle.api.DefaultTask
 import org.gradle.api.GradleException
 import org.gradle.api.file.DirectoryProperty
@@ -120,23 +120,23 @@ abstract class VerifyTranslatorTask : DefaultTask() {
                 try { runStage(adb,workspace.id,phase,classes,report,timeout=remainingTimeout(timeout)) }
                 catch(failure: Exception) { failures.put("$phase: ${failure.message}");adb.shell("am","force-stop",AdbClient.TARGET) }
             }
-            attempt("regression","com.example.offlinetranslator.translation.TranslationScreenTest,com.example.offlinetranslator.conversation.ConversationScreenTest")
+            attempt("regression","io.github.ngoroth.offlinetranslator.translation.TranslationScreenTest,io.github.ngoroth.offlinetranslator.conversation.ConversationScreenTest")
             previousWifi=adb.shell("settings","get","global","wifi_on")
             previousAirplane=adb.shell("settings","get","global","airplane_mode_on")
             workspace.saveNetwork(previousWifi,previousAirplane)
             adb.shell("cmd","connectivity","airplane-mode","disable"); adb.shell("svc","wifi","enable")
-            attempt("preparation","com.example.offlinetranslator.modelsmoke.PreparationTest",660)
+            attempt("preparation","io.github.ngoroth.offlinetranslator.modelsmoke.PreparationTest",660)
             adb.shell("svc","wifi","disable"); adb.shell("cmd","connectivity","airplane-mode","enable")
             adb.shell("am","force-stop",AdbClient.TARGET)
-            attempt("feature","com.example.offlinetranslator.modelsmoke.FeatureIntegrationTest")
-            attempt("smoke","com.example.offlinetranslator.modelsmoke.SpeechModelSmokeTest,com.example.offlinetranslator.modelsmoke.ControlledSpeechCorpusTest")
+            attempt("feature","io.github.ngoroth.offlinetranslator.modelsmoke.FeatureIntegrationTest")
+            attempt("smoke","io.github.ngoroth.offlinetranslator.modelsmoke.SpeechModelSmokeTest,io.github.ngoroth.offlinetranslator.modelsmoke.ControlledSpeechCorpusTest")
             for ((index,model) in models.withIndex()) {
                 val row=rows.getJSONObject(index)
                 if(row.getJSONArray("reasons").toString().contains("inputFailure")) continue
                 try {
                     require(System.nanoTime()<totalDeadline) { "Whole-run deadline exceeded" }
                     adb.shell("am","force-stop",AdbClient.TARGET)
-                    val telemetry=runStage(adb,workspace.id,"candidate","com.example.offlinetranslator.modelsmoke.ModelEvaluationTest",report,model.id,remainingTimeout(1200),fault.get())
+                    val telemetry=runStage(adb,workspace.id,"candidate","io.github.ngoroth.offlinetranslator.modelsmoke.ModelEvaluationTest",report,model.id,remainingTimeout(1200),fault.get())
                     val device=adb.command("exec-out","run-as",AdbClient.TARGET,"cat","files/evaluation/${workspace.id}/result.json",maxBytes=16*1024*1024)
                     require(device.exitCode==0)
                     val result=JSONObject(device.text)
@@ -166,7 +166,7 @@ abstract class VerifyTranslatorTask : DefaultTask() {
             CandidateVerdicts.applyDependencies(rows,baseline.map { it.id }.toSet())
             CandidateVerdicts.deltas(rows,baseline.map { it.id }.toSet())
             CandidateVerdicts.missingWinners(rows).forEach { failures.put("No passing candidate for $it") }
-            attempt("cleanup","com.example.offlinetranslator.modelsmoke.CleanupProbeTest")
+            attempt("cleanup","io.github.ngoroth.offlinetranslator.modelsmoke.CleanupProbeTest")
         } catch(failure: Exception) { failures.put("infrastructure: ${failure.javaClass.simpleName}: ${failure.message}") }
         finally {
             val cleanup=JSONObject()
@@ -228,7 +228,7 @@ abstract class VerifyTranslatorTask : DefaultTask() {
         val stage=JSONObject().put("phase",phase).put("candidate",candidate)
         report.getJSONArray("stages").put(stage)
         try {
-            val args=mutableListOf("shell","am instrument -w -r -e class ${AdbClient.quote(classes)} -e runId ${AdbClient.quote(id)} -e phase ${AdbClient.quote(phase)} -e candidate ${AdbClient.quote(candidate)} -e controlCorpus true -e evaluationFault ${AdbClient.quote(fault)} ${AdbClient.quote(AdbClient.TEST+"/com.example.offlinetranslator.modelsmoke.EvaluationInstrumentation")}")
+            val args=mutableListOf("shell","am instrument -w -r -e class ${AdbClient.quote(classes)} -e runId ${AdbClient.quote(id)} -e phase ${AdbClient.quote(phase)} -e candidate ${AdbClient.quote(candidate)} -e controlCorpus true -e evaluationFault ${AdbClient.quote(fault)} ${AdbClient.quote(AdbClient.TEST+"/io.github.ngoroth.offlinetranslator.modelsmoke.EvaluationInstrumentation")}")
             val result=adb.command(*args.toTypedArray(),timeoutSeconds=timeout)
             val stages=report.getJSONArray("stages")
             val used=(0 until stages.length()).sumOf {stages.getJSONObject(it).optString("output").toByteArray(Charsets.UTF_8).size}
@@ -294,4 +294,4 @@ abstract class VerifyTranslatorTask : DefaultTask() {
 
 /** Historical input decoding and typed projection live in the host-safe test-kit boundary. */
 internal fun fixedDirectionSpeechCatalog(baselineManifest: JSONObject): JSONObject =
-    com.example.offlinetranslator.testkit.ModelManifest.fixedDirectionSpeechCatalog(baselineManifest)
+    io.github.ngoroth.offlinetranslator.testkit.ModelManifest.fixedDirectionSpeechCatalog(baselineManifest)

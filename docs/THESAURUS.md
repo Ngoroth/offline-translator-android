@@ -77,168 +77,168 @@ skill: ubiquitous-language
 - **Definition**: Persisted user choices for the shared language pair, common translation engine, explicit Translation setup completion, speech output backend, whether speech output is enabled, and speech-processing parameters.
 - **NOT**: Installed models or the current processing phase; Whisper handles the selected recognition pair and Piper voices are selected automatically from the languages.
 - **Related**: Language pair, Speech output backend.
-- **Evidence**: `core/src/main/java/com/example/offlinetranslator/core/AppSettings.kt:13-35`.
+- **Evidence**: `core/src/main/java/io/github/ngoroth/offlinetranslator/core/AppSettings.kt:13-35`.
 
 ### Conversation
 - **Definition**: Sequential processing of utterances in two selected languages with automatic translation direction and optional half-duplex speech output.
 - **NOT**: Text input or simultaneous listening and playback; recording pauses for enabled output, not merely because recognition or translation is processing.
 - **Related**: Utterance recognition, Speech output, Conversation utterance.
-- **Evidence**: `core/src/main/java/com/example/offlinetranslator/core/ConversationPipeline.kt:46-79`.
+- **Evidence**: `core/src/main/java/io/github/ngoroth/offlinetranslator/core/ConversationPipeline.kt:46-79`.
 
 ### Conversation failure
 - **Definition**: A typed cause of failure during conversation preparation, capture, language identification, recognition, translation or playback.
 - **NOT**: Utterance status: the cause of an error and the processing state of a record are separate concepts.
-- **Evidence**: `core/src/main/java/com/example/offlinetranslator/core/ConversationPipeline.kt:24-39`.
+- **Evidence**: `core/src/main/java/io/github/ngoroth/offlinetranslator/core/ConversationPipeline.kt:24-39`.
 
 ### Conversation phase
 - **Definition**: The conversation pipeline's current activity: ready, preparing, listening, understanding, translating, speaking or error.
 - **NOT**: Utterance status, Conversation preparation or microphone availability; phase describes pipeline activity, while fresh capture state determines whether the user can speak.
-- **Evidence**: `core/src/main/java/com/example/offlinetranslator/core/ConversationPipeline.kt:26-55`.
+- **Evidence**: `core/src/main/java/io/github/ngoroth/offlinetranslator/core/ConversationPipeline.kt:26-55`.
 
 ### Conversation preparation
 - **Definition**: The displayed state of explicit preparation for the selected languages, distinguishing checks, required user action, speech resources, translation preparation and errors.
 - **NOT**: Conversation phase: this preparation state precedes pipeline startup, rather than describing the current utterance or microphone recording.
-- **Evidence**: `app/src/main/java/com/example/offlinetranslator/conversation/ConversationUiState.kt:3-4`, `app/src/main/res/values-ru/strings.xml:44-52`.
+- **Evidence**: `app/src/main/java/io/github/ngoroth/offlinetranslator/conversation/ConversationUiState.kt:3-4`, `app/src/main/res/values-ru/strings.xml:44-52`.
 
 ### Conversation state
 - **Definition**: The current snapshot of the conversation phase, session and capture activity, utterance records, general failure and bounded segment queue.
 - **NOT**: Conversation phase or Utterance status alone; an active session does not necessarily mean that the microphone is running.
-- **Evidence**: `core/src/main/java/com/example/offlinetranslator/core/ConversationPipeline.kt:41-49`.
+- **Evidence**: `core/src/main/java/io/github/ngoroth/offlinetranslator/core/ConversationPipeline.kt:41-49`.
 
 ### Conversation utterance
 - **Definition**: An identifiable processing record for one utterance, containing the original text, optional direction and translation, status, failure and latency data.
 - **NOT**: Only the source transcription or the entire conversation; the record exists before recognition completes.
 - **Related**: Utterance status, Conversation failure.
-- **Evidence**: `core/src/main/java/com/example/offlinetranslator/core/ConversationPipeline.kt:30-39`, `app/src/main/res/values-ru/strings.xml:32-35`.
+- **Evidence**: `core/src/main/java/io/github/ngoroth/offlinetranslator/core/ConversationPipeline.kt:30-39`, `app/src/main/res/values-ru/strings.xml:32-35`.
 
 ### Direct translation
 - **Definition**: A translation path reported as one source-to-target model invocation, supported by provider-specific routing evidence.
 - **NOT**: A guarantee of output quality or the absence of internal intermediate representations.
-- **Evidence**: `core/src/main/java/com/example/offlinetranslator/core/TranslationCapabilities.kt`, `MlKitTranslationEngine.capability`, `TencentTranslationEngine.capability`.
+- **Evidence**: `core/src/main/java/io/github/ngoroth/offlinetranslator/core/TranslationCapabilities.kt`, `MlKitTranslationEngine.capability`, `TencentTranslationEngine.capability`.
 
 ### Install
 - **Definition**: Explicitly obtain and verify speech resources owned by the model repository.
 - **NOT**: Prepare or installation of an Android system voice; the selected system engine installs its local data through a separate action.
-- **Evidence**: `core/src/main/java/com/example/offlinetranslator/core/SpeechModelRepository.kt:27-33`, `ConversationEngines.kt:5-9` in the same directory.
+- **Evidence**: `core/src/main/java/io/github/ngoroth/offlinetranslator/core/SpeechModelRepository.kt:27-33`, `ConversationEngines.kt:5-9` in the same directory.
 
 ### Installation status
 - **Definition**: The installation stage of a speech resource: missing, downloading, verifying, ready or failed.
 - **NOT**: Speech output readiness or readiness of the complete translation path; READY applies to a particular resource.
-- **Evidence**: `core/src/main/java/com/example/offlinetranslator/core/SpeechModelRepository.kt:6-11`.
+- **Evidence**: `core/src/main/java/io/github/ngoroth/offlinetranslator/core/SpeechModelRepository.kt:6-11`.
 
 ### Interface language
 - **Definition**: The Android-persisted choice of language for the app-owned interface from the supported catalog; applied immediately and defaulting to English.
 - **NOT**: The translation language pair, the detected utterance language or the language of Android system screens.
 - **Related**: Language identifier, Language pair.
-- **Evidence**: `app/src/main/java/com/example/offlinetranslator/ui/InterfaceLanguage.kt:10-30,41-52`.
+- **Evidence**: `app/src/main/java/io/github/ngoroth/offlinetranslator/ui/InterfaceLanguage.kt:10-30,41-52`.
 
 ### Language identifier
 - **Definition**: A normalized string language code with validated format and length.
 - **NOT**: The result of identifying the language of an utterance; a valid code alone does not establish speech or translation support.
-- **Evidence**: `core/src/main/java/com/example/offlinetranslator/core/LanguageId.kt:5-15`.
+- **Evidence**: `core/src/main/java/io/github/ngoroth/offlinetranslator/core/LanguageId.kt:5-15`.
 
 ### Language pair
 - **Definition**: An ordered pair of distinct languages with source and target positions, shared by text and conversation modes.
 - **NOT**: An unordered set: order determines text translation direction, while each recognized conversation language selects the forward or reverse pair without changing the persisted order.
-- **Evidence**: `core/src/main/java/com/example/offlinetranslator/core/LanguagePair.kt:3-6`, `RuntimeConfiguration.kt:44-49` in the same directory; `app/src/main/res/values-ru/strings.xml:118-125,138`.
+- **Evidence**: `core/src/main/java/io/github/ngoroth/offlinetranslator/core/LanguagePair.kt:3-6`, `RuntimeConfiguration.kt:44-49` in the same directory; `app/src/main/res/values-ru/strings.xml:118-125,138`.
 
 ### Pivot translation
 - **Definition**: A translation path for which the engine reports an intermediate language, `via`.
 - **NOT**: Direct translation; this classification alone does not require the application to perform two translations manually.
-- **Evidence**: `core/src/main/java/com/example/offlinetranslator/core/TranslationCapabilities.kt:3-7`.
+- **Evidence**: `core/src/main/java/io/github/ngoroth/offlinetranslator/core/TranslationCapabilities.kt:3-7`.
 
 ### Playback start
 - **Definition**: A speech-output notification with an optional timestamp for the first non-silent audio presentation and a flag indicating measurement provenance.
 - **NOT**: A guaranteed physical measurement: a notification without a timestamp reports only a phase and provides no numerical latency.
-- **Evidence**: `core/src/main/java/com/example/offlinetranslator/core/ConversationEngines.kt:55-59` (`SpeechPlaybackStart`).
+- **Evidence**: `core/src/main/java/io/github/ngoroth/offlinetranslator/core/ConversationEngines.kt:55-59` (`SpeechPlaybackStart`).
 
 ### Prepare
 - **Definition**: Explicitly establish a component's resources and readiness before local processing, including model downloads or initialization where that component requires them.
 - **NOT**: Install: preparation does not always download files, and installation does not guarantee readiness of every conversation component.
 - **Related**: Conversation preparation.
-- **Evidence**: `core/src/main/java/com/example/offlinetranslator/core/TranslationEngine.kt` (`prepare`), `ConversationEngines.kt:49,66` in the same directory.
+- **Evidence**: `core/src/main/java/io/github/ngoroth/offlinetranslator/core/TranslationEngine.kt` (`prepare`), `ConversationEngines.kt:49,66` in the same directory.
 
 ### Recognition backend
 - **Definition**: A choice between Android system offline and joint Whisper recognition, independent of the Speech output backend.
 - **NOT**: Speech output backend or Translation engine; this choice neither replaces speech output nor enables automatic switching between backends.
 - **Related**: Utterance recognition, Speech output backend, Recognition readiness.
-- **Evidence**: `core/src/main/java/com/example/offlinetranslator/core/AppSettings.kt` (`SpeechRecognitionBackend`).
+- **Evidence**: `core/src/main/java/io/github/ngoroth/offlinetranslator/core/AppSettings.kt` (`SpeechRecognitionBackend`).
 
 ### Recognition readiness
 - **Definition**: The state of the selected recognition backend and its selected resources for the current language pair: ready, missing local model, unsupported, engine unavailable, scheduled, downloading, download failed or check failed.
 - **NOT**: Language identification quality, Speech output readiness or Translation model readiness.
 - **Related**: Recognition backend, Conversation preparation.
-- **Evidence**: `core/src/main/java/com/example/offlinetranslator/core/ConversationEngines.kt:38-42`.
+- **Evidence**: `core/src/main/java/io/github/ngoroth/offlinetranslator/core/ConversationEngines.kt:38-42`.
 
 ### Recognition result
 - **Definition**: The outcome of recognizing a speech segment, carrying original text and either an assigned translation direction or an undetermined language.
 - **NOT**: Recognized utterance alone: an outcome may retain text without authorizing translation or playback.
 - **Related**: Recognized utterance, Undetermined language.
-- **Evidence**: `core/src/main/java/com/example/offlinetranslator/core/ConversationEngines.kt:13-22`.
+- **Evidence**: `core/src/main/java/io/github/ngoroth/offlinetranslator/core/ConversationEngines.kt:13-22`.
 
 ### Recognized utterance
 - **Definition**: A recognition result containing the original text and translation direction determined from the utterance language.
 - **NOT**: Conversation utterance: the result does not yet contain a translation, playback status or record failure.
-- **Evidence**: `core/src/main/java/com/example/offlinetranslator/core/ConversationEngines.kt:17-20`.
+- **Evidence**: `core/src/main/java/io/github/ngoroth/offlinetranslator/core/ConversationEngines.kt:17-20`.
 
 ### Speech capture
 - **Definition**: Obtaining microphone audio while the application is active and producing bounded speech segments for processing.
 - **NOT**: Utterance recognition: a segment contains audio, not text.
 - **Related**: Speech segment.
-- **Evidence**: `core/src/main/java/com/example/offlinetranslator/core/SpeechCaptureEngine.kt:3-28`.
+- **Evidence**: `core/src/main/java/io/github/ngoroth/offlinetranslator/core/SpeechCaptureEngine.kt:3-28`.
 
 ### Speech model
 - **Definition**: An identifiable description of an executable speech model, including its role, languages, adapter parameters and references to required files.
 - **NOT**: Speech resource package or an ML Kit translation model; a Piper voice has the TTS role, but a System voice is not a model in this catalog.
 - **Related**: Speech model role.
-- **Evidence**: `speech-models/src/main/java/com/example/offlinetranslator/speechmodels/SpeechModelDefinition.kt:9-17`.
+- **Evidence**: `speech-models/src/main/java/io/github/ngoroth/offlinetranslator/speechmodels/SpeechModelDefinition.kt:9-17`.
 
 ### Speech model role
 - **Definition**: The purpose of a speech resource: voice activity detection (VAD), speech recognition (ASR) or speech synthesis (TTS).
 - **NOT**: The model's language, family or installation status; Whisper resolves the utterance language during joint recognition rather than through a separately selected role.
-- **Evidence**: `core/src/main/java/com/example/offlinetranslator/core/RuntimeConfiguration.kt:3`, `SpeechModelRepository.kt:14-24` in the same directory.
+- **Evidence**: `core/src/main/java/io/github/ngoroth/offlinetranslator/core/RuntimeConfiguration.kt:3`, `SpeechModelRepository.kt:14-24` in the same directory.
 
 ### Speech model status
 - **Definition**: Information about an installable speech resource: identifier, source, license, size, progress, failure, role and languages.
 - **NOT**: Installation status alone or evidence that the entire conversation is ready.
-- **Evidence**: `core/src/main/java/com/example/offlinetranslator/core/SpeechModelRepository.kt:14-25`.
+- **Evidence**: `core/src/main/java/io/github/ngoroth/offlinetranslator/core/SpeechModelRepository.kt:14-25`.
 
 ### Speech output
 - **Definition**: Optional local synthesis and playback of translated text in the target language, including interruption of current speech without discarding translated text.
 - **NOT**: Speech capture or Translation engine; disabling output skips synthesis and playback rather than merely setting speaker volume to zero.
 - **Related**: Speech output backend, Speech output readiness, Playback start.
-- **Evidence**: `core/src/main/java/com/example/offlinetranslator/core/ConversationEngines.kt:49-60`, `ConversationPipeline.kt:78-107` in the same directory.
+- **Evidence**: `core/src/main/java/io/github/ngoroth/offlinetranslator/core/ConversationEngines.kt:49-60`, `ConversationPipeline.kt:78-107` in the same directory.
 
 ### Speech output backend
 - **Definition**: The explicit choice between Android system offline speech output and local Piper voices.
 - **NOT**: Translation provider or Recognition backend; system speech output does not move the entire speech path to system components, and Piper is not its automatic fallback.
-- **Evidence**: `core/src/main/java/com/example/offlinetranslator/core/AppSettings.kt:3-6`, `app/src/main/res/values-ru/strings.xml:136,140-144`.
+- **Evidence**: `core/src/main/java/io/github/ngoroth/offlinetranslator/core/AppSettings.kt:3-6`, `app/src/main/res/values-ru/strings.xml:136,140-144`.
 
 ### Speech output readiness
 - **Definition**: Speech-output availability, distinguishing ready, missing local voice, engine unavailable and initialization failed states.
 - **NOT**: Translation model readiness, recognition-model presence or the user's enabled/disabled choice; unavailable output does not block intentionally silent Conversation.
-- **Evidence**: `core/src/main/java/com/example/offlinetranslator/core/ConversationEngines.kt:49-60`, `app/src/main/java/com/example/offlinetranslator/conversation/ConversationViewModel.kt` (`resourcesReady`, `toggleSpeechOutput`).
+- **Evidence**: `core/src/main/java/io/github/ngoroth/offlinetranslator/core/ConversationEngines.kt:49-60`, `app/src/main/java/io/github/ngoroth/offlinetranslator/conversation/ConversationViewModel.kt` (`resourcesReady`, `toggleSpeechOutput`).
 
 ### Speech resource package
 - **Definition**: An identifiable downloadable archive or file with a verifiable set of speech-resource files, size, source and license.
 - **NOT**: Speech model: the package is an installation unit, while one model can reference multiple packages and share their files with other models.
-- **Evidence**: `speech-models/src/main/java/com/example/offlinetranslator/speechmodels/SpeechModelCatalog.kt:14-27`.
+- **Evidence**: `speech-models/src/main/java/io/github/ngoroth/offlinetranslator/speechmodels/SpeechModelCatalog.kt:14-27`.
 
 ### Speech segment
 - **Definition**: A bounded fragment of one utterance in mono 16 kHz PCM, extracted by voice activity detection and lasting no more than 15 seconds.
 - **NOT**: Recognized utterance: this is audio with optional end-of-speech timing data, not text.
-- **Evidence**: `core/src/main/java/com/example/offlinetranslator/core/SpeechSegment.kt:3-7,19-34`.
+- **Evidence**: `core/src/main/java/io/github/ngoroth/offlinetranslator/core/SpeechSegment.kt:3-7,19-34`.
 
 ### System voice
 - **Definition**: A named Android TTS voice with a language locale and flags for network requirements and missing installed data.
 - **NOT**: A guarantee that every installed voice supports offline output; Piper uses a Speech model rather than this system object.
 - **Related**: Speech output readiness.
-- **Evidence**: `app/src/main/java/com/example/offlinetranslator/speech/AndroidTtsClient.kt:38-43`, `app/src/main/res/values-ru/strings.xml:131-135`.
+- **Evidence**: `app/src/main/java/io/github/ngoroth/offlinetranslator/speech/AndroidTtsClient.kt:38-43`, `app/src/main/res/values-ru/strings.xml:131-135`.
 
 ### Translate
 - **Definition**: Request translation of text from the source language to the target language of the selected pair.
 - **NOT**: Prepare: translation uses local resources and does not download missing models.
-- **Evidence**: `core/src/main/java/com/example/offlinetranslator/core/TranslationEngine.kt:3-13` (`translate`).
+- **Evidence**: `core/src/main/java/io/github/ngoroth/offlinetranslator/core/TranslationEngine.kt:3-13` (`translate`).
 
 ### Translation artifact
 - **Definition**: A pinned, integrity-verified local file containing translation weights, shared across selected language pairs without sharing mutable inference state.
@@ -248,13 +248,13 @@ skill: ubiquitous-language
 - **Definition**: The engine's classification of the selected pair's translation path: direct, pivot, unsupported or unknown.
 - **NOT**: Translation model readiness or confirmation of output quality; an unknown classification is not an unsupported pair.
 - **Related**: Direct translation, Pivot translation.
-- **Evidence**: `core/src/main/java/com/example/offlinetranslator/core/TranslationCapabilities.kt:3-22`.
+- **Evidence**: `core/src/main/java/io/github/ngoroth/offlinetranslator/core/TranslationCapabilities.kt:3-22`.
 
 ### Translation engine
 - **Definition**: A component that translates nonblank text in a selected direction using prepared local models.
 - **NOT**: Utterance recognition or Speech output; invoking translation does not download missing models.
 - **Related**: Translation provider, Translate.
-- **Evidence**: `core/src/main/java/com/example/offlinetranslator/core/TranslationEngine.kt:3-13`.
+- **Evidence**: `core/src/main/java/io/github/ngoroth/offlinetranslator/core/TranslationEngine.kt:3-13`.
 
 ### Translation failure
 - **Definition**: A typed actionable cause of unsuccessful translation preparation or inference, excluding coroutine cancellation.
@@ -262,7 +262,7 @@ skill: ubiquitous-language
 ### Translation model readiness
 - **Definition**: Local availability of the models needed for the selected translation, with MISSING and READY states.
 - **NOT**: Translation capability: a supported path can still require resource preparation.
-- **Evidence**: `core/src/main/java/com/example/offlinetranslator/core/ModelAvailability.kt:3-6`, `TranslationEngine.kt:8-11` in the same directory.
+- **Evidence**: `core/src/main/java/io/github/ngoroth/offlinetranslator/core/ModelAvailability.kt:3-6`, `TranslationEngine.kt:8-11` in the same directory.
 
 ### Translation preparation
 - **Definition**: An observable snapshot of explicit translation resource preparation, including phase, available byte progress and the last typed failure.
@@ -274,30 +274,30 @@ skill: ubiquitous-language
 ### Translation provider
 - **Definition**: An identifiable translation implementation with a name, provider and SDK information, attribution and terms of use.
 - **NOT**: Speech output backend: choosing a text or conversation translation provider does not choose recognition or a voice.
-- **Evidence**: `core/src/main/java/com/example/offlinetranslator/core/TranslationCapabilities.kt:25-32`. SDK information stays in the provider description, not ordinary Help.
+- **Evidence**: `core/src/main/java/io/github/ngoroth/offlinetranslator/core/TranslationCapabilities.kt:25-32`. SDK information stays in the provider description, not ordinary Help.
 
 ### Translation setup
 - **Definition**: The required explicit first choice of a common Translation engine, completed only when that choice and its completion are persisted together.
 - **NOT**: Translation preparation; completing setup does not install resources or start processing.
 - **Related**: App settings, Translation engine.
-- **Evidence**: `core/src/main/java/com/example/offlinetranslator/core/AppSettings.kt`, `app/src/main/java/com/example/offlinetranslator/runtime/AppRuntime.kt` (`completeTranslationSetup`).
+- **Evidence**: `core/src/main/java/io/github/ngoroth/offlinetranslator/core/AppSettings.kt`, `app/src/main/java/io/github/ngoroth/offlinetranslator/runtime/AppRuntime.kt` (`completeTranslationSetup`).
 
 ### Undetermined language
 - **Definition**: A recognition outcome retaining any original text without a sufficiently supported language assignment within the selected pair.
 - **NOT**: An unsupported selected pair or a recognized direction that may be guessed for translation.
 - **Related**: Recognition result, Utterance recognition.
-- **Evidence**: `core/src/main/java/com/example/offlinetranslator/core/ConversationEngines.kt:22`.
+- **Evidence**: `core/src/main/java/io/github/ngoroth/offlinetranslator/core/ConversationEngines.kt:22`.
 
 ### Utterance recognition
 - **Definition**: Obtaining a speech segment's original text and resolving its translation direction within the selected pair, or explicitly leaving its source undetermined.
 - **NOT**: Translation engine: recognition returns original text with a direction or an undetermined outcome, not translated text.
 - **Related**: Recognition result, Recognized utterance, Undetermined language.
-- **Evidence**: `core/src/main/java/com/example/offlinetranslator/core/ConversationEngines.kt:33-40`.
+- **Evidence**: `core/src/main/java/io/github/ngoroth/offlinetranslator/core/ConversationEngines.kt:33-40`.
 
 ### Utterance status
 - **Definition**: The processing stage of an individual conversation record: understanding, translating, speaking, completed, failed or interrupted.
 - **NOT**: Conversation phase: a completed or interrupted record retains its own status independently of the next utterance.
-- **Evidence**: `core/src/main/java/com/example/offlinetranslator/core/ConversationPipeline.kt:28-39`.
+- **Evidence**: `core/src/main/java/io/github/ngoroth/offlinetranslator/core/ConversationPipeline.kt:28-39`.
 
 ## Forbidden
 

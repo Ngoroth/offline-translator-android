@@ -57,7 +57,7 @@ val verifySherpaArchive = tasks.register<Exec>("verifySherpaArchive") {
 }
 
 android {
-    namespace = "com.example.offlinetranslator.sherpa"
+    namespace = "io.github.ngoroth.offlinetranslator.sherpa"
     compileSdk = 37
 
     defaultConfig {

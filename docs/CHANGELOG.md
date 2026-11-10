@@ -4,6 +4,18 @@ Notable capability, behavior and developer-facing compatibility changes. Entries
 
 ## Unreleased
 
+### Source package identity — 2026-11-09
+
+- Migrated owned Kotlin packages, source paths, namespaces, test selectors and Tencent JNI/native tooling to `io.github.ngoroth.offlinetranslator`.
+- Kept the production application ID, version, settings schema and model identities unchanged; same-ID updates preserve app data.
+- Updated generated model-smoke resource inputs to include the existing conversation microphone and speaker icons.
+
+### Google Play application identity — 2026-11-09
+
+- Changed the application ID to `io.github.ngoroth.offlinetranslator`; Kotlin packages and the source namespace are unchanged.
+- Updated the app instrumentation runner commands and production-app isolation fixtures for the new identity.
+- Earlier `com.example.offlinetranslator` builds remain separate installations; settings and downloaded models are not migrated.
+
 ### Development prerelease 0.1.6
 
 - Text and Conversation automatically initialize verified installed models locally; downloads and repairs remain explicit Wi-Fi Prepare actions.

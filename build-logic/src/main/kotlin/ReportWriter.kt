@@ -10,7 +10,7 @@ object ReportWriter {
         val sampleRows=JSONArray()
         File(root,"samples").walkTopDown().filter { it.isFile && it.extension=="wav" }.forEach { file ->
             sampleRows.put(JSONObject().put("path",file.relativeTo(root).invariantSeparatorsPath).put("bytes",file.length())
-                .put("sha256",com.example.offlinetranslator.testkit.Integrity.sha256(file)))
+                .put("sha256",io.github.ngoroth.offlinetranslator.testkit.Integrity.sha256(file)))
         }
         report.put("samples",sampleRows)
         val json=report.toString(2)

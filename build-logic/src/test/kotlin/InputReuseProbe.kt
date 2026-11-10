@@ -1,4 +1,4 @@
-import com.example.offlinetranslator.testkit.*
+import io.github.ngoroth.offlinetranslator.testkit.*
 import org.json.JSONArray
 import org.json.JSONObject
 import java.io.File
@@ -81,7 +81,7 @@ object InputReuseProbe {
                         adb.shell("chmod","-R","a+rX",AdbClient.DEVICE_ROOT)
                         adb.shell("run-as",AdbClient.TARGET,"mkdir","-p","files/evaluation/${owner.id}")
                         adb.shell("run-as",AdbClient.TARGET,"cp","-R","${AdbClient.DEVICE_ROOT}/input/.","files/evaluation/${owner.id}/")
-                        val command="am instrument -w -r -e class ${AdbClient.quote("com.example.offlinetranslator.modelsmoke.InputReuseProbeTest")} -e runId ${AdbClient.quote(owner.id)} -e phase smoke ${AdbClient.quote(AdbClient.TEST+"/com.example.offlinetranslator.modelsmoke.EvaluationInstrumentation")}"
+                        val command="am instrument -w -r -e class ${AdbClient.quote("io.github.ngoroth.offlinetranslator.modelsmoke.InputReuseProbeTest")} -e runId ${AdbClient.quote(owner.id)} -e phase smoke ${AdbClient.quote(AdbClient.TEST+"/io.github.ngoroth.offlinetranslator.modelsmoke.EvaluationInstrumentation")}"
                         val result=adb.command("shell",command,timeoutSeconds=180,maxBytes=1048576)
                         phase.put("instrumentation",result.text)
                         require(result.exitCode==0 && result.text.contains("OK (") && result.text.contains("HARNESS_COUNTS run=1 failed=0 skipped=0") && !result.text.contains("FAILURES!!!")) {"Input reuse instrumentation failed"}

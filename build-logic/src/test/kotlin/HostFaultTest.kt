@@ -1,4 +1,4 @@
-import com.example.offlinetranslator.testkit.*
+import io.github.ngoroth.offlinetranslator.testkit.*
 import org.apache.commons.compress.archivers.tar.*
 import org.apache.commons.compress.compressors.bzip2.BZip2CompressorOutputStream
 import org.json.JSONArray

@@ -16,7 +16,7 @@ param(
 )
 
 $ErrorActionPreference = 'Stop'
-$runner = 'com.example.offlinetranslator.test/androidx.test.runner.AndroidJUnitRunner'
+$runner = 'io.github.ngoroth.offlinetranslator.test/androidx.test.runner.AndroidJUnitRunner'
 $proof = New-Item -ItemType Directory -Path $EvidenceDir -Force
 $logPath = Join-Path $proof.FullName 'device-gate-full.log'
 $receiptPath = Join-Path $proof.FullName 'device-gate-receipt.json'

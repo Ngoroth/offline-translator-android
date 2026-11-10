@@ -1,6 +1,6 @@
-import com.example.offlinetranslator.testkit.CorpusCase
-import com.example.offlinetranslator.testkit.EvaluationModel
-import com.example.offlinetranslator.testkit.EvaluationModelRole
+import io.github.ngoroth.offlinetranslator.testkit.CorpusCase
+import io.github.ngoroth.offlinetranslator.testkit.EvaluationModel
+import io.github.ngoroth.offlinetranslator.testkit.EvaluationModelRole
 import org.json.JSONArray
 import org.json.JSONObject
 

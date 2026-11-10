@@ -3,7 +3,7 @@ plugins {
 }
 
 android {
-    namespace = "com.example.offlinetranslator.speechmodels"
+    namespace = "io.github.ngoroth.offlinetranslator.speechmodels"
     compileSdk = 37
 
     defaultConfig {
