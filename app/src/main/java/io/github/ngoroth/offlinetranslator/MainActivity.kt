@@ -1,9 +1,11 @@
 package io.github.ngoroth.offlinetranslator
 
+import android.graphics.Color
 import android.content.res.Configuration
 import android.os.Bundle
 import android.view.ViewTreeObserver
 import androidx.activity.ComponentActivity
+import androidx.activity.SystemBarStyle
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.layout.Box
@@ -25,7 +27,8 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         InterfaceLanguage.ensureDefault(this)
         super.onCreate(savedInstanceState)
-        enableEdgeToEdge()
+        val lightSystemBars = SystemBarStyle.light(Color.TRANSPARENT, Color.TRANSPARENT)
+        enableEdgeToEdge(statusBarStyle = lightSystemBars, navigationBarStyle = lightSystemBars)
         updateLocaleReadiness()
         window.decorView.viewTreeObserver.addOnPreDrawListener(localeDrawGate)
         setContent {

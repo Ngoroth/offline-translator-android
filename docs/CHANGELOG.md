@@ -4,6 +4,11 @@ Notable capability, behavior and developer-facing compatibility changes. Entries
 
 ## Unreleased
 
+### System-bar icon contrast
+
+- Keep system-bar icons dark to match the app's fixed light theme, including when Android uses a dark system theme. Previously the default edge-to-edge appearance could make the clock, network and battery icons white on the app's light background.
+- Preserve existing screen insets; this fixes icon contrast rather than adding extra top padding. Verified the rendered Conversation and Text screens on an API37 emulator with a dark system theme, Text with its keyboard open, and Text after restoring the light system theme.
+
 ### Development prerelease 0.1.7
 
 - Removed ML Kit; Tencent is now the only translation provider.
