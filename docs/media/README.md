@@ -2,6 +2,8 @@
 
 These are captures of the real Android application, not mockups or rewritten translation results. They show one prepared English/Russian setup on `emulator-5554`; they do not qualify every language, device or phrase.
 
+The newer [Tencent store-listing set](tencent/README.md) contains 9:16 screenshots and a video captured with Whisper, Tencent and local System speech output. The root-level media documented below retain their earlier ML Kit capture provenance; do not use them as Tencent demonstrations.
+
 ## Images
 
 - [Conversation](conversation.png): the settled, ready conversation surface.

@@ -4,6 +4,13 @@ Notable capability, behavior and developer-facing compatibility changes. Entries
 
 ## Unreleased
 
+### Store listing and future listening experience — 2026-11-10
+
+- Added an English Google Play listing draft highlighting open source, on-device offline processing and planned language expansion.
+- Recorded a future one-way listening experience with progressive translated text during ongoing speech; this mode is not implemented.
+- Added four 9:16 Tencent screenshots and a 24-second offline Whisper/Tencent/System-speech video, with build identity and capture limitations recorded alongside them.
+- Added original store-listing artwork: a 512 × 512 app icon and a 1024 × 500 feature graphic. The APK launcher icon remains unchanged.
+
 ### Source package identity — 2026-11-09
 
 - Migrated owned Kotlin packages, source paths, namespaces, test selectors and Tencent JNI/native tooling to `io.github.ngoroth.offlinetranslator`.

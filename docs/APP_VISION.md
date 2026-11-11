@@ -46,6 +46,15 @@ Language choice is part of the conversation, not a technical setting hidden in a
 - Do not require model expertise to understand whether a selected pair is ready to use.
 - Remember speech output between launches, defaulting to on. Mute stops current speech without losing text or the conversation; enabling applies to subsequent results only. If selected output is unavailable, retain the silent conversation and explain recovery without implicit downloads or a provider fallback. Reset restores output on; ordinary settings changes preserve the choice.
 
+## Future Use: Listen and Read Translations
+
+In a future mode, a user listens to another person while the phone captures that person's speech and displays translated text alongside the ongoing speech. The user selects the speaker's language and the language to read; this is one-way translation rather than an alternating two-person conversation.
+
+Listening must continue while earlier speech is being recognized and translated, and translated text must appear progressively without waiting for the speaker to finish the whole talk. Spoken playback is not required for this experience. Start and Stop remain explicit and accessible.
+
+This mode must work on the device after online language preparation and preserve the same ephemeral-content and privacy requirements as Conversation. It is a future product goal, not a capability of the first release or a claim of zero-delay, word-for-word simultaneous translation. The current utterance-based timing rules below describe the initial Conversation experience.
+
+
 ## Utterance Timing and Speed
 
 For the initial experience, the translation is presented after the speaker finishes an utterance and spoken if output is enabled. Silent operation skips synthesis, playback and playback waiting; it does not claim faster recognition or translation. Simultaneous spoken translation while the speaker continues is outside the initial scope and may be reconsidered in later versions.

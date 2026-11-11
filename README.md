@@ -7,16 +7,14 @@
 ## See it working
 
 <p>
-  <img src="docs/media/conversation.png" width="30%" alt="Real Conversation screen, ready for English and Russian">
-  <img src="docs/media/text-translation.png" width="30%" alt="Real offline English-to-Russian text translation">
-  <img src="docs/media/preparing-speech.png" width="30%" alt="Real speech-resource startup after Start; languages are already prepared">
+  <img src="docs/media/tencent/conversation-translation.png" width="30%" alt="Real offline Conversation turn translated by Tencent, with listening resumed">
+  <img src="docs/media/tencent/text-translation.png" width="30%" alt="Real offline English-to-Russian text translation using Tencent">
+  <img src="docs/media/tencent/prepare-models.png" width="30%" alt="Explicit Tencent model download over Wi-Fi before offline use">
 </p>
 
-[Language preparation help](docs/media/language-preparation-help.png) · [Watch the 12-second offline conversation with sound](docs/media/offline-conversation.mp4)
+[Watch the 24-second offline conversation with sound](docs/media/tencent/offline-conversation.mp4)
 
-![Recorded offline conversation using a committed test-audio fixture](docs/media/offline-conversation.gif)
-
-Recorded on an emulator with networking disabled and languages prepared. Test audio passes through the real recognition, translation and speech pipeline—not a live human microphone demo. [Capture details and limits](docs/media/README.md).
+Recorded on an emulator with networking disabled and languages prepared. Test audio passes through the real Whisper recognition → Tencent translation → local System speech pipeline—not a live human microphone demo. Processing is not sped up. The model-download screenshot shows online preparation, not offline inference. [Capture details and limits](docs/media/tencent/README.md).
 
 ## The experience
 
