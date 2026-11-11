@@ -17,10 +17,17 @@ ask only for a private security contact, without describing the vulnerability or
 including reproduction steps or sensitive data. Withhold details until a private
 channel is available and confirmed; a “security” label does not make an issue private.
 
-## Known privacy limitation
+## Privacy and diagnostic logs
 
-Historical checks found recognized/translated text in ML Kit native logs. The
-content-logging issue remains
-unresolved. Offline processing does not guarantee safe diagnostic logs. Do not
-publish raw logcat, bugreports, device dumps or real conversation recordings;
-use synthetic reproductions and review/redact necessary excerpts locally.
+Historical development builds exposed recognized/translated text in ML Kit native
+logs. ML Kit is no longer included; removal does not fix those older builds or
+prove that every retained component is free of content logging. Offline processing
+does not guarantee safe diagnostic logs. Do not publish raw logcat, bugreports,
+device dumps or real conversation recordings; use synthetic reproductions and
+review/redact necessary excerpts locally.
+
+Whisper and Tencent process locally after explicit model preparation. Optional
+Android recognition and System speech output use installed services with their
+own privacy terms. Android recognition's offline request relies on the selected
+service honoring it; it is not independent no-network attestation. See the
+[privacy policy](docs/privacy-policy.md) for those boundaries.

@@ -154,12 +154,22 @@ internal fun TranslationSetupGate(
     onRetry: () -> Unit,
     content: @Composable () -> Unit,
 ) {
-    if (!state.loading && !state.loadError && state.translationSetupComplete) {
+    if (!state.loading && !state.loadError && state.translationSetupComplete && providers.isNotEmpty()) {
         content()
         return
     }
-    var selected by rememberSaveable { mutableStateOf<String?>(null) }
-    val enabled = state.editable && !state.loading && !state.saving && !state.loadError && !state.teardownError
+    var selected by rememberSaveable { mutableStateOf(providers.singleOrNull()?.id) }
+    var automaticAttempted by rememberSaveable { mutableStateOf(false) }
+    val enabled = state.canReset
+    val soleProvider = providers.singleOrNull()
+    LaunchedEffect(soleProvider?.id, enabled, state.translationSetupComplete, state.saveError) {
+        if (soleProvider != null && enabled && !state.translationSetupComplete &&
+            !state.saveError && !automaticAttempted) {
+            automaticAttempted = true
+            selected = soleProvider.id
+            onComplete(soleProvider.id)
+        }
+    }
     val height = LocalConfiguration.current.screenHeightDp.dp
     val context = androidx.compose.ui.platform.LocalContext.current
     val configuration = LocalConfiguration.current
@@ -183,19 +193,24 @@ internal fun TranslationSetupGate(
                     Column(Modifier.weight(1f, fill = false).verticalScroll(rememberScrollState()).padding(16.dp),
                         verticalArrangement = Arrangement.spacedBy(12.dp)) {
                         Text(stringResource(R.string.translation_setup_title), style = MaterialTheme.typography.headlineSmall)
-                        Text(stringResource(R.string.translation_setup_explanation))
+                        if (providers.size > 1) Text(stringResource(R.string.translation_setup_explanation))
                         SettingsNotices(state, onRetry = {}, showRetry = false)
-                        TranslationEngineChoice(selected, providers, enabled) { engineId ->
-                            selected = engineId
-                            onComplete(engineId)
+                        if (providers.isEmpty()) {
+                            Text(stringResource(R.string.translation_setup_unavailable), color = MaterialTheme.colorScheme.error)
+                        } else if (providers.size > 1) {
+                            TranslationEngineChoice(selected, providers, enabled) { engineId ->
+                                selected = engineId
+                                onComplete(engineId)
+                            }
                         }
                     }
                     if (state.loadError || state.saveError) {
                         HorizontalDivider()
                         Button(
-                            onClick = { if (state.loadError) onRetry() else selected?.let(onComplete) },
+                            onClick = { if (state.loadError) onRetry() else selected?.takeIf { id -> providers.any { it.id == id } }?.let(onComplete) },
                             modifier = Modifier.fillMaxWidth().padding(16.dp).heightIn(min = 48.dp).testTag(SettingsTestTags.RETRY),
-                            enabled = !state.loading && !state.saving && !state.teardownError && (state.loadError || (state.editable && selected != null)),
+                            enabled = !state.loading && !state.saving && !state.teardownError &&
+                                (state.loadError || (state.editable && providers.any { it.id == selected })),
                         ) { Text(stringResource(R.string.retry_action)) }
                     }
                 }
@@ -217,22 +232,17 @@ internal fun TranslationEngineChoice(
         if (selected != null && providers.none { it.id == selected }) {
             Text(stringResource(R.string.settings_unavailable, selected), color = MaterialTheme.colorScheme.error)
         }
-        for (id in listOf("mlkit", "tencent")) {
-            val provider = providers.firstOrNull { it.id == id } ?: continue
+        for (provider in providers) {
+            val id = provider.id
             Surface(shape = MaterialTheme.shapes.medium, color = if (selected == id) MaterialTheme.colorScheme.secondaryContainer else MaterialTheme.colorScheme.surfaceContainer) {
                 Row(Modifier.fillMaxWidth().heightIn(min = 48.dp).selectable(selected == id, enabled = enabled, role = Role.RadioButton, onClick = { onSelect(id) })
                     .testTag("${SettingsTestTags.TRANSLATION_ENGINE}_option_$id").padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
                     RadioButton(selected = selected == id, onClick = null, enabled = enabled)
                     Spacer(Modifier.width(12.dp))
-                    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                        Text(stringResource(if (id == "mlkit") R.string.translation_choice_fast else R.string.translation_choice_accurate), style = MaterialTheme.typography.titleSmall)
-                        Text(stringResource(if (id == "mlkit") R.string.translation_choice_fast_description else R.string.translation_choice_accurate_description), style = MaterialTheme.typography.bodySmall)
-                        Text(provider.displayName, style = MaterialTheme.typography.labelSmall)
-                    }
+                    Text(provider.displayName, style = MaterialTheme.typography.titleSmall)
                 }
             }
         }
-        Text(stringResource(R.string.translation_choice_disclaimer), style = MaterialTheme.typography.bodySmall)
         if (selected == "tencent") Text(stringResource(R.string.tencent_model_download_hint), style = MaterialTheme.typography.bodySmall)
     }
 }

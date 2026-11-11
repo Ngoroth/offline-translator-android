@@ -33,7 +33,7 @@ object BuildEvidence {
     }
     fun collect(repo: File): JSONObject {
         val modules=JSONArray()
-        for(module in listOf("core","engine-mlkit","engine-sherpa","app","translator-test-kit","build-logic")) {
+        for(module in listOf("core","engine-tencent","engine-sherpa","app","translator-test-kit","build-logic")) {
             val directory=File(repo,"$module/build/test-results")
             val files=directory.walkTopDown().maxDepth(4).filter {it.isFile && it.name.startsWith("TEST-") && it.extension=="xml"}.take(129).toList()
             require(files.size in 1..128) {"Missing/oversized prerequisite test evidence: $module"}

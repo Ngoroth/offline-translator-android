@@ -8,7 +8,7 @@ Captured on 10 November 2026 from the actual Android application on `emulator-55
 - Installed artifact: `app/build/outputs/apk/debug/app-debug.apk`, version `0.1.6-debug`, version code 7.
 - Installed APK SHA-256: `5d88b0444dc0635b5fb154a06735417539cb02b25c960f35ff985d422f7a348e`.
 - Saved translation engine: `tencent`; recognition: `whisper`; speech output: `system-offline`, enabled. Tencent is used for both Text and Conversation.
-- Selecting Tencent does not remove the unused ML Kit dependency from this development APK. These captures are not evidence that the planned ML-Kit-free release has been built.
+- This 10 November APK still contained the unused ML Kit dependency; selecting Tencent did not remove it. Current source/build wiring removes ML Kit, but these historical captures do not prove a newly assembled ML-Kit-free APK's inventory or startup behavior.
 
 ## Screenshots
 

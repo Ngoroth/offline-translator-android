@@ -61,9 +61,9 @@ class TranslationViewModelTest {
                     override suspend fun translate(pair: LanguagePair, text: String) = text
                     override fun close() = Unit
                 }
-            }, { error("Unexpected") }))
+            }))
         val pair = LanguagePair(LanguageCatalog.RUSSIAN, LanguageCatalog.ENGLISH)
-        val fixture = createFixture(lifetime.lease("mlkit", setOf(pair)), dispatcher, initialInput = "Keep source")
+        val fixture = createFixture(lifetime.lease("tencent", setOf(pair)), dispatcher, initialInput = "Keep source")
         try {
             runCurrent()
             assertTrue(fixture.model.state.value.isPreparing)

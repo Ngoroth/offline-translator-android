@@ -11,15 +11,12 @@
     <string name="conversation_empty_title">Понимайте друг друга</string>
     <string name="conversation_empty">Говорите по очереди.</string>
     <string name="conversation_empty_result">Перевод появится здесь.</string>
-    <string name="google_translate_link">Открыть Google Переводчик</string>
-    <string name="usage_terms_link">Условия использования</string>
     <string name="close_action">Закрыть</string>
     <string name="swap_direction">Поменять</string>
     <string name="input_hint">Введите текст</string>
     <string name="error_input_too_long">Текст слишком длинный. Максимальная длина: %1$d. Предыдущий текст сохранён.</string>
     <string name="result_label">Перевод</string>
     <string name="result_placeholder">Здесь появится перевод</string>
-    <string name="google_translate_attribution">На основе Google Переводчика</string>
     <string name="status_checking">Проверяем языковую модель…</string>
     <string name="status_downloading">Подготавливаем выбранные языковые модели по Wi‑Fi…</string>
     <string name="status_translating">Переводим на устройстве…</string>
@@ -104,11 +101,7 @@
     <string name="settings_translation_engine">Перевод · текст и разговор</string>
     <string name="translation_setup_title">Выберите переводчик</string>
     <string name="translation_setup_explanation">Один выбор для текста и разговора. Его можно изменить в настройках. Выбор не скачивает модели и не включает микрофон.</string>
-    <string name="translation_choice_fast">Быстрый</string>
-    <string name="translation_choice_accurate">Точный</string>
-    <string name="translation_choice_fast_description">Приоритет скорости · Google ML Kit</string>
-    <string name="translation_choice_accurate_description">Приоритет качества · Tencent. Может работать дольше, требует больше места и памяти.</string>
-    <string name="translation_choice_disclaimer">Оба могут ошибаться. Это приоритеты, а не гарантия скорости или качества на вашем устройстве.</string>
+    <string name="translation_setup_unavailable">Нет доступного поставщика перевода.</string>
     <string name="settings_advanced">Расширенные настройки</string>
     <string name="settings_advanced_expanded">Развёрнуто</string>
     <string name="settings_advanced_collapsed">Свёрнуто</string>
@@ -158,8 +151,6 @@
     <string name="settings_interface_language">Язык интерфейса</string>
     <string name="settings_interface_language_immediate">Применяется сразу</string>
     <string name="settings_interface_language_error">Не удалось изменить язык интерфейса. Выберите его снова, чтобы повторить.</string>
-    <string name="help_google_translation">ML Kit использует Google Переводчик для перевода на устройстве. Ссылка ниже описывает требования к атрибуции Google.</string>
-    <string name="google_attribution_requirements_link">Требования к атрибуции Google</string>
     <string name="language_name_en">Английский</string>
     <string name="language_name_vi">Вьетнамский</string>
     <string name="language_name_es">Испанский</string>

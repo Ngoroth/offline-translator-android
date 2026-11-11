@@ -6,23 +6,20 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertContentDescriptionEquals
 import androidx.compose.ui.test.assertCountEquals
-import androidx.compose.ui.test.assertHeightIsEqualTo
 import androidx.compose.ui.test.assertTextEquals
-import androidx.compose.ui.test.onAllNodesWithContentDescription
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.assertTextContains
 import androidx.compose.ui.test.junit4.v2.createComposeRule
-import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.isDisplayed
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.performClick
 import io.github.ngoroth.offlinetranslator.core.LanguageCatalog
 import io.github.ngoroth.offlinetranslator.core.LanguagePair
-import io.github.ngoroth.offlinetranslator.mlkit.MlKitTranslationEngine
 import io.github.ngoroth.offlinetranslator.tencent.TencentTranslationEngine
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -63,8 +60,9 @@ import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.platform.SoftwareKeyboardController
 import androidx.compose.ui.test.hasAnyDescendant
-import androidx.compose.ui.test.hasContentDescription
+import androidx.compose.ui.test.hasAnyAncestor
 import androidx.compose.ui.test.hasTestTag
+import androidx.compose.ui.test.hasText
 import io.github.ngoroth.offlinetranslator.core.TranslationProviderDescriptor
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.SemanticsMatcher
@@ -315,14 +313,12 @@ class TranslationScreenTest {
             modelStatus = ModelUiStatus.READY, inputTooLong = true,
         ))
         var message = ""
-        lateinit var localizedResources: android.content.res.Resources
         compose.setContent {
             val config = Configuration(LocalConfiguration.current).apply {
                 setLocales(LocaleList(Locale.forLanguageTag(language)))
                 if (compact) { screenHeightDp = 260; fontScale = 2f }
             }
             val context = LocalContext.current.createConfigurationContext(config)
-            localizedResources = context.resources
             val density = LocalDensity.current
             message = context.getString(R.string.error_input_too_long, TranslationEngine.MAX_INPUT_CHARACTERS)
             CompositionLocalProvider(
@@ -335,7 +331,7 @@ class TranslationScreenTest {
                         TranslationScreen(
                             state.value,
                             { state.value = state.value.copy(input = it, inputTooLong = false, result = "") },
-                            {}, {}, {}, {}, homeControls = {}, provider = MlKitTranslationEngine.descriptor,
+                            {}, {}, {}, {}, homeControls = {}, provider = TencentTranslationEngine.descriptor,
                         )
                     }
                 }
@@ -344,7 +340,7 @@ class TranslationScreenTest {
         val action = compose.onNodeWithTag(TranslationTestTags.TRANSLATE)
             .assertIsDisplayed().assertIsNotEnabled()
         val actionBefore = action.fetchSemanticsNode().boundsInRoot
-        val badgeBefore = assertGoogleAboveAction(localizedResources)
+        val attributionBefore = assertAttributionAboveAction()
         val field = compose.onNodeWithTag(TranslationTestTags.INPUT)
         field.performScrollTo().assertTextContains("Accepted text")
             .assert(SemanticsMatcher.keyIsDefined(SemanticsProperties.Error))
@@ -352,7 +348,7 @@ class TranslationScreenTest {
         compose.onNodeWithTag(TranslationTestTags.RESULT_TEXT).performScrollTo().assertTextEquals("Accepted result")
         compose.onNodeWithTag(TranslationTestTags.RETRY).assertDoesNotExist()
         assertSameBounds("Validation must not move Translate", actionBefore, action.fetchSemanticsNode().boundsInRoot)
-        assertSameBounds("Validation must not move attribution", badgeBefore, assertGoogleAboveAction(localizedResources))
+        assertSameBounds("Validation must not move attribution", attributionBefore, assertAttributionAboveAction())
         field.performScrollTo().performTextReplacement("Corrected text")
         androidx.test.espresso.Espresso.closeSoftKeyboard()
         field.assertTextContains("Corrected text")
@@ -426,7 +422,7 @@ class TranslationScreenTest {
         compose.onNodeWithText("hello").assertDoesNotExist()
     }
 
-    @Test fun helpTermsOpenBothPublicLinksAndReturnWithoutLosingInputOrResult() {
+    @Test fun helpTermsOpenProviderDestinationAndReturnWithoutLosingInputOrResult() {
         val state = mutableStateOf(TranslationUiState(
             input = "hello", result = "привет", modelStatus = ModelUiStatus.READY,
         ))
@@ -443,7 +439,7 @@ class TranslationScreenTest {
                     onRetry = {},
                     homeControls = {},
                     onOpenUri = openedUris::add,
-                    provider = MlKitTranslationEngine.descriptor,
+                    provider = TencentTranslationEngine.descriptor,
                 )
             }
         }
@@ -455,16 +451,15 @@ class TranslationScreenTest {
         compose.runOnIdle { assertTrue(openedUris.isEmpty()) }
         clickVisible(compose.onNodeWithTag(TranslatorHelpTestTags.TERMS_ACTION).performScrollTo().assertHeightIsAtLeast(48.dp))
         compose.onNodeWithTag(TranslatorHelpTestTags.TERMS_DIALOG).assertIsDisplayed()
-        clickVisible(compose.onNodeWithText(context.getString(R.string.google_translate_link)).performScrollTo().assertHeightIsAtLeast(48.dp))
-        clickVisible(compose.onNodeWithText(context.getString(R.string.usage_terms_link)).performScrollTo().assertHeightIsAtLeast(48.dp))
-        clickVisible(compose.onNodeWithText(context.getString(R.string.google_attribution_requirements_link)).performScrollTo().assertHeightIsAtLeast(48.dp))
+        compose.onNode(hasText(TencentTranslationEngine.descriptor.attribution) and
+            hasAnyAncestor(hasTestTag(TranslatorHelpTestTags.TERMS_DIALOG)))
+            .performScrollTo().assertIsDisplayed()
+        clickVisible(compose.onNode(hasText(context.getString(R.string.provider_terms)) and
+            hasAnyAncestor(hasTestTag(TranslatorHelpTestTags.TERMS_DIALOG)))
+            .performScrollTo().assertHeightIsAtLeast(48.dp))
         compose.runOnIdle {
             assertEquals(
-                listOf(
-                    "https://translate.google.com",
-                    "https://developers.google.com/ml-kit/terms",
-                    "https://docs.cloud.google.com/translate/attribution",
-                ),
+                listOf(TencentTranslationEngine.descriptor.termsUrl),
                 openedUris,
             )
         }
@@ -504,14 +499,14 @@ class TranslationScreenTest {
                 MaterialTheme {
                     Box(Modifier.fillMaxWidth().height(260.dp)) {
                         TranslationScreen(state.value, {}, { swaps++ }, {}, {}, {},
-                            homeControls = {}, provider = MlKitTranslationEngine.descriptor)
+                            homeControls = {}, provider = TencentTranslationEngine.descriptor)
                     }
                 }
             }
         }
         compose.onNodeWithTag(TranslationTestTags.SWAP).performScrollTo().assertIsDisplayed().performClick()
         compose.onNodeWithTag(TranslationTestTags.TRANSLATE).assertIsDisplayed().assertIsEnabled()
-        assertGoogleAboveAction()
+        assertAttributionAboveAction()
         compose.runOnIdle {
             assertEquals(1, swaps)
             state.value = state.value.copy(configurationProblem = ConfigurationProblem.UNSUPPORTED_PAIR)
@@ -544,7 +539,7 @@ class TranslationScreenTest {
                                 TranslationScreen(
                                     state.value, { state.value = state.value.copy(input = it) }, {}, {}, {}, {},
                                     homeControls = homeControls,
-                                    provider = MlKitTranslationEngine.descriptor,
+                                    provider = TencentTranslationEngine.descriptor,
                                 )
                             },
                         )
@@ -559,7 +554,7 @@ class TranslationScreenTest {
         val action = compose.onNodeWithTag(TranslationTestTags.TRANSLATE)
             .assertIsDisplayed().assertIsEnabled().assertHeightIsAtLeast(48.dp)
         val before = action.fetchSemanticsNode().boundsInRoot
-        val badgeBefore = assertGoogleAboveAction()
+        val attributionBefore = assertAttributionAboveAction()
         assertTrue("The visible action must retain a 48dp hit area",
             before.height >= 48f * context.resources.displayMetrics.density)
         clickVisible(compose.onNodeWithTag(TranslatorHelpTestTags.ACTION).performScrollTo().assertHeightIsAtLeast(48.dp))
@@ -573,95 +568,55 @@ class TranslationScreenTest {
         compose.onNodeWithText("Translated text").performScrollTo().assertIsDisplayed()
         val after = action.assertIsDisplayed().fetchSemanticsNode().boundsInRoot
         assertSameBounds("Scrolling must not move the primary action", before, after)
-        assertSameBounds("Scrolling must not move the badge", badgeBefore, assertGoogleAboveAction())
+        assertSameBounds("Scrolling must not move attribution", attributionBefore, assertAttributionAboveAction())
     }
 
     private fun clickVisible(node: SemanticsNodeInteraction) {
         node.assertIsEnabled().assertIsDisplayed().performTouchInput { click() }
     }
 
-    @Test fun absentProviderKeepsHelpAvailableWithoutFalseGoogleAttributionOrTerms() {
+    @Test fun absentProviderKeepsHelpAvailableWithoutTerms() {
         compose.setContent { MaterialTheme {
             TranslationScreen(
                 TranslationUiState(input = "hello", result = "привет", modelStatus = ModelUiStatus.READY),
                 {}, {}, {}, {}, {}, homeControls = {}, provider = null,
             )
         } }
-        compose.onNodeWithContentDescription("Powered by Google Translate").assertDoesNotExist()
         clickVisible(compose.onNodeWithTag(TranslatorHelpTestTags.ACTION).performScrollTo().assertHeightIsAtLeast(48.dp))
         compose.onNodeWithTag(TranslatorHelpTestTags.DIALOG).assertIsDisplayed()
         compose.onNodeWithTag(TranslatorHelpTestTags.TERMS_ACTION).assertDoesNotExist()
         compose.onNodeWithTag(TranslatorHelpTestTags.TERMS_DIALOG).assertDoesNotExist()
-        compose.onNodeWithContentDescription("Powered by Google Translate").assertDoesNotExist()
         clickVisible(compose.onNodeWithTag(TranslatorHelpTestTags.CLOSE))
         compose.onNodeWithTag(TranslatorHelpTestTags.DIALOG).assertDoesNotExist()
         compose.onNodeWithTag(TranslationTestTags.INPUT).performScrollTo().assertTextContains("hello")
         compose.onNodeWithText("привет").performScrollTo().assertIsDisplayed()
     }
 
-    @Test fun mlKitFooterStaysAboveNeutralActionAcrossEmptyPendingResultErrorAndRetry() {
-        val request = "Keep this request"
-        val translated = "Keep this result"
-        val state = mutableStateOf(TranslationUiState(modelStatus = ModelUiStatus.READY))
-        compose.setContent { MaterialTheme {
-            TranslationScreen(state.value, {}, {}, {}, {}, { state.value = state.value.copy(error = null) },
-                homeControls = {}, provider = MlKitTranslationEngine.descriptor)
-        } }
-        val action = compose.onNodeWithTag(TranslationTestTags.TRANSLATE).assertIsNotEnabled()
-        val badgeBefore = assertGoogleAboveAction()
-        val actionBefore = action.fetchSemanticsNode().boundsInRoot
 
-        compose.runOnIdle { state.value = state.value.copy(input = request) }
-        action.assertIsEnabled()
-        compose.runOnIdle { state.value = state.value.copy(isTranslating = true) }
-        action.assertIsNotEnabled()
-        compose.onNodeWithTag(TranslationTestTags.INPUT).assertIsNotEnabled().assertTextContains(request)
-        assertSameBounds("Pending must not move the badge", badgeBefore, assertGoogleAboveAction())
-        assertSameBounds("Pending must not move Translate", actionBefore, action.fetchSemanticsNode().boundsInRoot)
-
-        compose.runOnIdle { state.value = state.value.copy(isTranslating = false, result = translated) }
-        compose.onNodeWithTag(TranslationTestTags.RESULT_TEXT).performScrollTo().assertTextEquals(translated)
-        action.assertIsEnabled()
-        assertSameBounds("Result must not move the badge", badgeBefore, assertGoogleAboveAction())
-        assertSameBounds("Result must not move Translate", actionBefore, action.fetchSemanticsNode().boundsInRoot)
-
-        compose.runOnIdle { state.value = state.value.copy(error = TranslationUiError.TRANSLATION_FAILED) }
-        val retry = compose.onNodeWithTag(TranslationTestTags.RETRY).assertIsDisplayed().assertIsEnabled()
-        val badgeAfterError = assertGoogleAboveAction()
-        assertTrue("Retry belongs above the badge/action pair", retry.fetchSemanticsNode().boundsInRoot.bottom <= badgeAfterError.top + 1f)
-        assertSameBounds("Error/Retry must not move the badge", badgeBefore, badgeAfterError)
-        assertSameBounds("Error/Retry must not move Translate", actionBefore, action.assertIsEnabled().fetchSemanticsNode().boundsInRoot)
-        compose.onNodeWithTag(TranslationTestTags.INPUT).performScrollTo().assertTextContains(request)
-        compose.onNodeWithTag(TranslationTestTags.RESULT_TEXT).performScrollTo().assertTextEquals(translated)
-        clickVisible(retry)
-        retry.assertDoesNotExist()
-        assertSameBounds("Retry recovery must not move the badge", badgeBefore, assertGoogleAboveAction())
-        assertSameBounds("Retry recovery must not move Translate", actionBefore, action.fetchSemanticsNode().boundsInRoot)
-        compose.onNodeWithTag(TranslationTestTags.INPUT).performScrollTo().assertTextContains(request)
-        compose.onNodeWithTag(TranslationTestTags.RESULT_TEXT).performScrollTo().assertTextEquals(translated)
-    }
-
-    @Test fun nullAndTencentProviderKeepNeutralActionAndPreserveInputAndResultWithoutGoogle() {
+    @Test fun providerMetadataChangesPreserveInputAndResult() {
         val provider = mutableStateOf<TranslationProviderDescriptor?>(null)
-        val context = InstrumentationRegistry.getInstrumentation().targetContext
-        val google = context.getString(R.string.google_translate_attribution)
         val state = TranslationUiState(input = "Keep this request", result = "Keep this result",
-            modelStatus = ModelUiStatus.READY, provider = MlKitTranslationEngine.descriptor)
+            modelStatus = ModelUiStatus.READY)
         compose.setContent { MaterialTheme {
             TranslationScreen(state, {}, {}, {}, {}, {}, homeControls = {}, provider = provider.value)
         } }
-        compose.onNodeWithContentDescription(google).assertDoesNotExist()
+        compose.onNodeWithText(TencentTranslationEngine.descriptor.attribution).assertDoesNotExist()
         compose.onNodeWithTag(TranslationTestTags.TRANSLATE).assertIsEnabled()
-            .assertTextEquals(context.getString(R.string.translate_action))
         compose.onNodeWithTag(TranslationTestTags.INPUT).performScrollTo().assertTextContains("Keep this request")
         compose.onNodeWithTag(TranslationTestTags.RESULT_TEXT).performScrollTo().assertTextEquals("Keep this result")
         compose.runOnIdle {
             provider.value = TencentTranslationEngine.descriptor
         }
-        compose.onNodeWithContentDescription(google).assertDoesNotExist()
         compose.onNodeWithText(TencentTranslationEngine.descriptor.attribution).assertIsDisplayed()
         compose.onNodeWithTag(TranslationTestTags.TRANSLATE).assertIsEnabled()
-            .assertTextEquals(context.getString(R.string.translate_action))
+        compose.onNodeWithTag(TranslationTestTags.INPUT).performScrollTo().assertTextContains("Keep this request")
+        compose.onNodeWithTag(TranslationTestTags.RESULT_TEXT).performScrollTo().assertTextEquals("Keep this result")
+        compose.runOnIdle {
+            provider.value = TencentTranslationEngine.descriptor.copy(attribution = " \n", termsUrl = "\t")
+        }
+        compose.onNodeWithText(" \n").assertDoesNotExist()
+        compose.onNodeWithText(TencentTranslationEngine.descriptor.attribution).assertDoesNotExist()
+        compose.onNodeWithTag(TranslationTestTags.TRANSLATE).assertIsEnabled()
         compose.onNodeWithTag(TranslationTestTags.INPUT).performScrollTo().assertTextContains("Keep this request")
         compose.onNodeWithTag(TranslationTestTags.RESULT_TEXT).performScrollTo().assertTextEquals("Keep this result")
     }
@@ -679,7 +634,7 @@ class TranslationScreenTest {
             imeBottom = WindowInsets.ime.getBottom(density)
             view = LocalView.current
             TranslationScreen(state.value, { state.value = state.value.copy(input = it) }, {}, {}, {}, {},
-                homeControls = {}, provider = MlKitTranslationEngine.descriptor)
+                homeControls = {}, provider = TencentTranslationEngine.descriptor)
         } }
         try {
             compose.onNodeWithTag(TranslationTestTags.INPUT).performScrollTo().performClick()
@@ -688,19 +643,19 @@ class TranslationScreenTest {
             val action = compose.onNodeWithTag(TranslationTestTags.TRANSLATE)
                 .assertIsDisplayed().assertIsEnabled().assertHeightIsAtLeast(48.dp)
             val before = action.fetchSemanticsNode().boundsInRoot
-            val badgeBefore = assertGoogleAboveAction()
+            val attributionBefore = assertAttributionAboveAction()
             compose.runOnIdle {
                 val visible = android.graphics.Rect()
                 val location = IntArray(2)
                 view.getWindowVisibleDisplayFrame(visible)
                 view.getLocationOnScreen(location)
                 assertTrue("Translate must be above the actual keyboard", location[1] + before.bottom <= visible.bottom + 1f)
-                assertTrue("The badge must be above the actual keyboard", location[1] + badgeBefore.bottom <= visible.bottom + 1f)
+                assertTrue("Attribution must be above the actual keyboard", location[1] + attributionBefore.bottom <= visible.bottom + 1f)
             }
             compose.onNodeWithText(translated).performScrollTo().assertIsDisplayed()
             val after = action.assertIsDisplayed().fetchSemanticsNode().boundsInRoot
             assertSameBounds("Scrolling result must not move the action", before, after)
-            assertSameBounds("Scrolling result must not move the badge", badgeBefore, assertGoogleAboveAction())
+            assertSameBounds("Scrolling result must not move attribution", attributionBefore, assertAttributionAboveAction())
             compose.onNodeWithTag(TranslationTestTags.INPUT).performScrollTo().assertTextContains(original)
             clickVisible(compose.onNodeWithTag(TranslatorHelpTestTags.ACTION).performScrollTo())
             compose.onNodeWithTag(TranslatorHelpTestTags.DIALOG).assertIsDisplayed()
@@ -725,20 +680,16 @@ class TranslationScreenTest {
         }
     }
 
-    private fun assertGoogleAboveAction(
-        resources: android.content.res.Resources = InstrumentationRegistry.getInstrumentation().targetContext.resources,
-    ): Rect {
-        val google = resources.getString(R.string.google_translate_attribution)
-        compose.onAllNodesWithContentDescription(google).assertCountEquals(1)
-        val badge = compose.onNodeWithContentDescription(google).assertIsDisplayed()
-            .assertHeightIsEqualTo(18.dp).fetchSemanticsNode().boundsInRoot
+    private fun assertAttributionAboveAction(): Rect {
+        val attribution = TencentTranslationEngine.descriptor.attribution
+        compose.onAllNodesWithText(attribution).assertCountEquals(1)
+        val bounds = compose.onNodeWithText(attribution).assertIsDisplayed().fetchSemanticsNode().boundsInRoot
         val action = compose.onNodeWithTag(TranslationTestTags.TRANSLATE).assertIsDisplayed()
-            .assertTextEquals(resources.getString(R.string.translate_action)).fetchSemanticsNode().boundsInRoot
-        assertTrue("The badge must be above Translate", badge.bottom <= action.top + 1f)
-        assertEquals("The badge must be centered above Translate", action.center.x, badge.center.x, 1f)
-        compose.onNode(hasTestTag(TranslationTestTags.OUTPUT) and hasAnyDescendant(hasContentDescription(google)))
+            .fetchSemanticsNode().boundsInRoot
+        assertTrue("Attribution must be above Translate", bounds.bottom <= action.top + 1f)
+        compose.onNode(hasTestTag(TranslationTestTags.OUTPUT) and hasAnyDescendant(hasText(attribution)))
             .assertDoesNotExist()
-        return badge
+        return bounds
     }
 
     private fun assertSameBounds(message: String, expected: Rect, actual: Rect) {
@@ -752,7 +703,7 @@ class TranslationScreenTest {
         val current = mutableStateOf(state)
         compose.setContent {
             MaterialTheme {
-                TranslationScreen(current.value, {}, {}, {}, {}, {}, homeControls = {}, provider = MlKitTranslationEngine.descriptor)
+                TranslationScreen(current.value, {}, {}, {}, {}, {}, homeControls = {}, provider = TencentTranslationEngine.descriptor)
             }
         }
         return current

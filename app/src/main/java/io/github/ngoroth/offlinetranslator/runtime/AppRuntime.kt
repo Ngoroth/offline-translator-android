@@ -2,7 +2,6 @@ package io.github.ngoroth.offlinetranslator.runtime
 
 import android.content.Context
 import io.github.ngoroth.offlinetranslator.core.*
-import io.github.ngoroth.offlinetranslator.mlkit.MlKitPreparationCoordinator
 import io.github.ngoroth.offlinetranslator.settings.AppSettingsRepository
 import io.github.ngoroth.offlinetranslator.sherpa.*
 import io.github.ngoroth.offlinetranslator.speechmodels.SelectedSpeechResources
@@ -37,9 +36,8 @@ class AppRuntime private constructor(context: Context) {
     val settings = AppSettingsRepository(File(this.context.noBackupFilesDir, "settings/app-settings.json"))
     val speechModels = SpeechModelStore(this.context, SherpaSpeechModelCatalog.fromAssets(this.context))
     val catalog: SpeechModelCatalog get() = speechModels.catalog
-    val coordinator = MlKitPreparationCoordinator(this.context)
     private val tencentArtifacts = io.github.ngoroth.offlinetranslator.tencent.TencentArtifactPreparation(this.context)
-    val registry = TranslationEngineRegistry(this.context, coordinator, tencentArtifacts)
+    val registry = TranslationEngineRegistry(tencentArtifacts)
     private val translationLifetime = TranslationEngineLifetime(scope, registry)
     internal val owners = RuntimeOwnerController(scope)
 

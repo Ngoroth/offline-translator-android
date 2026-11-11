@@ -34,6 +34,6 @@ dependencyResolutionManagement {
 }
 
 rootProject.name = "OfflineTranslator"
-include(":app", ":core", ":speech-models", ":engine-mlkit", ":engine-sherpa", ":engine-sherpa-model-smoke")
+include(":app", ":core", ":speech-models", ":engine-sherpa", ":engine-sherpa-model-smoke")
 include(":translator-test-kit")
 include(":engine-tencent")

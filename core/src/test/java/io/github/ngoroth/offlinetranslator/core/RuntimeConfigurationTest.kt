@@ -44,7 +44,7 @@ class RuntimeConfigurationTest {
         val languages = listOf(settings.languagePair.source, settings.languagePair.target).toMutableList()
         val snapshot = ConversationSessionConfig(
             languages = languages,
-            engineId = "mlkit",
+            engineId = "tencent",
             speechRecognitionBackend = SpeechRecognitionBackend.WHISPER,
             vadModelId = settings.vadModelId,
             vadMinSilenceMs = 900,

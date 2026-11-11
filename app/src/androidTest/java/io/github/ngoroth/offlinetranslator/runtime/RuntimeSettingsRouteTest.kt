@@ -62,7 +62,7 @@ class RuntimeSettingsRouteTest {
     @Before fun saveSettings() = runBlocking {
         runtime = AppRuntime.get(context)
         original = runtime.settings.current()
-        commitNativeSettings(runtime, AppSettings(translationEngineId = "mlkit", translationSetupComplete = true,
+        commitNativeSettings(runtime, AppSettings(translationEngineId = "tencent", translationSetupComplete = true,
             speechOutputBackend = SpeechOutputBackend.PIPER, speechRecognitionBackend = SpeechRecognitionBackend.WHISPER))
         val pair = AppSettings().languagePair
         if (runtime.settings.current().languagePair != pair) assertTrue(runtime.updateLanguagePair(runtime.settings.current().languagePair, pair))
@@ -881,9 +881,9 @@ class RuntimeSettingsRouteTest {
     }
 
     private suspend fun requirePreparedTranslation(pair: LanguagePair) {
-        val engine = runtime.registry.create("mlkit", setOf(pair))
+        val engine = runtime.registry.create("tencent", setOf(pair))
         try {
-            assertEquals("Prepared translation models required; this test never downloads them", ModelAvailability.READY, engine.modelAvailability())
+            assertEquals("Prepared translation models required; this test never downloads them", ModelAvailability.READY, engine.prepareLocal())
         } finally {
             engine.closeAndJoin()
         }

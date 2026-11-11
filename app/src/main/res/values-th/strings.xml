@@ -11,15 +11,12 @@
     <string name="conversation_empty_title">เข้าใจกันและกัน</string>
     <string name="conversation_empty">ผลัดกันพูด</string>
     <string name="conversation_empty_result">คำแปลของคุณจะปรากฏที่นี่</string>
-    <string name="google_translate_link">เปิด Google Translate</string>
-    <string name="usage_terms_link">ข้อกำหนดการใช้งาน</string>
     <string name="close_action">ปิด</string>
     <string name="swap_direction">สลับ</string>
     <string name="input_hint">ป้อนข้อความ</string>
     <string name="error_input_too_long">ข้อความยาวเกินไป ความยาวสูงสุด: %1$d เก็บข้อความเดิมไว้แล้ว</string>
     <string name="result_label">คำแปล</string>
     <string name="result_placeholder">คำแปลจะปรากฏที่นี่</string>
-    <string name="google_translate_attribution">ขับเคลื่อนโดย Google Translate</string>
     <string name="status_checking">กำลังตรวจสอบโมเดลภาษา…</string>
     <string name="status_downloading">กำลังเตรียมโมเดลภาษาที่เลือกผ่าน Wi‑Fi…</string>
     <string name="status_translating">กำลังแปลบนอุปกรณ์…</string>
@@ -104,11 +101,7 @@
     <string name="settings_translation_engine">การแปล · ข้อความและการสนทนา</string>
     <string name="translation_setup_title">เลือกเครื่องมือแปล</string>
     <string name="translation_setup_explanation">ใช้ตัวเลือกเดียวกันสำหรับข้อความและการสนทนา เปลี่ยนได้ในการตั้งค่า การเลือกไม่ดาวน์โหลดโมเดลหรือใช้ไมโครโฟน</string>
-    <string name="translation_choice_fast">รวดเร็ว</string>
-    <string name="translation_choice_accurate">แม่นยำ</string>
-    <string name="translation_choice_fast_description">เน้นความเร็ว · Google ML Kit</string>
-    <string name="translation_choice_accurate_description">เน้นคุณภาพ · Tencent อาจใช้เวลานานขึ้นและต้องการพื้นที่จัดเก็บกับหน่วยความจำมากขึ้น</string>
-    <string name="translation_choice_disclaimer">ทั้งสองอาจผิดพลาดได้ นี่คือสิ่งที่ให้ความสำคัญ ไม่ใช่การรับประกันความเร็วหรือคุณภาพบนอุปกรณ์ของคุณ</string>
+    <string name="translation_setup_unavailable">ไม่มีผู้ให้บริการแปลที่พร้อมใช้งาน</string>
     <string name="settings_advanced">การตั้งค่าขั้นสูง</string>
     <string name="settings_advanced_expanded">ขยายอยู่</string>
     <string name="settings_advanced_collapsed">ยุบอยู่</string>
@@ -158,8 +151,6 @@
     <string name="settings_interface_language">ภาษาอินเทอร์เฟซ</string>
     <string name="settings_interface_language_immediate">ใช้ทันที</string>
     <string name="settings_interface_language_error">เปลี่ยนภาษาอินเทอร์เฟซไม่ได้ เลือกอีกครั้งเพื่อลองใหม่</string>
-    <string name="help_google_translation">ML Kit ใช้ Google Translate เพื่อแปลบนอุปกรณ์ ลิงก์ด้านล่างอธิบายข้อกำหนดการระบุแหล่งที่มาของ Google</string>
-    <string name="google_attribution_requirements_link">ข้อกำหนดการระบุแหล่งที่มาของ Google</string>
     <string name="language_name_en">อังกฤษ</string>
     <string name="language_name_vi">เวียดนาม</string>
     <string name="language_name_es">สเปน</string>

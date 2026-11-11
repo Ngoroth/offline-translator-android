@@ -31,7 +31,7 @@ $env:ANDROID_HOME = "C:\Users\<user>\AppData\Local\Android\Sdk"
 pwsh -File tools/android/prepare-tencent-native.ps1
 .\gradlew.bat :engine-sherpa:prepareSherpaArchive --console=plain
 
-.\gradlew.bat :core:testDebugUnitTest :engine-mlkit:testDebugUnitTest :engine-tencent:testDebugUnitTest :engine-sherpa:testDebugUnitTest :speech-models:testDebugUnitTest :app:testDebugUnitTest :translator-test-kit:testDebugUnitTest :app:lintDebug :app:assembleDebug :app:assembleDebugAndroidTest :engine-sherpa-model-smoke:assembleModelSmoke :engine-sherpa-model-smoke:assembleModelSmokeAndroidTest
+.\gradlew.bat :core:testDebugUnitTest :engine-tencent:testDebugUnitTest :engine-sherpa:testDebugUnitTest :speech-models:testDebugUnitTest :app:testDebugUnitTest :translator-test-kit:testDebugUnitTest :app:lintDebug :app:assembleDebug :app:assembleDebugAndroidTest :engine-sherpa-model-smoke:assembleModelSmoke :engine-sherpa-model-smoke:assembleModelSmokeAndroidTest
 
 # The included build has a separate JVM test gate.
 .\gradlew.bat -p build-logic test --console=plain
@@ -46,7 +46,7 @@ export ANDROID_HOME="/path/to/android-sdk"
 python3 tools/android/prepare-tencent-native.py
 bash ./gradlew :engine-sherpa:prepareSherpaArchive --console=plain
 
-bash ./gradlew :core:testDebugUnitTest :engine-mlkit:testDebugUnitTest :engine-tencent:testDebugUnitTest :engine-sherpa:testDebugUnitTest :speech-models:testDebugUnitTest :app:testDebugUnitTest :translator-test-kit:testDebugUnitTest :app:lintDebug :app:assembleDebug :app:assembleDebugAndroidTest :engine-sherpa-model-smoke:assembleModelSmoke :engine-sherpa-model-smoke:assembleModelSmokeAndroidTest
+bash ./gradlew :core:testDebugUnitTest :engine-tencent:testDebugUnitTest :engine-sherpa:testDebugUnitTest :speech-models:testDebugUnitTest :app:testDebugUnitTest :translator-test-kit:testDebugUnitTest :app:lintDebug :app:assembleDebug :app:assembleDebugAndroidTest :engine-sherpa-model-smoke:assembleModelSmoke :engine-sherpa-model-smoke:assembleModelSmokeAndroidTest
 
 # The included build has a separate JVM test gate.
 bash ./gradlew -p build-logic test --console=plain
@@ -76,7 +76,7 @@ Use [the verification guide](docs/testing/verify-translator.md) for device prere
 
 For a non-sensitive bug, provide a minimal synthetic reproduction, expected/actual behavior, relevant device/API/backend versions and the exact checks you ran. State whether resources were prepared and whether the observation was online or offline. Use invented text/audio and remove identifying information from screenshots and artifacts.
 
-**Do not submit secrets or real conversation data.** Exclude raw logcat, full bugreports, private recordings/transcripts, signing keys, credentials, local SDK configuration and model caches. Unresolved ML Kit native logging can expose content even offline; review/redact necessary excerpts locally. Follow the [security policy](SECURITY.md) for suspected vulnerabilities.
+**Do not submit secrets or real conversation data.** Exclude raw logcat, full bugreports, private recordings/transcripts, signing keys, credentials, local SDK configuration and model caches. Historical ML Kit builds exposed content in native logs; that provider is now removed, not retroactively fixed. Offline processing alone does not establish safe logs; review/redact necessary excerpts locally. Follow the [security policy](SECURITY.md) for suspected vulnerabilities.
 
 Test fixtures must be minimal, deterministic and safe to publish. Record source, license and any modifications for third-party audio or data; do not assume upstream availability grants redistribution rights. Never use production credentials as fixtures. The existing self-signed localhost `speech-models/src/test/resources/model-fixture.p12` and its disclosed `fixture-only` password are downloader-test inputs, not a pattern for submitting real private keys.
 

@@ -11,15 +11,12 @@
     <string name="conversation_empty_title">Elkaar begrijpen</string>
     <string name="conversation_empty">Spreek om de beurt.</string>
     <string name="conversation_empty_result">Je vertaling verschijnt hier.</string>
-    <string name="google_translate_link">Google Translate openen</string>
-    <string name="usage_terms_link">Gebruiksvoorwaarden</string>
     <string name="close_action">Sluiten</string>
     <string name="swap_direction">Omwisselen</string>
     <string name="input_hint">Voer tekst in</string>
     <string name="error_input_too_long">De tekst is te lang. Maximale lengte: %1$d. De vorige tekst is behouden.</string>
     <string name="result_label">Vertaling</string>
     <string name="result_placeholder">De vertaling verschijnt hier</string>
-    <string name="google_translate_attribution">Mogelijk gemaakt door Google Translate</string>
     <string name="status_checking">Taalmodel controleren…</string>
     <string name="status_downloading">Geselecteerde taalmodellen voorbereiden via wifi…</string>
     <string name="status_translating">Vertalen op het apparaat…</string>
@@ -104,11 +101,7 @@
     <string name="settings_translation_engine">Vertaling · tekst en gesprek</string>
     <string name="translation_setup_title">Kies je vertaler</string>
     <string name="translation_setup_explanation">Eén keuze voor tekst en gesprek, te wijzigen in Instellingen. Kiezen downloadt geen modellen en gebruikt de microfoon niet.</string>
-    <string name="translation_choice_fast">Snel</string>
-    <string name="translation_choice_accurate">Nauwkeurig</string>
-    <string name="translation_choice_fast_description">Prioriteit: snelheid · Google ML Kit</string>
-    <string name="translation_choice_accurate_description">Prioriteit: kwaliteit · Tencent. Kan langer duren en heeft meer opslag en geheugen nodig.</string>
-    <string name="translation_choice_disclaimer">Beide kunnen fouten maken. Dit zijn prioriteiten, geen garantie voor snelheid of kwaliteit op je apparaat.</string>
+    <string name="translation_setup_unavailable">Er is geen vertaalaanbieder beschikbaar.</string>
     <string name="settings_advanced">Geavanceerde instellingen</string>
     <string name="settings_advanced_expanded">Uitgeklapt</string>
     <string name="settings_advanced_collapsed">Ingeklapt</string>
@@ -158,8 +151,6 @@
     <string name="settings_interface_language">Interfacetaal</string>
     <string name="settings_interface_language_immediate">Wordt direct toegepast</string>
     <string name="settings_interface_language_error">De interfacetaal kon niet worden gewijzigd. Selecteer de taal opnieuw om het nogmaals te proberen.</string>
-    <string name="help_google_translation">ML Kit gebruikt Google Translate voor vertalingen op het apparaat. De onderstaande link beschrijft de vereisten voor bronvermelding van Google.</string>
-    <string name="google_attribution_requirements_link">Vereisten voor bronvermelding van Google</string>
     <string name="language_name_en">Engels</string>
     <string name="language_name_vi">Vietnamees</string>
     <string name="language_name_es">Spaans</string>

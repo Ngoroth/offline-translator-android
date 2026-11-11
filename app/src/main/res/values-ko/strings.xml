@@ -11,15 +11,12 @@
     <string name="conversation_empty_title">서로 이해해요</string>
     <string name="conversation_empty">번갈아 말해 주세요.</string>
     <string name="conversation_empty_result">번역이 여기에 표시됩니다.</string>
-    <string name="google_translate_link">Google Translate 열기</string>
-    <string name="usage_terms_link">이용 약관</string>
     <string name="close_action">닫기</string>
     <string name="swap_direction">바꾸기</string>
     <string name="input_hint">텍스트 입력</string>
     <string name="error_input_too_long">텍스트가 너무 깁니다. 최대 길이: %1$d. 이전 텍스트가 유지되었습니다.</string>
     <string name="result_label">번역</string>
     <string name="result_placeholder">번역이 여기에 표시됩니다</string>
-    <string name="google_translate_attribution">Google Translate 제공</string>
     <string name="status_checking">언어 모델 확인 중…</string>
     <string name="status_downloading">Wi‑Fi로 선택한 언어 모델 준비 중…</string>
     <string name="status_translating">기기에서 번역 중…</string>
@@ -104,11 +101,7 @@
     <string name="settings_translation_engine">번역 · 텍스트 및 대화</string>
     <string name="translation_setup_title">번역기 선택</string>
     <string name="translation_setup_explanation">텍스트와 대화에 같은 선택이 적용됩니다. 설정에서 변경할 수 있습니다. 선택해도 모델을 다운로드하거나 마이크를 사용하지 않습니다.</string>
-    <string name="translation_choice_fast">빠름</string>
-    <string name="translation_choice_accurate">정확함</string>
-    <string name="translation_choice_fast_description">속도 우선 · Google ML Kit</string>
-    <string name="translation_choice_accurate_description">품질 우선 · Tencent. 더 오래 걸릴 수 있으며 저장 공간과 메모리가 더 많이 필요합니다.</string>
-    <string name="translation_choice_disclaimer">둘 다 오류가 있을 수 있습니다. 우선순위를 나타내며 기기의 속도나 품질을 보장하지 않습니다.</string>
+    <string name="translation_setup_unavailable">사용 가능한 번역 제공업체가 없습니다.</string>
     <string name="settings_advanced">고급 설정</string>
     <string name="settings_advanced_expanded">펼쳐짐</string>
     <string name="settings_advanced_collapsed">접힘</string>
@@ -158,8 +151,6 @@
     <string name="settings_interface_language">인터페이스 언어</string>
     <string name="settings_interface_language_immediate">즉시 적용됩니다</string>
     <string name="settings_interface_language_error">인터페이스 언어를 변경하지 못했습니다. 다시 선택하여 재시도하세요.</string>
-    <string name="help_google_translation">ML Kit은 기기 내 번역에 Google Translate를 사용합니다. 아래 링크에서 Google의 출처 표시 요건을 설명합니다.</string>
-    <string name="google_attribution_requirements_link">Google 출처 표시 요건</string>
     <string name="language_name_en">영어</string>
     <string name="language_name_vi">베트남어</string>
     <string name="language_name_es">스페인어</string>

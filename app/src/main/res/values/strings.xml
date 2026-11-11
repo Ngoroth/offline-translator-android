@@ -11,16 +11,12 @@
     <string name="conversation_empty_title">Understand each other</string>
     <string name="conversation_empty">Take turns speaking.</string>
     <string name="conversation_empty_result">Your translation will appear here.</string>
-    <string name="google_disclaimer" translatable="false">THIS SERVICE MAY CONTAIN TRANSLATIONS POWERED BY GOOGLE. GOOGLE DISCLAIMS ALL WARRANTIES RELATED TO THE TRANSLATIONS, EXPRESS OR IMPLIED, INCLUDING ANY WARRANTIES OF ACCURACY, RELIABILITY, AND ANY IMPLIED WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.</string>
-    <string name="google_translate_link">Open Google Translate</string>
-    <string name="usage_terms_link">Usage terms</string>
     <string name="close_action">Close</string>
     <string name="swap_direction">Swap</string>
     <string name="input_hint">Enter text</string>
     <string name="error_input_too_long">Text is too long. Maximum length: %1$d. The previous text was kept.</string>
     <string name="result_label">Translation</string>
     <string name="result_placeholder">The translation will appear here</string>
-    <string name="google_translate_attribution">Powered by Google Translate</string>
     <string name="status_checking">Checking the language model…</string>
     <string name="status_downloading">Preparing selected language models over Wi‑Fi…</string>
     <string name="status_translating">Translating on device…</string>
@@ -105,11 +101,7 @@
     <string name="settings_translation_engine">Translation · Text and Conversation</string>
     <string name="translation_setup_title">Choose your translator</string>
     <string name="translation_setup_explanation">One choice for Text and Conversation. You can change it in Settings. Choosing does not download models or use the microphone.</string>
-    <string name="translation_choice_fast">Fast</string>
-    <string name="translation_choice_accurate">Accurate</string>
-    <string name="translation_choice_fast_description">Speed priority · Google ML Kit</string>
-    <string name="translation_choice_accurate_description">Quality priority · Tencent. May take longer and needs more storage and memory.</string>
-    <string name="translation_choice_disclaimer">Both can make mistakes. These are priorities, not a guarantee of speed or quality on your device.</string>
+    <string name="translation_setup_unavailable">No translation provider is available.</string>
     <string name="settings_advanced">Advanced settings</string>
     <string name="settings_advanced_expanded">Expanded</string>
     <string name="settings_advanced_collapsed">Collapsed</string>
@@ -159,8 +151,6 @@
     <string name="settings_interface_language">Interface language</string>
     <string name="settings_interface_language_immediate">Applies immediately</string>
     <string name="settings_interface_language_error">Could not change the interface language. Select it again to retry.</string>
-    <string name="help_google_translation">ML Kit uses Google Translate for on-device translation. The link below describes Google attribution requirements.</string>
-    <string name="google_attribution_requirements_link">Google attribution requirements</string>
     <string name="language_name_en">English</string>
     <string name="language_name_vi">Vietnamese</string>
     <string name="language_name_es">Spanish</string>

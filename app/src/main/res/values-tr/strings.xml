@@ -11,15 +11,12 @@
     <string name="conversation_empty_title">Birbirinizi anlayın</string>
     <string name="conversation_empty">Sırayla konuşun.</string>
     <string name="conversation_empty_result">Çeviriniz burada görünecek.</string>
-    <string name="google_translate_link">Google Translate’i aç</string>
-    <string name="usage_terms_link">Kullanım koşulları</string>
     <string name="close_action">Kapat</string>
     <string name="swap_direction">Değiştir</string>
     <string name="input_hint">Metin girin</string>
     <string name="error_input_too_long">Metin çok uzun. En fazla uzunluk: %1$d. Önceki metin korundu.</string>
     <string name="result_label">Çeviri</string>
     <string name="result_placeholder">Çeviri burada görünecek</string>
-    <string name="google_translate_attribution">Google Translate tarafından desteklenmektedir</string>
     <string name="status_checking">Dil modeli kontrol ediliyor…</string>
     <string name="status_downloading">Seçilen dil modelleri Wi‑Fi üzerinden hazırlanıyor…</string>
     <string name="status_translating">Cihazda çevriliyor…</string>
@@ -104,11 +101,7 @@
     <string name="settings_translation_engine">Çeviri · metin ve konuşma</string>
     <string name="translation_setup_title">Çevirmeninizi seçin</string>
     <string name="translation_setup_explanation">Metin ve konuşma için tek seçim; Ayarlar’dan değiştirilebilir. Seçim model indirmez veya mikrofonu kullanmaz.</string>
-    <string name="translation_choice_fast">Hızlı</string>
-    <string name="translation_choice_accurate">Doğru</string>
-    <string name="translation_choice_fast_description">Hız önceliği · Google ML Kit</string>
-    <string name="translation_choice_accurate_description">Kalite önceliği · Tencent. Daha uzun sürebilir ve daha fazla depolama ile bellek gerektirir.</string>
-    <string name="translation_choice_disclaimer">İkisi de hata yapabilir. Bunlar önceliklerdir; cihazınızda hız veya kalite garantisi değildir.</string>
+    <string name="translation_setup_unavailable">Kullanılabilir çeviri sağlayıcısı yok.</string>
     <string name="settings_advanced">Gelişmiş ayarlar</string>
     <string name="settings_advanced_expanded">Genişletilmiş</string>
     <string name="settings_advanced_collapsed">Daraltılmış</string>
@@ -158,8 +151,6 @@
     <string name="settings_interface_language">Arayüz dili</string>
     <string name="settings_interface_language_immediate">Hemen uygulanır</string>
     <string name="settings_interface_language_error">Arayüz dili değiştirilemedi. Tekrar denemek için yeniden seçin.</string>
-    <string name="help_google_translation">ML Kit, cihazda çeviri için Google Translate kullanır. Aşağıdaki bağlantı Google’ın kaynak belirtme gerekliliklerini açıklar.</string>
-    <string name="google_attribution_requirements_link">Google kaynak belirtme gereklilikleri</string>
     <string name="language_name_en">İngilizce</string>
     <string name="language_name_vi">Vietnamca</string>
     <string name="language_name_es">İspanyolca</string>

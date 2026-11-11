@@ -12,6 +12,8 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.viewModelScope
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalConfiguration
@@ -27,19 +29,24 @@ import androidx.test.platform.app.InstrumentationRegistry
 import io.github.ngoroth.offlinetranslator.R
 import androidx.test.espresso.Espresso.pressBack
 import io.github.ngoroth.offlinetranslator.core.*
-import io.github.ngoroth.offlinetranslator.mlkit.MlKitTranslationEngine
 import io.github.ngoroth.offlinetranslator.tencent.TencentTranslationEngine
 import java.util.Locale
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.runBlocking
+import org.junit.rules.TemporaryFolder
+import java.io.File
 
 class SettingsSheetTest {
     @get:Rule val compose = createComposeRule()
-    private val defaults = AppSettings(translationEngineId = "mlkit", translationSetupComplete = true,
+    @get:Rule val temp = TemporaryFolder()
+    private val defaults = AppSettings(translationEngineId = "isolated-provider", translationSetupComplete = true,
         speechRecognitionBackend = SpeechRecognitionBackend.SYSTEM_OFFLINE)
-    private val providers = listOf(MlKitTranslationEngine.descriptor, TencentTranslationEngine.descriptor)
+    private val providers = listOf(TencentTranslationEngine.descriptor.copy(id = "isolated-provider", displayName = "Isolated translator"), TencentTranslationEngine.descriptor)
 
     @Test fun basicEditsAndExpandedControlsApplyOneCommonEngineWithoutChangingThePair() {
         val state = mutableStateOf(SettingsUiState(draft = defaults, loading = false, editable = true))
@@ -79,8 +86,8 @@ class SettingsSheetTest {
         } }
         compose.onNodeWithTag(SettingsTestTags.APPLY).assertIsNotEnabled()
         compose.onNodeWithText("removed-provider", substring = true).performScrollTo().assertIsDisplayed()
-        selectEngine("mlkit")
-        compose.onNodeWithTag(engineTag("mlkit")).assertIsSelected()
+        selectEngine("isolated-provider")
+        compose.onNodeWithTag(engineTag("isolated-provider")).assertIsSelected()
         compose.onNodeWithTag(SettingsTestTags.APPLY).assertIsEnabled()
         compose.onNodeWithTag(SettingsTestTags.RECOGNITION_BACKEND).assertDoesNotExist()
     }
@@ -191,7 +198,7 @@ class SettingsSheetTest {
             state.value = state.value.copy(loading = false, editable = false)
         }
         choose(SettingsTestTags.INTERFACE_LANGUAGE, "en")
-        compose.onNodeWithTag(engineTag("mlkit")).performScrollTo().assertIsNotEnabled()
+        compose.onNodeWithTag(engineTag("isolated-provider")).performScrollTo().assertIsNotEnabled()
         compose.onNodeWithTag(SettingsTestTags.CLOSE).performClick()
         compose.onNodeWithTag(SettingsTestTags.BODY).assertDoesNotExist()
     }
@@ -249,20 +256,20 @@ class SettingsSheetTest {
                 Text("Route", Modifier.testTag("mounted_route"))
             }
         } }
-        compose.onNodeWithTag(engineTag("mlkit")).performScrollTo().assertIsNotEnabled()
+        compose.onNodeWithTag(engineTag("isolated-provider")).performScrollTo().assertIsNotEnabled()
         compose.runOnIdle { state.value = state.value.copy(loading = false, editable = true, loadError = true) }
         compose.onNodeWithTag(SettingsTestTags.RETRY).assertIsDisplayed().performClick()
         compose.onNodeWithTag("mounted_route").assertDoesNotExist()
         compose.runOnIdle { state.value = state.value.copy(loading = false, editable = false) }
-        compose.onNodeWithTag(engineTag("mlkit")).performScrollTo().assertIsNotEnabled()
+        compose.onNodeWithTag(engineTag("isolated-provider")).performScrollTo().assertIsNotEnabled()
         compose.runOnIdle { state.value = state.value.copy(editable = true, teardownError = true) }
-        compose.onNodeWithTag(engineTag("mlkit")).assertIsNotEnabled()
+        compose.onNodeWithTag(engineTag("isolated-provider")).assertIsNotEnabled()
         pressBack()
         compose.onNodeWithTag("mounted_route").assertDoesNotExist()
         compose.onNodeWithTag(SettingsTestTags.SETUP).assertExists()
     }
 
-    @Test fun fastSetupSelectionDoesNotDismissWithoutCommittedCompletion() {
+    @Test fun unfamiliarProviderSelectionDoesNotDismissWithoutCommittedCompletion() {
         val state = mutableStateOf(SettingsUiState(loading = false, editable = true))
         compose.setContent { MaterialTheme {
             TranslationSetupGate(state.value, providers, {
@@ -271,8 +278,8 @@ class SettingsSheetTest {
                 Text("Route", Modifier.testTag("mounted_route"))
             }
         } }
-        selectEngine("mlkit")
-        compose.onNodeWithTag(engineTag("mlkit")).assertIsSelected()
+        selectEngine("isolated-provider")
+        compose.onNodeWithTag(engineTag("isolated-provider")).assertIsSelected()
         compose.onNodeWithTag("mounted_route").assertDoesNotExist()
         compose.runOnIdle { state.value = state.value.copy(translationSetupComplete = true) }
         compose.onNodeWithTag("mounted_route").assertIsDisplayed()
@@ -297,7 +304,7 @@ class SettingsSheetTest {
                 }
             }
         }
-        selectEngine("mlkit")
+        selectEngine("isolated-provider")
         compose.onNodeWithTag(SettingsTestTags.RETRY).assertIsDisplayed().assertIsEnabled()
         selectEngine("tencent")
         compose.onNodeWithTag(SettingsTestTags.RETRY).assertIsDisplayed().assertIsEnabled().performClick()
@@ -333,24 +340,127 @@ class SettingsSheetTest {
         compose.onNodeWithText(context.getString(R.string.tencent_model_download_hint))
             .performScrollTo().assertIsDisplayed()
         compose.onNodeWithText(context.getString(R.string.tencent_model_explanation)).assertDoesNotExist()
-        compose.onNode(hasText(context.getString(R.string.translation_choice_accurate_description)) and
-            hasAnyAncestor(hasTestTag(engineTag("tencent"))), useUnmergedTree = true)
-            .performScrollTo().assertIsDisplayed()
-        compose.onNodeWithText(context.getString(R.string.translation_choice_disclaimer))
-            .performScrollTo().assertIsDisplayed()
         val tencent = compose.onNodeWithTag(engineTag("tencent"))
             .assertIsSelected().assertIsEnabled().assertHeightIsAtLeast(48.dp)
-        val mlkit = compose.onNodeWithTag(engineTag("mlkit"))
+        val other = compose.onNodeWithTag(engineTag("isolated-provider"))
             .assertIsNotSelected().assertIsEnabled().assertHeightIsAtLeast(48.dp)
-        val first = mlkit.fetchSemanticsNode()
+        val first = other.fetchSemanticsNode()
         val second = tencent.fetchSemanticsNode()
         assertTrue("Engine rows must not overlap", first.positionInRoot.y + first.size.height <= second.positionInRoot.y)
         compose.runOnIdle { assertEquals("tencent", selected.value); assertEquals(emptyList<String>(), selections) }
-        mlkit.performScrollTo().performClick()
-        compose.onNodeWithTag(engineTag("mlkit")).assertIsSelected().assertIsEnabled().assertHeightIsAtLeast(48.dp)
+        other.performScrollTo().performClick()
+        compose.onNodeWithTag(engineTag("isolated-provider")).assertIsSelected().assertIsEnabled().assertHeightIsAtLeast(48.dp)
         compose.onNodeWithTag(engineTag("tencent")).assertIsNotSelected().assertIsEnabled().assertHeightIsAtLeast(48.dp)
         compose.onNodeWithText(context.getString(R.string.tencent_model_download_hint)).assertDoesNotExist()
-        compose.runOnIdle { assertEquals("mlkit", selected.value); assertEquals(listOf("mlkit"), selections) }
+        compose.runOnIdle { assertEquals("isolated-provider", selected.value); assertEquals(listOf("isolated-provider"), selections) }
+    }
+
+    @Test fun soleProviderCommitsThroughViewModelAndSurvivesRepositoryReopen() {
+        val file = File(temp.root, "sole-provider-settings.json")
+        val repository = AppSettingsRepository(file)
+        val initial = AppSettings(vadMinSilenceMs = 1100, ttsSpeedPercent = 115)
+        runBlocking { repository.save(initial) }
+        var writes = 0
+        lateinit var model: SettingsViewModel
+        compose.runOnUiThread {
+            model = SettingsViewModel(repository, MutableStateFlow(true), { emptyList() },
+                { repository.save(it); true }, MutableStateFlow(false), completeSetup = { engineId ->
+                    writes++
+                    repository.save(repository.current().copy(translationEngineId = engineId, translationSetupComplete = true))
+                    true
+                })
+        }
+        try {
+            compose.setContent { MaterialTheme {
+                TranslationSetupGate(model.state.collectAsState().value, listOf(TencentTranslationEngine.descriptor),
+                    model::completeTranslationSetup, model::retry) {
+                    Text("Route", Modifier.testTag("mounted_route"))
+                }
+            } }
+            compose.waitUntil(10_000) { model.state.value.translationSetupComplete }
+            compose.onNodeWithTag("mounted_route").assertIsDisplayed()
+            compose.onNodeWithTag(SettingsTestTags.TRANSLATION_ENGINE).assertDoesNotExist()
+            compose.runOnIdle { assertEquals(1, writes) }
+        } finally {
+            compose.runOnUiThread { model.viewModelScope.cancel() }
+            runBlocking { repository.closeAndJoin() }
+        }
+        val reopened = AppSettingsRepository(file)
+        try {
+            runBlocking { assertEquals(initial.copy(translationSetupComplete = true), reopened.current()) }
+        } finally { runBlocking { reopened.closeAndJoin() } }
+    }
+
+    @Test fun soleProviderWaitsForGatesAndRequiresManualRetryAfterFailure() {
+        val state = mutableStateOf(SettingsUiState())
+        val submissions = mutableListOf<String>()
+        var loads = 0
+        compose.setContent { MaterialTheme {
+            TranslationSetupGate(state.value, listOf(TencentTranslationEngine.descriptor), { id ->
+                submissions += id
+                state.value = state.value.copy(saving = true, saveError = false)
+            }, { loads++ }) {
+                Text("Route", Modifier.testTag("mounted_route"))
+            }
+        } }
+        compose.onNodeWithTag(SettingsTestTags.TRANSLATION_ENGINE).assertDoesNotExist()
+        compose.onNodeWithTag("mounted_route").assertDoesNotExist()
+        compose.runOnIdle {
+            assertEquals(emptyList<String>(), submissions)
+            state.value = state.value.copy(loading = false, editable = true, loadError = true)
+        }
+        compose.onNodeWithTag(SettingsTestTags.RETRY).performClick()
+        compose.runOnIdle {
+            assertEquals(1, loads)
+            assertEquals(emptyList<String>(), submissions)
+            state.value = state.value.copy(loadError = false, editable = false)
+        }
+        compose.runOnIdle {
+            assertEquals(emptyList<String>(), submissions)
+            state.value = state.value.copy(editable = true, teardownError = true)
+        }
+        compose.runOnIdle {
+            assertEquals(emptyList<String>(), submissions)
+            state.value = state.value.copy(teardownError = false, saving = true)
+        }
+        compose.runOnIdle {
+            assertEquals(emptyList<String>(), submissions)
+            state.value = state.value.copy(saving = false)
+        }
+        compose.runOnIdle {
+            assertEquals(listOf("tencent"), submissions)
+            state.value = state.value.copy(saving = false, saveError = true)
+        }
+        compose.onNodeWithTag("mounted_route").assertDoesNotExist()
+        compose.runOnIdle { state.value = state.value.copy(corruptionNotice = true, editable = false) }
+        compose.runOnIdle { state.value = state.value.copy(editable = true) }
+        compose.runOnIdle { assertEquals(listOf("tencent"), submissions) }
+        compose.onNodeWithTag(SettingsTestTags.RETRY).assertIsEnabled().performClick()
+        compose.runOnIdle {
+            assertEquals(listOf("tencent", "tencent"), submissions)
+            state.value = state.value.copy(saving = false, translationSetupComplete = true)
+        }
+        compose.onNodeWithTag("mounted_route").assertIsDisplayed()
+        compose.onNodeWithTag(SettingsTestTags.SETUP).assertDoesNotExist()
+    }
+
+    @Test fun noRegisteredProviderBlocksEvenPreviouslyCompletedSetup() {
+        val state = mutableStateOf(SettingsUiState(loading = false, editable = true))
+        val submissions = mutableListOf<String>()
+        compose.setContent { MaterialTheme {
+            TranslationSetupGate(state.value, emptyList(), { submissions += it }, {}) {
+                Text("Route", Modifier.testTag("mounted_route"))
+            }
+        } }
+        compose.onNodeWithTag(SettingsTestTags.TRANSLATION_ENGINE).assertDoesNotExist()
+        compose.onNodeWithTag(SettingsTestTags.SETUP).assertExists()
+        compose.onNodeWithTag("mounted_route").assertDoesNotExist()
+        compose.runOnIdle {
+            assertEquals(emptyList<String>(), submissions)
+            state.value = state.value.copy(translationSetupComplete = true)
+        }
+        compose.onNodeWithTag("mounted_route").assertDoesNotExist()
+        compose.runOnIdle { assertEquals(emptyList<String>(), submissions) }
     }
 
     private fun expandAdvanced() {

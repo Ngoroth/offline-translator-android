@@ -11,15 +11,12 @@
     <string name="conversation_empty_title">理解彼此</string>
     <string name="conversation_empty">请轮流说话。</string>
     <string name="conversation_empty_result">翻译内容将显示在这里。</string>
-    <string name="google_translate_link">打开 Google Translate</string>
-    <string name="usage_terms_link">使用条款</string>
     <string name="close_action">关闭</string>
     <string name="swap_direction">交换</string>
     <string name="input_hint">输入文字</string>
     <string name="error_input_too_long">文字过长。长度上限为 %1$d。已保留之前的文字。</string>
     <string name="result_label">翻译</string>
     <string name="result_placeholder">翻译内容将显示在这里</string>
-    <string name="google_translate_attribution">由 Google Translate 提供支持</string>
     <string name="status_checking">正在检查语言模型…</string>
     <string name="status_downloading">正在通过 Wi‑Fi 准备所选语言模型…</string>
     <string name="status_translating">正在设备上翻译…</string>
@@ -104,11 +101,7 @@
     <string name="settings_translation_engine">翻译 · 文本和对话</string>
     <string name="translation_setup_title">选择翻译器</string>
     <string name="translation_setup_explanation">文本和对话使用同一选择，可在设置中更改。选择不会下载模型或使用麦克风。</string>
-    <string name="translation_choice_fast">快速</string>
-    <string name="translation_choice_accurate">精准</string>
-    <string name="translation_choice_fast_description">速度优先 · Google ML Kit</string>
-    <string name="translation_choice_accurate_description">质量优先 · Tencent。可能耗时更长，需要更多存储空间和内存。</string>
-    <string name="translation_choice_disclaimer">两者都可能出错。这些是优先目标，并不保证在您的设备上的速度或质量。</string>
+    <string name="translation_setup_unavailable">没有可用的翻译提供方。</string>
     <string name="settings_advanced">高级设置</string>
     <string name="settings_advanced_expanded">已展开</string>
     <string name="settings_advanced_collapsed">已折叠</string>
@@ -158,8 +151,6 @@
     <string name="settings_interface_language">界面语言</string>
     <string name="settings_interface_language_immediate">立即生效</string>
     <string name="settings_interface_language_error">无法更改界面语言。请再次选择以重试。</string>
-    <string name="help_google_translation">ML Kit 使用 Google Translate 在设备上翻译。下方链接说明 Google 的署名要求。</string>
-    <string name="google_attribution_requirements_link">Google 署名要求</string>
     <string name="language_name_en">英语</string>
     <string name="language_name_vi">越南语</string>
     <string name="language_name_es">西班牙语</string>

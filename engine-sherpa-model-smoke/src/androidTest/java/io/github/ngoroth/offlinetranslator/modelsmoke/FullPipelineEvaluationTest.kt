@@ -20,7 +20,7 @@ object FullPipelineEvaluationTest {
         val oracle = EvaluationSession.recognizer(fixedStore)
         val mt = EvaluationSession.translationEngine()
         try {
-            require(mt.modelAvailability() == ModelAvailability.READY)
+            require(mt.prepareLocal() == ModelAvailability.READY)
             for(language in listOf("ru","en")) {
                 val group = cases.filter { it.language == language }
                 val target = if(language == "ru") "en" else "ru"

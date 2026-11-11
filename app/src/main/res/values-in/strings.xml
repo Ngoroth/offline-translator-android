@@ -11,15 +11,12 @@
     <string name="conversation_empty_title">Saling memahami</string>
     <string name="conversation_empty">Bicaralah bergantian.</string>
     <string name="conversation_empty_result">Terjemahan Anda akan muncul di sini.</string>
-    <string name="google_translate_link">Buka Google Translate</string>
-    <string name="usage_terms_link">Ketentuan penggunaan</string>
     <string name="close_action">Tutup</string>
     <string name="swap_direction">Tukar</string>
     <string name="input_hint">Masukkan teks</string>
     <string name="error_input_too_long">Teks terlalu panjang. Panjang maksimum: %1$d. Teks sebelumnya tetap disimpan.</string>
     <string name="result_label">Terjemahan</string>
     <string name="result_placeholder">Terjemahan akan muncul di sini</string>
-    <string name="google_translate_attribution">Didukung oleh Google Translate</string>
     <string name="status_checking">Memeriksa model bahasa…</string>
     <string name="status_downloading">Menyiapkan model bahasa yang dipilih melalui Wi‑Fi…</string>
     <string name="status_translating">Menerjemahkan di perangkat…</string>
@@ -104,11 +101,7 @@
     <string name="settings_translation_engine">Terjemahan · teks dan percakapan</string>
     <string name="translation_setup_title">Pilih penerjemah</string>
     <string name="translation_setup_explanation">Satu pilihan untuk teks dan percakapan, dapat diubah di Pengaturan. Memilih tidak mengunduh model atau menggunakan mikrofon.</string>
-    <string name="translation_choice_fast">Cepat</string>
-    <string name="translation_choice_accurate">Akurat</string>
-    <string name="translation_choice_fast_description">Prioritas kecepatan · Google ML Kit</string>
-    <string name="translation_choice_accurate_description">Prioritas kualitas · Tencent. Mungkin lebih lama dan memerlukan lebih banyak penyimpanan dan memori.</string>
-    <string name="translation_choice_disclaimer">Keduanya bisa salah. Ini adalah prioritas, bukan jaminan kecepatan atau kualitas pada perangkat Anda.</string>
+    <string name="translation_setup_unavailable">Tidak ada penyedia terjemahan yang tersedia.</string>
     <string name="settings_advanced">Pengaturan lanjutan</string>
     <string name="settings_advanced_expanded">Diperluas</string>
     <string name="settings_advanced_collapsed">Diciutkan</string>
@@ -158,8 +151,6 @@
     <string name="settings_interface_language">Bahasa antarmuka</string>
     <string name="settings_interface_language_immediate">Langsung diterapkan</string>
     <string name="settings_interface_language_error">Bahasa antarmuka tidak dapat diubah. Pilih lagi untuk mencoba ulang.</string>
-    <string name="help_google_translation">ML Kit menggunakan Google Translate untuk terjemahan di perangkat. Tautan di bawah menjelaskan persyaratan atribusi Google.</string>
-    <string name="google_attribution_requirements_link">Persyaratan atribusi Google</string>
     <string name="language_name_en">Inggris</string>
     <string name="language_name_vi">Vietnam</string>
     <string name="language_name_es">Spanyol</string>

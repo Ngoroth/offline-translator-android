@@ -2,6 +2,9 @@ package io.github.ngoroth.offlinetranslator.modelsmoke
 
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import io.github.ngoroth.offlinetranslator.core.*
+import io.github.ngoroth.offlinetranslator.tencent.TencentTranslationEngine
+import io.github.ngoroth.offlinetranslator.testkit.Integrity
+import java.io.File
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.*
 import org.junit.Test
@@ -27,9 +30,13 @@ class PreparationTest {
             val ru=engine.translate(EvaluationSession.russianToEnglish,"Доброе утро")
             val en=engine.translate(EvaluationSession.englishToRussian,"Good evening")
             assertTrue(ru.isNotBlank());assertTrue(en.isNotBlank())
-            EvaluationSession.writeEvidence("preparation",org.json.JSONObject().put("sdk","ML Kit Translation 17.0.3")
-                .put("readiness","READY").put("validatedWifi",true).put("providerWeightsSha256",org.json.JSONObject.NULL)
-                .put("weightIdentityUnavailable","Provider-managed weights do not expose a digest")
+            val artifact = File(EvaluationSession.context.noBackupFilesDir, "tencent-translation/Hy-MT2-1.8B-Q4_K_M.gguf")
+            assertEquals("Prepared Tencent artifact size must match its pin", 1_133_080_448L, artifact.length())
+            val sha256 = Integrity.sha256(artifact)
+            assertEquals("Prepared Tencent artifact digest must match its pin",
+                "dc5f44fcf1fa496ee7ad725982c0c8c553a4de00259b53af84c4b89fb0c06699", sha256)
+            EvaluationSession.writeEvidence("preparation",org.json.JSONObject().put("sdk",TencentTranslationEngine.descriptor.sdkVersion)
+                .put("readiness","READY").put("validatedWifi",true).put("providerWeightsSha256",sha256)
                 .put("greetings",org.json.JSONArray().put(org.json.JSONObject().put("input","Доброе утро").put("output",ru))
                     .put(org.json.JSONObject().put("input","Good evening").put("output",en))))
         } finally { engine.closeAndJoin() }

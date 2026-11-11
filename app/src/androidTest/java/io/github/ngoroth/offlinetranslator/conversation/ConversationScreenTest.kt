@@ -13,6 +13,8 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalResources
+import androidx.compose.ui.platform.LocalUriHandler
+import androidx.compose.ui.platform.UriHandler
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertCountEquals
@@ -29,19 +31,15 @@ import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
-import androidx.compose.ui.test.onAllNodesWithContentDescription
 import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.isDisplayed
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.hasTestTag
-import androidx.compose.ui.test.hasAnyDescendant
 import androidx.compose.ui.test.hasAnyAncestor
-import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.hasText
-import androidx.compose.ui.test.onNodeWithContentDescription
-import io.github.ngoroth.offlinetranslator.core.TranslationProviderDescriptor
 import androidx.compose.ui.test.SemanticsNodeInteraction
 import androidx.compose.ui.test.click
 import androidx.compose.ui.test.longClick
@@ -74,7 +72,6 @@ import io.github.ngoroth.offlinetranslator.core.ConfigurationProblem
 import io.github.ngoroth.offlinetranslator.core.TranslationPreparationPhase
 import io.github.ngoroth.offlinetranslator.core.TranslationPreparationState
 import io.github.ngoroth.offlinetranslator.core.TranslationFailure
-import io.github.ngoroth.offlinetranslator.mlkit.MlKitTranslationEngine
 import io.github.ngoroth.offlinetranslator.tencent.TencentTranslationEngine
 import io.github.ngoroth.offlinetranslator.ui.pressSystemBack
 import io.github.ngoroth.offlinetranslator.ui.TranslatorHelpTestTags
@@ -262,7 +259,7 @@ class ConversationScreenTest {
                 MaterialTheme {
                     Box(Modifier.width(320.dp).height(360.dp)) {
                         ConversationScreen(state.value, readyModels(), ConversationPreparation.IDLE, true, false, {}, {},
-                            provider = MlKitTranslationEngine.descriptor, speechOutputEnabled = false,
+                            provider = TencentTranslationEngine.descriptor, speechOutputEnabled = false,
                             speechOutputUnavailable = true, systemOutput = true,
                             outputReadiness = SpeechOutputReadiness.MISSING_LOCAL_VOICE, canInstallVoiceData = true)
                     }
@@ -271,7 +268,7 @@ class ConversationScreenTest {
         }
         fun assertPanel() {
             compose.onNodeWithTag(ConversationTestTags.CAPTURE_STATUS).assertIsDisplayed().assertHasNoClickAction()
-            compose.onNodeWithContentDescription(localizedAttribution("ru")).assertIsDisplayed()
+            compose.onNodeWithText(TencentTranslationEngine.descriptor.attribution).assertIsDisplayed()
             val speaker = compose.onNodeWithTag(ConversationTestTags.SPEECH_OUTPUT).assertIsDisplayed().assertIsEnabled().assertIsOff()
             val stop = compose.onNodeWithTag(ConversationTestTags.SESSION_ACTION).assertIsDisplayed().assertIsEnabled()
             for (node in listOf(speaker, stop)) {
@@ -399,7 +396,7 @@ class ConversationScreenTest {
                 LocalResources provides context.resources, LocalDensity provides Density(density.density, 2f)) { MaterialTheme {
                 Box(Modifier.fillMaxWidth().height(360.dp)) {
                     ConversationScreen(ConversationState(), emptyList(), ConversationPreparation.ERROR, false, false, {}, {},
-                        provider = MlKitTranslationEngine.descriptor,
+                        provider = TencentTranslationEngine.descriptor,
                         pair = LanguagePair(LanguageCatalog.CHINESE, LanguageCatalog.ENGLISH),
                         conversationCoverage = LanguageCatalog.entries.map { it.id }.toSet(),
                         systemRecognition = true, recognitionReadiness = SpeechRecognitionReadiness.DOWNLOAD_FAILED,
@@ -412,7 +409,7 @@ class ConversationScreenTest {
         compose.onNodeWithTag(ConversationTestTags.OPEN_ADVANCED_SETTINGS).assertDoesNotExist()
         compose.onNodeWithTag(ConversationTestTags.PREPARE).performScrollTo().assertIsEnabled()
         compose.onNodeWithTag(ConversationTestTags.SESSION_ACTION).assertIsDisplayed().assertIsNotEnabled().assertHeightIsAtLeast(48.dp)
-        compose.onNodeWithContentDescription(localizedAttribution("ru")).assertIsDisplayed()
+        compose.onNodeWithText(TencentTranslationEngine.descriptor.attribution).assertIsDisplayed()
         compose.onNodeWithTag(ConversationTestTags.LANGUAGE_FIRST).performScrollTo().performClick()
         for (language in LanguageCatalog.entries) {
             compose.onNodeWithTag("${ConversationTestTags.LANGUAGE_FIRST}_option_${language.id.value}")
@@ -715,7 +712,7 @@ class ConversationScreenTest {
         val phase = mutableStateOf(io.github.ngoroth.offlinetranslator.core.TranslationPreparationPhase.LOADING)
         compose.setContent { MaterialTheme {
             ConversationScreen(ConversationState(), readyModels(), ConversationPreparation.IDLE, true, false, {}, {},
-                provider = MlKitTranslationEngine.descriptor, translationPreparation =
+                provider = TencentTranslationEngine.descriptor, translationPreparation =
                     io.github.ngoroth.offlinetranslator.core.TranslationPreparationState(phase.value))
         } }
         for (value in listOf(io.github.ngoroth.offlinetranslator.core.TranslationPreparationPhase.LOADING,
@@ -833,7 +830,7 @@ class ConversationScreenTest {
                 Box(Modifier.fillMaxWidth().height(260.dp)) {
                     MaterialTheme {
                         ConversationScreen(state.value, readyModels(), ConversationPreparation.ERROR, false, true, {}, {},
-                            provider = MlKitTranslationEngine.descriptor, speechOutputEnabled = speechOutputEnabled.value,
+                            provider = TencentTranslationEngine.descriptor, speechOutputEnabled = speechOutputEnabled.value,
                             onToggleSpeechOutput = { speechOutputEnabled.value = !speechOutputEnabled.value })
                     }
                 }
@@ -841,8 +838,8 @@ class ConversationScreenTest {
         }
         compose.onNodeWithTag(ConversationTestTags.SESSION_ACTION).assertIsDisplayed().assertHeightIsAtLeast(48.dp)
         compose.onNodeWithTag(ConversationTestTags.SPEECH_OUTPUT).assertIsDisplayed().assertHeightIsAtLeast(48.dp).assertWidthIsAtLeast(48.dp)
-        val badge = compose.onNodeWithContentDescription(localizedAttribution())
-        badge.assertIsDisplayed()
+        val attribution = compose.onNodeWithText(TencentTranslationEngine.descriptor.attribution)
+        attribution.assertIsDisplayed()
         for (tag in listOf(ConversationTestTags.LANGUAGE_FIRST, ConversationTestTags.LANGUAGE_SECOND)) {
             compose.onNodeWithTag(tag).performScrollTo().assertIsDisplayed()
                 .assertHasClickAction().assertHeightIsAtLeast(48.dp).performClick()
@@ -856,7 +853,7 @@ class ConversationScreenTest {
         compose.onNodeWithText(longOriginal).performScrollTo().assertIsDisplayed()
         compose.onNodeWithText(longTranslation).performScrollTo().assertIsDisplayed()
         compose.onNodeWithTag(ConversationTestTags.SESSION_ACTION).assertIsDisplayed()
-        badge.assertIsDisplayed()
+        attribution.assertIsDisplayed()
         val content = compose.onNodeWithTag(ConversationTestTags.CONTENT)
         val position = content.fetchSemanticsNode().config[SemanticsProperties.VerticalScrollAxisRange].value()
         assertTrue("Reading a long translation must scroll only the working area", position > 0f)
@@ -871,7 +868,7 @@ class ConversationScreenTest {
         assertEquals(0f, content.fetchSemanticsNode().config[SemanticsProperties.VerticalScrollAxisRange].value(), 1f)
         compose.runOnIdle { state.value = state.value.copy(sessionActive = true, phase = ConversationPhase.ERROR) }
         compose.onNodeWithTag(ConversationTestTags.SESSION_ACTION).assertIsDisplayed().assertIsEnabled().assertHeightIsAtLeast(48.dp)
-        badge.assertIsDisplayed()
+        attribution.assertIsDisplayed()
     }
 
     @Test fun compactRussianUnavailablePairKeepsSelectorsAndTextActionTouchableAndStopFixed() {
@@ -897,7 +894,7 @@ class ConversationScreenTest {
                     Box(Modifier.fillMaxWidth().height(260.dp)) {
                         ConversationScreen(
                             state.value, emptyList(), ConversationPreparation.IDLE, false, false, {},
-                            { sessionActions++ }, pair = pair.value, provider = MlKitTranslationEngine.descriptor,
+                            { sessionActions++ }, pair = pair.value, provider = TencentTranslationEngine.descriptor,
                             configurationProblem = ConfigurationProblem.UNSUPPORTED_VOICE,
                             conversationCoverage = setOf(LanguageCatalog.RUSSIAN, LanguageCatalog.ENGLISH),
                             ownerAvailable = false,
@@ -918,8 +915,8 @@ class ConversationScreenTest {
             return node
         }
         touchTarget(ConversationTestTags.SESSION_ACTION, scrollTo = false).assertIsNotEnabled()
-        val badge = compose.onNodeWithContentDescription(localizedAttribution("ru"))
-        badge.assertIsDisplayed()
+        val attribution = compose.onNodeWithText(TencentTranslationEngine.descriptor.attribution)
+        attribution.assertIsDisplayed()
         for ((tag, language) in listOf(
             ConversationTestTags.LANGUAGE_FIRST to LanguageCatalog.SPANISH,
             ConversationTestTags.LANGUAGE_SECOND to LanguageCatalog.GERMAN,
@@ -930,7 +927,7 @@ class ConversationScreenTest {
         }
         touchTarget(ConversationTestTags.LANGUAGE_SWAP).assertIsEnabled().performTouchInput { click() }
         touchTarget(ConversationTestTags.OPEN_TEXT).assertIsEnabled().performTouchInput { click() }
-        badge.assertIsDisplayed()
+        attribution.assertIsDisplayed()
         compose.runOnIdle {
             assertEquals(listOf(
                 LanguagePair(LanguageCatalog.SPANISH, LanguageCatalog.ENGLISH),
@@ -941,7 +938,7 @@ class ConversationScreenTest {
             state.value = state.value.copy(sessionActive = true, phase = ConversationPhase.SPEAKING)
         }
         touchTarget(ConversationTestTags.SESSION_ACTION, scrollTo = false).assertIsEnabled().performTouchInput { click() }
-        badge.assertIsDisplayed()
+        attribution.assertIsDisplayed()
         compose.runOnIdle { assertEquals(1, sessionActions) }
     }
 
@@ -949,16 +946,32 @@ class ConversationScreenTest {
         val row = ConversationTranscript(9, original = "Call me in fifteen minutes", translation = "Перезвоните через пятнадцать минут",
             status = ConversationTranscriptStatus.COMPLETE, latencyMillis = 2_501, latencyMeasured = false)
         val state = mutableStateOf(ConversationState(transcripts = listOf(row)))
-        compose.setContent { MaterialTheme {
-            ConversationScreen(state.value, readyModels(), ConversationPreparation.IDLE, true, false, {}, {},
-                provider = MlKitTranslationEngine.descriptor)
-        } }
+        val openedUris = mutableListOf<String>()
+        val context = InstrumentationRegistry.getInstrumentation().targetContext
+        val uriHandler = object : UriHandler {
+            override fun openUri(uri: String) { openedUris += uri }
+        }
+        compose.setContent {
+            CompositionLocalProvider(LocalUriHandler provides uriHandler) {
+                MaterialTheme {
+                    ConversationScreen(state.value, readyModels(), ConversationPreparation.IDLE, true, false, {}, {},
+                        provider = TencentTranslationEngine.descriptor)
+                }
+            }
+        }
         compose.onNodeWithTag(TranslatorHelpTestTags.DIALOG).assertDoesNotExist()
         compose.onNodeWithTag(TranslatorHelpTestTags.TERMS_DIALOG).assertDoesNotExist()
         compose.onNodeWithTag(TranslatorHelpTestTags.ACTION).performScrollTo().performClick()
         compose.onNodeWithTag(TranslatorHelpTestTags.DIALOG).assertIsDisplayed()
         compose.onNodeWithTag(TranslatorHelpTestTags.TERMS_ACTION).performScrollTo().performClick()
         compose.onNodeWithTag(TranslatorHelpTestTags.TERMS_DIALOG).assertIsDisplayed()
+        compose.onNode(hasText(TencentTranslationEngine.descriptor.attribution) and
+            hasAnyAncestor(hasTestTag(TranslatorHelpTestTags.TERMS_DIALOG)))
+            .performScrollTo().assertIsDisplayed()
+        compose.onNode(hasText(context.getString(R.string.provider_terms)) and
+            hasAnyAncestor(hasTestTag(TranslatorHelpTestTags.TERMS_DIALOG))).performScrollTo()
+            .assertHeightIsAtLeast(48.dp).performClick()
+        compose.runOnIdle { assertEquals(listOf(TencentTranslationEngine.descriptor.termsUrl), openedUris) }
         val updated = row.copy(original = "Call me in five minutes", translation = "Перезвоните через пять минут",
             latencyMillis = 801, latencyMeasured = true)
         compose.runOnIdle { state.value = state.value.copy(transcripts = listOf(updated)) }
@@ -1062,78 +1075,31 @@ class ConversationScreenTest {
         compose.runOnIdle { assertEquals(1, actions) }
     }
 
-    @Test fun oneMlKitFooterBadgeStaysOutsidePendingTranslatedFailedAndInterruptedCardsAcrossProviderChanges() {
-        val previous = ConversationTranscript(1, original = "A previous request", translation = "Предыдущий запрос",
-            status = ConversationTranscriptStatus.ERROR, failure = ConversationFailure.PLAYBACK_FAILED)
-        val current = ConversationTranscript(2, original = "A new request")
-        val state = mutableStateOf(ConversationState(sessionActive = true, captureActive = true, phase = ConversationPhase.UNDERSTANDING,
-            transcripts = listOf(previous, current)))
-        val provider = mutableStateOf<TranslationProviderDescriptor?>(MlKitTranslationEngine.descriptor)
-        val attribution = localizedAttribution()
-        val google = hasContentDescription(attribution)
-        compose.setContent { MaterialTheme {
-            ConversationScreen(state.value, emptyList(), ConversationPreparation.IDLE, true, false, {}, {},
-                provider = provider.value)
-        } }
-        fun assertFooterOnly() {
-            compose.onAllNodesWithContentDescription(attribution, useUnmergedTree = true).assertCountEquals(1)
-            compose.onNodeWithContentDescription(attribution).assertIsDisplayed()
-            for (tag in listOf(ConversationTestTags.CURRENT_TURN, ConversationTestTags.PREVIOUS_TURN,
-                ConversationTestTags.SESSION_ACTION)) {
-                compose.onNode(hasTestTag(tag) and hasAnyDescendant(google), useUnmergedTree = true).assertDoesNotExist()
-            }
-            compose.onNodeWithTag(ConversationTestTags.SESSION_ACTION).assertIsDisplayed().assertIsEnabled()
-        }
-        assertFooterOnly()
-        compose.onNodeWithTag(ConversationTestTags.EMPTY_STATE).assertDoesNotExist()
-        compose.onNode(hasTestTag(ConversationTestTags.CURRENT_TURN) and hasAnyDescendant(hasText(current.original))).assertExists()
-        compose.onNode(hasTestTag(ConversationTestTags.PREVIOUS_TURN) and
-            hasAnyDescendant(hasText(requireNotNull(previous.translation)))).assertExists()
-        for (status in listOf(ConversationTranscriptStatus.COMPLETE, ConversationTranscriptStatus.ERROR,
-            ConversationTranscriptStatus.INTERRUPTED)) {
-            compose.runOnIdle { state.value = state.value.copy(transcripts = listOf(previous,
-                current.copy(translation = "Новый запрос", status = status,
-                    failure = if (status == ConversationTranscriptStatus.ERROR) ConversationFailure.PLAYBACK_FAILED else null))) }
-            assertFooterOnly()
-            compose.onNode(hasTestTag(ConversationTestTags.CURRENT_TURN) and hasAnyDescendant(hasText("Новый запрос"))).assertExists()
-            compose.onNode(hasTestTag(ConversationTestTags.PREVIOUS_TURN) and
-                hasAnyDescendant(hasText(requireNotNull(previous.translation)))).assertExists()
-        }
-        compose.runOnIdle { provider.value = null }
-        compose.onAllNodesWithContentDescription(attribution, useUnmergedTree = true).assertCountEquals(0)
-        compose.runOnIdle { provider.value = TencentTranslationEngine.descriptor }
-        compose.onAllNodesWithContentDescription(attribution, useUnmergedTree = true).assertCountEquals(0)
-        compose.onNodeWithText(TencentTranslationEngine.descriptor.attribution, useUnmergedTree = true).assertIsDisplayed()
-        compose.onNodeWithText("Новый запрос").assertExists()
-        compose.onNodeWithText(requireNotNull(previous.translation)).assertExists()
-        compose.runOnIdle { provider.value = MlKitTranslationEngine.descriptor }
-        assertFooterOnly()
-    }
 
-    @Test fun badgeAndActionBoundsStayFixedAcrossIdleActivePendingResultErrorStoppedAndScrolling() {
+    @Test fun attributionAndActionBoundsStayFixedAcrossIdleActivePendingResultErrorStoppedAndScrolling() {
         val state = mutableStateOf(ConversationState())
         val blocked = mutableStateOf(false)
         var stops = 0
-        val attribution = localizedAttribution()
+        val attribution = TencentTranslationEngine.descriptor.attribution
         compose.setContent { MaterialTheme {
             ConversationScreen(state.value, emptyList(),
                 if (blocked.value) ConversationPreparation.TRANSLATION else ConversationPreparation.IDLE,
-                !blocked.value, false, {}, { stops++ }, provider = MlKitTranslationEngine.descriptor,
+                !blocked.value, false, {}, { stops++ }, provider = TencentTranslationEngine.descriptor,
                 configurationProblem = if (blocked.value) ConfigurationProblem.UNKNOWN_MODEL else null,
                 languageChanging = blocked.value, systemRecognition = true,
                 recognitionReadiness = if (blocked.value) SpeechRecognitionReadiness.MISSING_LOCAL_MODEL else SpeechRecognitionReadiness.READY)
         } }
-        val badge = compose.onNodeWithContentDescription(attribution)
+        val attributionNode = compose.onNodeWithText(attribution)
         val action = compose.onNodeWithTag(ConversationTestTags.SESSION_ACTION)
         val speaker = compose.onNodeWithTag(ConversationTestTags.SPEECH_OUTPUT)
         val speakerBounds = speaker.assertIsDisplayed().assertHeightIsAtLeast(48.dp).assertWidthIsAtLeast(48.dp).fetchSemanticsNode().boundsInRoot
-        val badgeBounds = badge.assertIsDisplayed().fetchSemanticsNode().boundsInRoot
+        val attributionBounds = attributionNode.assertIsDisplayed().fetchSemanticsNode().boundsInRoot
         val actionBounds = action.assertIsDisplayed().assertIsEnabled().assertHeightIsAtLeast(48.dp).fetchSemanticsNode().boundsInRoot
         fun assertFixedFooter() {
-            compose.onAllNodesWithContentDescription(attribution, useUnmergedTree = true).assertCountEquals(1)
-            val actualBadge = badge.assertIsDisplayed().fetchSemanticsNode().boundsInRoot
+            compose.onAllNodesWithText(attribution, useUnmergedTree = true).assertCountEquals(1)
+            val actualAttribution = attributionNode.assertIsDisplayed().fetchSemanticsNode().boundsInRoot
             val actualAction = action.assertIsDisplayed().assertHeightIsAtLeast(48.dp).fetchSemanticsNode().boundsInRoot
-            assertBoundsUnchanged(badgeBounds, actualBadge)
+            assertBoundsUnchanged(attributionBounds, actualAttribution)
             assertBoundsUnchanged(actionBounds, actualAction)
             assertBoundsUnchanged(speakerBounds, speaker.assertIsDisplayed().fetchSemanticsNode().boundsInRoot)
         }
@@ -1187,14 +1153,6 @@ class ConversationScreenTest {
         assertEquals("Footer bottom moved within a stable viewport", expected.bottom, actual.bottom, 1f)
     }
 
-    private fun localizedAttribution(languageTag: String? = null): String {
-        val context = InstrumentationRegistry.getInstrumentation().targetContext
-        if (languageTag == null) return context.getString(R.string.google_translate_attribution)
-        val configuration = Configuration(context.resources.configuration).apply {
-            setLocales(LocaleList(Locale.forLanguageTag(languageTag)))
-        }
-        return context.createConfigurationContext(configuration).getString(R.string.google_translate_attribution)
-    }
 
     @Composable
     private fun Screen(

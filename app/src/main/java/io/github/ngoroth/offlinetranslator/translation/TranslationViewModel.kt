@@ -43,7 +43,7 @@ class TranslationViewModel(
         preparationObservation = viewModelScope.launch {
             owner.translation.preparation.collect { preparation ->
                 if (disposed || !foreground || !hasCurrentOwner) return@collect
-                // Only terminal loss revokes a usable engine; ML Kit may report LOADING on availability checks.
+                // Only terminal loss revokes a usable engine; preparation progress is not an eviction signal.
                 if (preparation.phase in setOf(TranslationPreparationPhase.MISSING, TranslationPreparationPhase.FAILED) &&
                     (mutableState.value.modelStatus == ModelUiStatus.READY ||
                         (preparation.phase == TranslationPreparationPhase.FAILED && !mutableState.value.operationInProgress))) {

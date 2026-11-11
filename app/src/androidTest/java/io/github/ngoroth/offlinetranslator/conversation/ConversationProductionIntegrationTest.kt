@@ -5,8 +5,8 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import io.github.ngoroth.offlinetranslator.MainActivity
 import io.github.ngoroth.offlinetranslator.core.*
-import io.github.ngoroth.offlinetranslator.mlkit.MlKitPreparationCoordinator
-import io.github.ngoroth.offlinetranslator.mlkit.MlKitTranslationEngine
+import io.github.ngoroth.offlinetranslator.tencent.TencentArtifactPreparation
+import io.github.ngoroth.offlinetranslator.tencent.TencentTranslationEngine
 import io.github.ngoroth.offlinetranslator.speechmodels.SelectedSpeechResources
 import io.github.ngoroth.offlinetranslator.sherpa.WhisperConversationRecognitionEngine
 import io.github.ngoroth.offlinetranslator.sherpa.SherpaConversationSpeechOutput
@@ -28,7 +28,7 @@ import java.io.File
 class ConversationProductionIntegrationTest {
     private val defaultConfig = ConversationSessionConfig(
         languages = listOf(LanguageCatalog.RUSSIAN, LanguageCatalog.ENGLISH),
-        engineId = "mlkit",
+        engineId = "tencent",
         speechRecognitionBackend = SpeechRecognitionBackend.WHISPER,
         vadModelId = "vad-silero-6.2.2",
         vadMinSilenceMs = 700,
@@ -40,8 +40,7 @@ class ConversationProductionIntegrationTest {
         requireOptIn()
         val context = InstrumentationRegistry.getInstrumentation().targetContext
         val store = SpeechModelStore(context, SherpaSpeechModelCatalog.fromAssets(context))
-        val coordinator = MlKitPreparationCoordinator(context)
-        val translation = MlKitTranslationEngine(context, defaultConfig.pairs, coordinator)
+        val translation = TencentTranslationEngine(defaultConfig.pairs, TencentArtifactPreparation(context))
         val models = SelectedSpeechResources.forConversation(store, defaultConfig,
             setOf(WhisperConversationRecognitionEngine.MODEL_ID))
         val recognition = WhisperConversationRecognitionEngine(store, defaultConfig)
@@ -84,8 +83,7 @@ class ConversationProductionIntegrationTest {
             .associateBy { it.getString("id") }
         assertEquals(ConversationProofFixtures.CASE_ORDER.toSet(), cases.keys)
         val store = SpeechModelStore(context, SherpaSpeechModelCatalog.fromAssets(context))
-        val coordinator = MlKitPreparationCoordinator(context)
-        val translation = MlKitTranslationEngine(context, defaultConfig.pairs, coordinator)
+        val translation = TencentTranslationEngine(defaultConfig.pairs, TencentArtifactPreparation(context))
         val recognition = WhisperConversationRecognitionEngine(store, defaultConfig)
         val output = SherpaConversationSpeechOutput(context, store, defaultConfig)
         val models = SelectedSpeechResources.forConversation(store, defaultConfig,
@@ -139,7 +137,7 @@ class ConversationProductionIntegrationTest {
         var terminalFailure: Throwable? = null
         try {
             assertTrue("Prepare models online before the offline invocation", models.isConversationReady(speechOutputRequired = true))
-            assertEquals(ModelAvailability.READY, translation.modelAvailability())
+            assertEquals(ModelAvailability.READY, translation.prepareLocal())
             assertEquals("Wi-Fi must be disabled for offline proof", 0, android.provider.Settings.Global.getInt(context.contentResolver, "wifi_on"))
             assertEquals("Airplane mode must be enabled for offline proof", 1, android.provider.Settings.Global.getInt(context.contentResolver, "airplane_mode_on"))
             val preparationStarted = System.nanoTime()

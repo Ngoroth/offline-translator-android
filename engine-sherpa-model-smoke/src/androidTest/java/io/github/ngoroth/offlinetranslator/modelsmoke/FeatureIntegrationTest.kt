@@ -67,7 +67,7 @@ class FeatureIntegrationTest {
         val asr=EvaluationSession.recognizer(store)
         val mt=EvaluationSession.translationEngine()
         try {
-            assertEquals(ModelAvailability.READY,mt.modelAvailability())
+            assertEquals(ModelAvailability.READY,mt.prepareLocal())
             val evidence=org.json.JSONObject().put("offline",true).put("readiness","READY")
                 .put("greetings",org.json.JSONArray()).put("typed",org.json.JSONArray()).put("wav",org.json.JSONArray())
             for((direction,text) in listOf(EvaluationSession.russianToEnglish to "Доброе утро",EvaluationSession.englishToRussian to "Good evening")) {

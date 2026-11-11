@@ -4,6 +4,20 @@ Notable capability, behavior and developer-facing compatibility changes. Entries
 
 ## Unreleased
 
+### Development prerelease 0.1.7
+
+- Removed ML Kit; Tencent is now the only translation provider.
+- Skipped the provider-choice screen when only one provider is available.
+- Existing ML Kit selections require reinstallation; model downloads remain explicit.
+
+### Remove ML Kit translation — 2026-11-11
+
+- Removed the ML Kit module/SDK, build and CI edges, translation branding and provider-specific Help; Tencent remains the sole registered translation provider.
+- Fresh startup automatically persists the sole registered provider and setup completion before either route opens. Multiple providers retain explicit choice; no providers or failed persistence keep entry blocked, with explicit retry rather than automatic save loops.
+- Provider selection does not construct engines, download models or start recording. Model downloads/repairs remain explicit; verified installed models initialize locally on route entry.
+- Kept settings schema7 with no legacy ML Kit selection migration; fresh installation or reinstallation is acceptable for this development cutover. Tencent's experimental quality, 1.13-GB download and device limitations, independent speech options and Android speech-service privacy boundaries remain.
+- Older entries and dated captures below describe their original builds, including removed providers; they are not current setup instructions or evidence for a newly assembled APK.
+
 ### Store listing and future listening experience — 2026-11-10
 
 - Added an English Google Play listing draft highlighting open source, on-device offline processing and planned language expansion.

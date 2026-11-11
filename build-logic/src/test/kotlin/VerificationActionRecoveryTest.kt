@@ -59,7 +59,7 @@ class VerificationActionRecoveryTest {
         val gitDirectory=BoundedProcess.run(listOf("git","rev-parse","--absolute-git-dir"),10,4096,repo)
         check(gitDirectory.exitCode==0) { "Fixture requires the current repository's Git directory" }
         File(root,".git").writeText("gitdir: ${gitDirectory.text.trim()}\n")
-        for(module in listOf("core","engine-mlkit","engine-sherpa","app","translator-test-kit","build-logic")) {
+        for(module in listOf("core","engine-tencent","engine-sherpa","app","translator-test-kit","build-logic")) {
             val xml=File(root,"$module/build/test-results/unit/TEST-fixture.xml")
             xml.parentFile.mkdirs();xml.writeText("<testsuite tests=\"1\" failures=\"0\" errors=\"0\" skipped=\"0\"/>")
         }

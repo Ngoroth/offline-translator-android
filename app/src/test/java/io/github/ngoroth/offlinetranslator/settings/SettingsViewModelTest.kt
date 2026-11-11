@@ -221,7 +221,7 @@ class SettingsViewModelTest {
         val selected = AppSettings(languagePair = LanguagePair(LanguageCatalog.DUTCH, LanguageCatalog.ENGLISH),
             speechRecognitionBackend = SpeechRecognitionBackend.SYSTEM_OFFLINE,
             speechOutputBackend = SpeechOutputBackend.PIPER,
-            translationEngineId = "mlkit", translationSetupComplete = true,
+            translationEngineId = "tencent", translationSetupComplete = true,
             speechRecognitionService = "installed.provider/.RecognitionService",
             vadMinSilenceMs = 1200, ttsSpeedPercent = 115)
         val vm = SettingsViewModel(repo, MutableStateFlow(true), { emptyList() },
@@ -372,7 +372,7 @@ class SettingsViewModelTest {
         val dispatcher = StandardTestDispatcher(testScheduler)
         Dispatchers.setMain(dispatcher)
         try {
-            for (engineId in listOf("mlkit", "tencent")) {
+            for (engineId in listOf("tencent", "isolated-provider")) {
                 val file = File(temp.root, "setup-$engineId.json")
                 val repo = AppSettingsRepository(file, dispatcher)
                 val gate = CompletableDeferred<Unit>()
@@ -436,30 +436,30 @@ class SettingsViewModelTest {
             })
         try {
             runCurrent()
-            vm.completeTranslationSetup("mlkit")
+            vm.completeTranslationSetup("tencent")
             runCurrent()
             assertEquals(0, attempts)
             editable.value = true
             teardown.value = true
             runCurrent()
-            vm.completeTranslationSetup("mlkit")
+            vm.completeTranslationSetup("tencent")
             runCurrent()
             assertEquals(0, attempts)
             teardown.value = false
             runCurrent()
             repeat(2) {
-                vm.completeTranslationSetup("mlkit")
+                vm.completeTranslationSetup("tencent")
                 runCurrent()
                 assertTrue(vm.state.value.saveError)
                 assertFalse(vm.state.value.translationSetupComplete)
                 assertFalse(repo.current().translationSetupComplete)
                 assertFalse(vm.state.value.saving)
             }
-            vm.completeTranslationSetup("mlkit")
+            vm.completeTranslationSetup("tencent")
             runCurrent()
             assertTrue(vm.state.value.translationSetupComplete)
             assertFalse(vm.state.value.saveError)
-            assertEquals("mlkit", repo.current().translationEngineId)
+            assertEquals("tencent", repo.current().translationEngineId)
         } finally {
             vm.viewModelScope.cancel()
             repo.closeAndJoin()
@@ -525,10 +525,10 @@ class SettingsViewModelTest {
                 true
             })
         try {
-            vm.completeTranslationSetup("mlkit")
+            vm.completeTranslationSetup("tencent")
             runCurrent()
             assertTrue(vm.state.value.loadError)
-            vm.completeTranslationSetup("mlkit")
+            vm.completeTranslationSetup("tencent")
             runCurrent()
             assertEquals(0, saves)
             assertFalse(vm.state.value.translationSetupComplete)
@@ -541,7 +541,7 @@ class SettingsViewModelTest {
             assertEquals(0, saves)
             assertTrue(ConfigurationProblem.UNKNOWN_ENGINE in vm.state.value.problems)
             assertFalse(repo.current().translationSetupComplete)
-            vm.completeTranslationSetup("mlkit")
+            vm.completeTranslationSetup("tencent")
             runCurrent()
             assertEquals(1, saves)
             assertTrue(vm.state.value.translationSetupComplete)

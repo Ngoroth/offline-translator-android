@@ -43,7 +43,7 @@ class ExtensibleRuntimeIntegrationTest {
         val original = runtime.settings.current()
         try {
             for (language in addedTextReverseInputs.keys) {
-                val selected = original.copy(languagePair = LanguagePair(LanguageCatalog.ENGLISH, language), translationEngineId = "mlkit")
+                val selected = original.copy(languagePair = LanguagePair(LanguageCatalog.ENGLISH, language), translationEngineId = "tencent")
                 selectPair(runtime, selected.languagePair)
                 assertTrue("Apply prepared text provider", runtime.applySettings(selected))
                 val owner = runtime.createTextOwner(selected.textConfig())
@@ -89,16 +89,16 @@ class ExtensibleRuntimeIntegrationTest {
             for ((language, reverseInput) in addedTextReverseInputs) {
                 val forward = LanguagePair(LanguageCatalog.ENGLISH, language)
                 for ((pair, input) in listOf(forward to forwardInput, forward.reverse() to reverseInput)) {
-                    val selected = original.copy(languagePair = pair, translationEngineId = "mlkit")
+                    val selected = original.copy(languagePair = pair, translationEngineId = "tencent")
                     selectPair(runtime, pair)
                     assertTrue("Apply prepared text provider", runtime.applySettings(selected))
                     val owner = runtime.createTextOwner(selected.textConfig())
                     try {
-                        // Offline execution deliberately never calls prepare or any model installer.
+                        // Offline execution only initializes already installed translation resources.
                         assertEquals(
                             "Prepare ${pair.id} online before offline verification",
                             ModelAvailability.READY,
-                            requireNotNull(runtime.useText(owner) { it.modelAvailability() }),
+                            requireNotNull(runtime.useText(owner) { it.prepareLocal() }),
                         )
                         val output = requireNotNull(runtime.useText(owner) { it.translate(pair, input) })
                         Log.i("AddedTextLanguagesProof", "runId=$runId pair=${pair.id} input=$input output=$output")
@@ -208,7 +208,7 @@ class ExtensibleRuntimeIntegrationTest {
         val extensionDraft = original.copy(
             languagePair = LanguagePair(LanguageCatalog.ENGLISH, LanguageCatalog.GERMAN),
             speechOutputBackend = SpeechOutputBackend.PIPER,
-            translationEngineId = "mlkit",
+            translationEngineId = "tencent",
             vadModelId = "vad-silero-6.2.2",
             vadMinSilenceMs = 900,
             ttsSpeedPercent = 110,
@@ -263,7 +263,7 @@ class ExtensibleRuntimeIntegrationTest {
         receipt.put("calls", calls)
 
         try {
-            assertEquals(ModelAvailability.READY, requireNotNull(runtime.useText(textOwner) { it.modelAvailability() }))
+            assertEquals(ModelAvailability.READY, requireNotNull(runtime.useText(textOwner) { it.prepareLocal() }))
 
             // 1. EN -> DE: "I will not take the bus."
             val enToDe = current.languagePair
@@ -289,7 +289,7 @@ class ExtensibleRuntimeIntegrationTest {
             selectPair(runtime, deToEn)
             val reverseOwner = runtime.createTextOwner(TextRuntimeConfig(deToEn, current.translationEngineId))
             try {
-                assertEquals(ModelAvailability.READY, requireNotNull(runtime.useText(reverseOwner) { it.modelAvailability() }))
+                assertEquals(ModelAvailability.READY, requireNotNull(runtime.useText(reverseOwner) { it.prepareLocal() }))
                 val t3 = requireNotNull(runtime.useText(reverseOwner) { it.translate(deToEn, "Ich werde nicht mit dem Bus fahren.") })
                 val t3Lower = t3.lowercase(Locale.ROOT)
                 assertTrue("Translation 3 must contain not: $t3", t3Lower.contains("not"))

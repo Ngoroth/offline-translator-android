@@ -201,7 +201,7 @@ class AndroidConversationRecognitionNativeTest {
 
     private suspend fun withProductionConversation(
         pair: LanguagePair,
-        engineId: String = "mlkit",
+        engineId: String = "tencent",
         service: String? = null,
         block: suspend (Proof) -> Unit,
     ) {
@@ -223,10 +223,8 @@ class AndroidConversationRecognitionNativeTest {
             assertTrue(config.ttsModelIds.isEmpty())
             val resourcesReady = owner.models.isConversationReady(speechOutputRequired = true)
             assertTrue("BLOCKED: selected native VAD and the owner's exact recognizer must be ready", resourcesReady)
-            if (engineId == "tencent") {
-                // Explicit local initialization after owner creation; offline prerequisite forbids network repair.
-                assertEquals(ModelAvailability.READY, translation.prepare())
-            }
+            // Local initialization cannot download or repair missing translation resources.
+            assertEquals(ModelAvailability.READY, translation.prepareLocal())
             val mtReady = translation.modelAvailability()
             assertEquals("BLOCKED: prepare selected MT before offline proof", ModelAvailability.READY, mtReady)
             val voiceReady = output.delegate.readiness()

@@ -231,7 +231,7 @@ class ConversationViewModel(
             if (current == previous) return@collect
             previous = current
             if (disposed || !foreground || !hasCurrentOwner) return@collect
-            // Progress (including ML Kit availability's LOADING) is not an eviction signal.
+            // Preparation progress is not an eviction signal.
             if (current.phase in setOf(TranslationPreparationPhase.MISSING, TranslationPreparationPhase.FAILED) &&
                 (mutableReady.value || state.value.sessionActive ||
                     (current.phase == TranslationPreparationPhase.FAILED && !readinessJob.isActive &&

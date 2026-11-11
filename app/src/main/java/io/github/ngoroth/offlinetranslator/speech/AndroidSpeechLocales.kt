@@ -3,7 +3,7 @@ package io.github.ngoroth.offlinetranslator.speech
 import io.github.ngoroth.offlinetranslator.core.LanguageId
 import java.util.Locale
 
-/** Platform tags are deliberately distinct from the base IDs used by ML Kit. */
+/** Platform locale tags are deliberately distinct from the base language IDs. */
 internal object AndroidSpeechLocales {
     private val recognitionTags = mapOf(
         "en" to "en-US", "vi" to "vi-VN", "es" to "es-ES", "id" to "id-ID",

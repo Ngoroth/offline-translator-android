@@ -34,15 +34,36 @@ $adb = Join-Path $env:ANDROID_HOME 'platform-tools/adb'
 & $adb -s emulator-5554 install -r app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk
 ```
 
-### Fresh translation choice, settings and Reset
+### Fresh translation setup, settings and Reset
 
-Use an explicitly authorized fresh current settings state. Before either route
-mounts, verify the compact Fast (ML Kit) / Accurate (Tencent) dialog. Choose each
-option in separate fresh-state checks; one committed choice must select both
-Text and Conversation, survive restart and dismiss setup only after save succeeds.
-Opening or choosing must not load models, download or request microphone permission.
-Exercise failed persistence and explicit retry with test-owned fault injection;
-engine selection and setup completion must remain atomic.
+Use an explicitly authorized fresh current settings state or test-isolated settings,
+without clearing shared app data/model packs. Tencent is the sole compiled provider:
+verify no one-option chooser or tap is required. Before either route mounts, the
+provider and setup completion must commit durably together. Observe route entry,
+the saved Tencent selection and persistence across actual force-stop/reopen.
+Startup must not download models, start capture or request microphone permission.
+Missing model readiness is separate from registered provider availability.
+Exercise multiple descriptors (including an unfamiliar synthetic ID), zero providers,
+load/save failure, busy/teardown gates, recomposition and explicit retry through
+isolated behavioral tests. Failure cannot expose routes or loop automatic saves.
+
+The default, model-independent startup gate is deliberately method-scoped for
+`RuntimeSettingsNativeTest`; **do not select its whole class**:
+
+```powershell
+pwsh -NoProfile -File tools/android/run-device-gate.ps1 `
+  -Adb $adb -Device emulator-5554 `
+  -CaseList 'io.github.ngoroth.offlinetranslator.settings.SettingsSheetTest,io.github.ngoroth.offlinetranslator.ui.TranslatorHelpTest,io.github.ngoroth.offlinetranslator.runtime.RuntimeSettingsNativeTest#setupCannotStealAnOwnerAndCommitsItsChoiceOnlyOnce' `
+  -EvidenceDir "$env:TEMP/translation-startup-$([Guid]::NewGuid().ToString('N'))"
+```
+
+Inspect actual rendered startup and Settings/Help as well as completed instrumentation
+results. Confirm descriptor-provided Tencent attribution/terms on both routes using
+only relevant focused attribution cases, not model-dependent full UI suites. Record
+the installed APK SHA-256 and correlate screenshots to that artifact. Source search
+alone does not prove SDK removal: retain `:app:dependencies --configuration
+debugRuntimeClasspath` output and inspect the assembled APK DEX inventory for
+`com.google.mlkit` and the retired app ML Kit package.
 
 Settings initially shows only the shared translation choice, interface language
 and voice speed. Expand Advanced for Whisper/System recognition, conditional
@@ -55,19 +76,67 @@ preserving pair, locale and completed setup; Close must not undo it or reopen se
 Ordinary Apply and pair changes preserve the latest speaker choice. Schema7 is
 the current-only format; documents without `speechOutputEnabled` default to true,
 but older schema7 binaries reject the newly written field. Restore their original
-raw settings before reinstalling one. Earlier-schema migration and replacement
-notifications remain outside this development scope. Shared-device preservation
-is required unless the resource owner explicitly grants disposable use.
+raw settings before reinstalling one. Legacy ML Kit selections and earlier schemas
+are not migrated; fresh installation or reinstallation is acceptable for this
+development cutover, not permission to erase shared device state. Schema7 is unchanged.
+Shared-device preservation is required unless the resource owner explicitly grants
+disposable use.
 
 For an actual default-route check, confirm all selected providers, explicitly
 prepare the resources, disable connectivity and restart the process. Exercise
 Whisper → Tencent → genuine local System output in both RU/EN directions, Stop
 and idle reentry, plus one Tencent Text request. Inspect fixed input/output
 meaning and non-silent local synthesis; a completed label alone is insufficient.
-Existing System-recognition or ML Kit-specific cases below are separate checks,
-not proof of this combined route. Record UI, inference and restoration outcomes
-separately. Insufficient model storage is **BLOCKED**, not a passing inference
-check or permission to delete another owner's model packs.
+Existing System-recognition cases and dated pre-removal evidence below are separate
+checks, not proof of this combined route. Record UI, inference and restoration
+outcomes separately. Insufficient model storage is **BLOCKED**, not a passing
+inference check or permission to delete another owner's model packs.
+
+#### Optional real runtime-owner fixture test
+
+`RuntimeSettingsNativeTest#preparedRuntimeOwnerProcessesOfficialRussianFixture`
+is a separate **opt-in** production pipeline test, not part of the startup gate.
+It requires prepared paired Sherpa/Tencent native distributions in the installed
+app/test APKs, verified Tencent Q4_K_M weights (1,133,080,448 bytes), the shared
+Whisper Small INT8 model, native VAD and the selected Russian/English Piper voice
+resources. Prepare these explicitly online before testing offline; allow storage
+headroom and sufficient device memory. A missing resource is BLOCKED, not a reason
+to substitute mocks or another provider.
+
+The test APK must contain the official Russian fixture as `speech-ru-fixture.wav`
+(the pinned `ru-official-0.wav` source recorded in the corpus attribution). The
+test uses fixed paced capture through real VAD → Whisper → Tencent → Piper and
+playback, with production runtime ownership and settings. It is not a physical
+microphone/acoustic, phone-performance or full translation-quality qualification.
+Preserve permissions/settings and verify network absence as above, then run only:
+
+```powershell
+pwsh -NoProfile -File tools/android/run-device-gate.ps1 `
+  -Adb $adb -Device emulator-5554 `
+  -CaseList 'io.github.ngoroth.offlinetranslator.runtime.RuntimeSettingsNativeTest#preparedRuntimeOwnerProcessesOfficialRussianFixture' `
+  -EvidenceDir "$env:TEMP/runtime-owner-fixture-$([Guid]::NewGuid().ToString('N'))"
+```
+
+#### Other prepared integration suites
+
+These existing suites now use real Tencent translation rather than ML Kit. They
+are **not** additions to the model-independent startup gate. Install current
+app/test APKs built with both verified native distributions, prepare the pinned
+Tencent GGUF explicitly over Wi-Fi, then verify connectivity absence before
+offline methods. Missing models must not become a mock-backed pass.
+
+| Suite | Additional preparation and execution boundary |
+| --- | --- |
+| `ConversationProductionIntegrationTest` | Set instrumentation argument `runConversationIntegration=true`; stage the committed corpus and manifest under app-private `files/conversation-proof/fixtures`. Explicit `prepareLanguagesThroughProductionInstaller` installs RU/EN Whisper/VAD/Piper and prepares Tencent online. Offline methods retain real paced VAD/Whisper/Tencent/Piper/AudioTrack and their original latency assertions; running them does not itself qualify phone performance. |
+| `ExtensibleRuntimeIntegrationTest` | Set `runExtensibilityIntegration=true`; use its explicit online preparation methods for selected text/speech resources. Offline semantic cases require the committed staged fixtures; `addedTextLanguagesOffline` also requires a nonblank `runId`. Prepare only speech resources required by the selected method; unsupported Piper pairs remain unsupported. |
+| `RuntimeSettingsRouteTest` | Requires prepared Tencent even for genuine Text composition. Conversation cases additionally need selected Whisper/VAD/Piper or genuine installed System speech resources; no model downloads occur in the route checks. |
+| `SharedLanguagePairNativeTest` | Full-class execution requires Tencent, selected Whisper/VAD, RU/EN Piper voices, genuine System voices for the exercised languages, and bundled official/fixed fixtures. Choose individual methods for narrower evidence; do not treat the full class as a startup-only check. |
+| `InterfaceLanguageNativeTest` | Requires verified installed Tencent weights for real Text output through MainActivity. Its locale checks do not download models or require microphone capture. |
+
+Use the full package under `io.github.ngoroth.offlinetranslator` when selecting
+methods. Preserve each suite's explicit opt-in arguments, original fixtures and
+semantic/latency assertions; report skip, failure or missing prerequisites honestly
+rather than claiming preparation, compilation or skipped methods as execution.
 
 ### Optional Conversation speech output and actual capture status
 
@@ -155,8 +224,8 @@ or SHA-256 and confirm the installed artifact before attributing runtime reports
 In the actual app, confirm **Whisper · offline recognition** in Advanced Settings.
 Choose the pair and use **Prepare languages**. Whisper uses one shared
 375,485,327-byte model, not Android recognition packs or a separate language-ID
-model. Prepare genuine local voices and the selected translation provider
-separately. The shared Fast choice uses ML Kit resources; Accurate uses Tencent.
+model. Prepare genuine local voices and Tencent translation resources separately;
+automatic provider selection does not install these models.
 Metadata coverage alone cannot enable a usable spoken conversation.
 
 After verifying complete connectivity absence, run the Whisper-specific real
@@ -183,6 +252,39 @@ offline voice/non-silent PCM/completion/interruption evidence.
 The optional argument selects only those fixed fixtures and rejects unknown or
 missing fixture IDs. Without it, the existing full-catalog gate is unchanged.
 Do not advertise this selected three-language run as full-catalog qualification.
+
+### Isolated evaluator translation preparation
+
+The `engine-sherpa-model-smoke` evaluator uses real Tencent translation for its
+translation/full-pipeline/stress stages. It no longer includes ML Kit or its
+badge. Build both evaluator APKs with the verified Sherpa and Tencent native
+distributions; assembling them does not download weights or execute inference.
+The evaluator has a separate application ID and private storage, so prepared
+production-app weights do not establish evaluator readiness.
+
+Its explicit `PreparationTest#preparesIsolatedProviderModelForBothDirections`
+requires validated Wi-Fi and sufficient private storage for the pinned
+1,133,080,448-byte Q4_K_M model plus installation headroom. It prepares and
+initializes the real Tencent provider, exercises RU↔EN greetings and records the
+model identity in preparation evidence. Run this online preparation before
+offline translation stages. `verifyTranslator` is an opt-in device workflow,
+not an ordinary host gate: it explicitly enables connectivity for preparation,
+then disables it for feature/candidate execution under its existing ownership
+and restoration protocol. Arrange device use and downloads first.
+
+Offline evaluator and migrated app integration tests still require local
+initialization at cold Tencent boundaries: `prepareLocal()` verifies installed
+weights and initializes JNI without downloading or repairing them. Offline
+checks prohibit installers and network-capable `prepare()`, not this local-only
+initialization. Controlled stress initialization precedes its measurement clock;
+the existing thresholds remain unchanged. Missing/corrupt bytes fail and require
+a separate explicit online preparation action.
+
+Keep the original evaluator corpus, selected speech resources, semantic/latency
+assertions and measured failures. Tencent's size, experimental meaning errors
+and unqualified phone performance still apply; replacing the translator does
+not make previous ML Kit evaluator results current or passing. Translation-free
+Whisper boundary checks below do not require a Tencent model download.
 
 The isolated model-smoke boundary case is
 `io.github.ngoroth.offlinetranslator.modelsmoke.WhisperLanguagePairNativeTest#selectedPairProducesItsOwnTranscriptAndRejectsInvalidConfiguration`.
@@ -213,6 +315,9 @@ speech-end-to-first-non-silent-presentation goal. Record missing/failed timing
 as such. None of these commands by itself records user acceptance.
 
 ### Bounded emulator evidence — 2026-10-22
+
+This dated section describes the original ML Kit-containing candidate, not the
+current Tencent-only build or a passing run of today's selectors.
 
 The evaluated debug candidate is `offline-translator-whisper-883a48c6.apk`
 (SHA256 `883a48c6a5f0c137544922033c07eaf956a2a0f7f83c845ee12744fb83d9762d`,
@@ -247,7 +352,7 @@ overall six-direction2000ms goal.
 
 ## Tencent-specific preparation and native checks
 
-Run explicit Tencent native preparation before the host gate; see [CONTRIBUTING](../../CONTRIBUTING.md). No host/CI gate downloads the 1,133,080,448-byte model. In the actual app, confirm Tencent independently in Text and Conversation: fresh installs and Reset select it for both, while older valid saved selections require an explicit change and Apply. Press Prepare over validated Wi-Fi, and record missing/downloading byte progress/verifying/loading/ready. Check available private storage before preparation; the model requires its full declared bytes plus installation headroom. Reopen and explicitly initialize verified installed bytes locally. Readiness must never adopt corrupt bytes or enable Conversation before the selected recognition/output stages are ready. Missing/corrupt/storage/load/memory/limit/Unicode/Wi-Fi/timeout outcomes must stay localized and must not fall back to ML Kit.
+Run explicit Tencent native preparation before the host gate; see [CONTRIBUTING](../../CONTRIBUTING.md). No host/CI gate downloads the 1,133,080,448-byte model. In the actual app, confirm the shared Tencent selection in Text and Conversation: fresh startup durably selects the sole provider automatically, and Reset also selects it. No legacy ML Kit selection migration is provided; fresh installation or reinstallation is acceptable, subject to shared-device preservation. Press Prepare over validated Wi-Fi and record missing/downloading byte progress/verifying/loading/ready. Check available private storage before preparation; the model requires its full declared bytes plus installation headroom. Reopen and observe automatic local initialization of verified installed bytes. Readiness must never adopt corrupt bytes or enable Conversation before the selected recognition/output stages are ready. Missing/corrupt/storage/load/memory/limit/Unicode/Wi-Fi/timeout outcomes must stay localized without provider fallback.
 
 After real UI preparation, verify no active networks and restart the app. The new app instrumentation selectors are:
 
@@ -267,6 +372,11 @@ Assemble the separate library instrumentation APK with `:engine-tencent:assemble
 Record exact model/runtime/native-AAR/APK identities, both packaged ABIs and 16-KiB LOAD alignment. Separate all-240 execution/target-language evidence from the fixed 34-direction semantic sample. Freeze source fixtures before generation, retain failed/UNKNOWN outputs without replacement, and use a separately pinned host-only FastText lid.176 evaluator (target top1 confidence at least 0.80 and margin at least 0.20); do not bundle it or equate language identification with meaning. Semantic checks need bilingual reasoning for negation, invented names, numbers, prices, times and role relationships. Chinese target assessment also needs Simplified-script checks beyond a `zh` classifier label.
 
 The pinned runtime uses deterministic strict UTF-8-prefix-constrained greedy decoding, not the earlier unconstrained greedy policy. Preserve eligible greedy maxima/ties; otherwise choose the highest-logit eligible token before commitment without retrying inference. Valid split scalars/NUL remain supported, invalid/impossible prefixes are ineligible, and EOS120020 is allowed only at a complete scalar boundary. No output repair, replacement decoding, byte dropping, model/prompt change or provider fallback is involved. Bounded context and explicit token/output/no-eligible-candidate failures remain; no truncated success is permitted. Original source remains displayed unchanged; only Tencent inference normalizes CRLF/CR to LF.
+
+The following revision3–5 execution and memory/interruption observations are
+historical evidence from before ML Kit removal, not results for the current APK.
+Retain their failures and original provider/recognition paths without relabelling
+them as current qualification.
 
 Corrected revision4's actual-app run completed **all 240 distinct directed pairs with zero execution failures**, using the unchanged 16 source fixtures and pinned Q4_K_M bytes. The unchanged FastText control yields **236 PASS / 4 FAIL**: es/it/th/tr→id all have Indonesian top1, but confidence below 0.80 despite sufficient runner-up margins. These remain failed confidence checks, not proven wrong-language outputs. The frozen 34-direction semantic sample remains **26 PASS / 8 FAIL** with actual source/output bytes and bilingual reasoning retained. Separately, hi→zh changed tomorrow to yesterday. The disclosed model-fidelity and confidence limitations are accepted only for experimental additional-provider use; they are not technical PASS or whole-iteration/phone acceptance.
 
@@ -318,7 +428,8 @@ Additional existing boundaries can be checked independently:
 
 ```powershell
 & $adb -s emulator-5554 shell am instrument -w -r -e class 'io.github.ngoroth.offlinetranslator.speech.SystemSpeechOutputNativeTest' io.github.ngoroth.offlinetranslator.test/androidx.test.runner.AndroidJUnitRunner
-& $adb -s emulator-5554 shell am instrument -w -r -e class 'io.github.ngoroth.offlinetranslator.runtime.RuntimeSettingsNativeTest,io.github.ngoroth.offlinetranslator.runtime.SharedLanguagePairNativeTest' io.github.ngoroth.offlinetranslator.test/androidx.test.runner.AndroidJUnitRunner
+& $adb -s emulator-5554 shell am instrument -w -r -e class 'io.github.ngoroth.offlinetranslator.runtime.RuntimeSettingsNativeTest#setupCannotStealAnOwnerAndCommitsItsChoiceOnlyOnce' io.github.ngoroth.offlinetranslator.test/androidx.test.runner.AndroidJUnitRunner
+& $adb -s emulator-5554 shell am instrument -w -r -e class 'io.github.ngoroth.offlinetranslator.runtime.SharedLanguagePairNativeTest' io.github.ngoroth.offlinetranslator.test/androidx.test.runner.AndroidJUnitRunner
 & $adb -s emulator-5554 shell am instrument -w -r -e class 'io.github.ngoroth.offlinetranslator.speech.AndroidSpeechPcmWriterNativeTest' io.github.ngoroth.offlinetranslator.test/androidx.test.runner.AndroidJUnitRunner
 ```
 
@@ -334,8 +445,8 @@ Dutch source integration adds `nl` to the 17-language catalog and maps system re
 
 - After all source/localization edits settle and host-build access is granted, run the relevant existing host gate once and check Dutch translatable-key/format-signature parity with a throwaway script. Do not add permanent resource-copy tests or duplicate old per-language matrices.
 - After explicit device handoff, preserve current APK identities, private settings/packs, grants, connectivity, app locale, font scale and rotation. Through the actual UI, select Dutch in both ordered pair positions on Conversation and Text, swap, and relaunch. Select the Dutch interface (`Nederlands`) and inspect Conversation, Text, Settings, Help, dialogs, preparation and errors in portrait, landscape and increased font scale. Existing shared-pair/interface tests do not automatically exercise Dutch.
-- Prepare selected English↔Dutch and Russian↔Dutch resources online through the actual app UI, then disconnect, verify connectivity absence and force-stop/reopen. Execute fixed invented text in all four directions with negation, `Anna`, two tickets, tomorrow/yesterday and 15:00 versus 16:00. Retain exact unchanged inputs/outputs and independently assess meaning; do not retry modified inputs or promote method metadata based on fluent text. English↔Dutch is executable `Unknown`; Russian↔Dutch is SDK-managed `Pivot(en)`.
-- Check actual installed local `nl-NL` recognition and voice readiness through the selected System backends, using the provider's public installer explicitly when missing. Unsupported/missing System resources must stay non-ready; Dutch does not gain Sherpa/Piper coverage. Selecting Whisper is an explicit separate action, not a way to relabel a failed System gate. With genuine selected-backend readiness, run fixed Dutch↔English and Dutch↔Russian audio through production VAD/ASR/source resolution/ML Kit/output. Retain detected source, transcript, translation, non-silent output evidence and unchanged errors.
+- Prepare selected English↔Dutch and Russian↔Dutch resources online through the actual app UI, then disconnect, verify connectivity absence and force-stop/reopen. Execute fixed invented text in all four directions with negation, `Anna`, two tickets, tomorrow/yesterday and 15:00 versus 16:00. Retain exact unchanged inputs/outputs and independently assess meaning; do not retry modified inputs or promote method metadata based on fluent text. Tencent reports `Direct` for these pairs, not semantic qualification; earlier ML Kit `Unknown`/`Pivot(en)` observations remain historical.
+- Check actual installed local `nl-NL` recognition and voice readiness through the selected System backends, using the provider's public installer explicitly when missing. Unsupported/missing System resources must stay non-ready; Dutch does not gain Piper coverage. Selecting Whisper is an explicit separate action, not a way to relabel a failed System gate. With genuine selected-backend readiness, run fixed Dutch↔English and Dutch↔Russian audio through production VAD/ASR/source resolution/Tencent/output. Retain detected source, transcript, translation, non-silent output evidence and unchanged errors.
 - Keep temporary production-runtime smoke code and captured outputs outside the permanent source changes; remove temporary source afterward. Narrow Dutch evidence does not require running all-language preparation/cohorts. Synthetic functional success is not human-audio, GrapheneOS, ARM64 or phone-acoustic qualification; finish with the state-restoration procedure below.
 
 ## UI, lifecycle and evidence
@@ -360,4 +471,4 @@ A valid result identifies the exact APKs, device/provider versions, installed re
 
 Await capture, recognizer, writer, player and SDK/native cleanup. Stop the application/instrumentation, restore the saved **current** settings and device state, verify an idle restart without automatic microphone capture, and leave reusable prepared packs installed. Do not restore another session's settings bytes.
 
-Known translation-meaning errors and ML Kit native content logging remain unresolved. Offline tests do not clear them. Real-phone latency/acoustics/thermal behavior and distribution rights are separate qualification work.
+Known translation-meaning errors remain. Historical ML Kit native content logging applies to older builds; removal does not retroactively fix them or establish safe diagnostic logs for all retained components. Optional Android speech services retain their own privacy terms and offline-request trust boundaries. Offline tests do not clear those concerns. Real-phone latency/acoustics/thermal behavior and distribution rights are separate qualification work.

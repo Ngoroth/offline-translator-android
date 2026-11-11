@@ -25,7 +25,7 @@ import org.junit.Rule
 import org.junit.Test
 import java.io.File
 
-/** Actual MainActivity, native configuration delivery and prepared ML Kit; no downloads or microphone. */
+/** Actual MainActivity, native configuration delivery and prepared Tencent; no downloads or microphone. */
 class InterfaceLanguageNativeTest {
     @get:Rule val compose = createEmptyComposeRule()
     private val instrumentation = InstrumentationRegistry.getInstrumentation()
@@ -46,15 +46,15 @@ class InterfaceLanguageNativeTest {
         val original = runtime.settings.current()
         commitNativeSettings(runtime, original.copy(
             languagePair = pair,
-            translationEngineId = "mlkit",
+            translationEngineId = "tencent",
             translationSetupComplete = true,
             speechRecognitionBackend = SpeechRecognitionBackend.SYSTEM_OFFLINE,
             speechOutputBackend = SpeechOutputBackend.SYSTEM_OFFLINE,
         ))
-        val engine = runtime.registry.create("mlkit", setOf(pair))
+        val engine = runtime.registry.create("tencent", setOf(pair))
         try {
             assertEquals("Prepared RU/EN required; this regression never downloads", ModelAvailability.READY,
-                engine.modelAvailability())
+                engine.prepareLocal())
         } finally {
             engine.closeAndJoin()
         }

@@ -7,8 +7,8 @@ import io.github.ngoroth.offlinetranslator.sherpa.SherpaSpeechModelCatalog
 import io.github.ngoroth.offlinetranslator.core.LanguageId
 import io.github.ngoroth.offlinetranslator.core.LanguagePair
 import io.github.ngoroth.offlinetranslator.core.SpeechModelRole
-import io.github.ngoroth.offlinetranslator.mlkit.MlKitPreparationCoordinator
-import io.github.ngoroth.offlinetranslator.mlkit.MlKitTranslationEngine
+import io.github.ngoroth.offlinetranslator.tencent.TencentArtifactPreparation
+import io.github.ngoroth.offlinetranslator.tencent.TencentTranslationEngine
 import io.github.ngoroth.offlinetranslator.speechmodels.SelectedSpeechResources
 import io.github.ngoroth.offlinetranslator.sherpa.SherpaSpeechRecognitionEngine
 import io.github.ngoroth.offlinetranslator.sherpa.SherpaSpeechSegmenter
@@ -20,8 +20,8 @@ object EvaluationSession {
     val russianToEnglish = LanguagePair(LanguageId("ru"), LanguageId("en"))
     val englishToRussian = russianToEnglish.reverse()
     val pairs = setOf(russianToEnglish, englishToRussian)
-    private val preparationCoordinator by lazy { MlKitPreparationCoordinator(context) }
-    fun translationEngine() = MlKitTranslationEngine(context, pairs, preparationCoordinator)
+    private val translationArtifacts by lazy { TencentArtifactPreparation(context) }
+    fun translationEngine() = TencentTranslationEngine(pairs, translationArtifacts)
     fun pair(case: CorpusCase) = LanguagePair(LanguageId(case.pair.sourceId), LanguageId(case.pair.targetId))
     fun asrModelIds(store: SpeechModelStore): Map<LanguageId, String> = pairs.associate { pair ->
         val eligible = store.catalog.models.filter { it.role == SpeechModelRole.ASR && pair.source in it.languages }

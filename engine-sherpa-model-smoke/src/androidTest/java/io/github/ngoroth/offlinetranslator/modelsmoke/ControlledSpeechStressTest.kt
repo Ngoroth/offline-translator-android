@@ -30,6 +30,7 @@ object ControlledSpeechStressTest {
             val emitted = AtomicInteger();val pending = PendingSegments();val emissions = ConcurrentLinkedQueue<Long>()
             var drops = 0;var overflow = false;var drainMs = 0.0
             try {
+                require(mt.prepareLocal() == ModelAvailability.READY)
                 val clock = nowNanos()
                 for(direction in listOf(EvaluationSession.russianToEnglish,EvaluationSession.englishToRussian)) {
                     val ru = direction == EvaluationSession.russianToEnglish

@@ -61,8 +61,8 @@ class TranslationEngineLifetimeTest {
     @Test fun synchronousFatalAvailabilityPublishesBeforeQueuedObservationIsCancelled() = runTest {
         val provider = Provider()
         val lifetime = TranslationEngineLifetime(backgroundScope,
-            TranslationEngineRegistry({ provider }, { error("Unexpected") }))
-        val lease = lifetime.lease("mlkit", setOf(pair))
+            TranslationEngineRegistry({ provider }))
+        val lease = lifetime.lease("tencent", setOf(pair))
         lease.prepareLocal()
         // A second operation synchronously copies the cached READY state before the fault.
         val fatal = TranslationFailure.RuntimeLoad(IllegalStateException("availability"))
@@ -79,8 +79,8 @@ class TranslationEngineLifetimeTest {
         for (prepare in listOf(true, false)) {
             val provider = Provider()
             val lifetime = TranslationEngineLifetime(backgroundScope,
-                TranslationEngineRegistry({ provider }, { error("Unexpected") }))
-            val lease = lifetime.lease("mlkit", setOf(pair))
+                TranslationEngineRegistry({ provider }))
+            val lease = lifetime.lease("tencent", setOf(pair))
             lease.prepareLocal()
             val fatal = TranslationFailure.RuntimeLoad(IllegalStateException("fatal"))
             if (prepare) provider.preparationFailure = fatal else provider.translationError = fatal
@@ -97,9 +97,9 @@ class TranslationEngineLifetimeTest {
 
     @Test fun backgroundFastResumeDrainsSdkBeforeReacquiringOnSameLease() = runTest {
         val engines = mutableListOf<Provider>()
-        val registry = TranslationEngineRegistry({ Provider().also(engines::add) }, { error("Unexpected") })
+        val registry = TranslationEngineRegistry({ Provider().also(engines::add) })
         val lifetime = TranslationEngineLifetime(backgroundScope, registry)
-        val lease = lifetime.lease("mlkit", setOf(pair))
+        val lease = lifetime.lease("tencent", setOf(pair))
         val root = lease.preparation
         lease.prepareLocal()
         val old = engines.single()
@@ -127,8 +127,8 @@ class TranslationEngineLifetimeTest {
     @Test fun memoryPressurePublishesMissingWithoutEagerReacquisition() = runTest {
         val engines = mutableListOf<Provider>()
         val lifetime = TranslationEngineLifetime(backgroundScope,
-            TranslationEngineRegistry({ Provider().also(engines::add) }, { error("Unexpected") }))
-        val lease = lifetime.lease("mlkit", setOf(pair))
+            TranslationEngineRegistry({ Provider().also(engines::add) }))
+        val lease = lifetime.lease("tencent", setOf(pair))
         lease.prepareLocal()
         lifetime.trimMemory()
         assertEquals(TranslationPreparationPhase.MISSING, lease.preparation.value.phase)
@@ -147,12 +147,12 @@ class TranslationEngineLifetimeTest {
         val lifetime = TranslationEngineLifetime(backgroundScope, TranslationEngineRegistry({ selected ->
             selections.add(selected)
             Provider().also(engines::add)
-        }, { error("Unexpected") }))
-        val first = lifetime.lease("mlkit", setOf(pair))
+        }))
+        val first = lifetime.lease("tencent", setOf(pair))
         first.prepareLocal()
         assertTrue(runCatching { first.translate(pair.reverse(), "denied") }.exceptionOrNull() is IllegalArgumentException)
         first.closeAndJoin()
-        val next = lifetime.lease("mlkit", setOf(pair.reverse()))
+        val next = lifetime.lease("tencent", setOf(pair.reverse()))
         next.prepareLocal()
         first.close()
         first.closeAndJoin()
@@ -167,9 +167,9 @@ class TranslationEngineLifetimeTest {
     @Test fun ownerReplacementWaitsForCancelledSdkDrain() = runTest {
         val engines = mutableListOf<Provider>()
         val lifetime = TranslationEngineLifetime(backgroundScope,
-            TranslationEngineRegistry({ Provider().also(engines::add) }, { error("Unexpected") }))
+            TranslationEngineRegistry({ Provider().also(engines::add) }))
         val controller = RuntimeOwnerController(backgroundScope)
-        val first = controller.replace { TextRuntimeOwner(TextRuntimeConfig(pair, "mlkit"), lifetime.lease("mlkit", setOf(pair))) }
+        val first = controller.replace { TextRuntimeOwner(TextRuntimeConfig(pair, "tencent"), lifetime.lease("tencent", setOf(pair))) }
         first.translation.prepareLocal()
         val provider = engines.single()
         provider.blockTranslation = true
@@ -180,7 +180,7 @@ class TranslationEngineLifetimeTest {
         val replacement = async {
             controller.replace {
                 constructed = true
-                TextRuntimeOwner(TextRuntimeConfig(pair, "mlkit"), lifetime.lease("mlkit", setOf(pair)))
+                TextRuntimeOwner(TextRuntimeConfig(pair, "tencent"), lifetime.lease("tencent", setOf(pair)))
             }
         }
         yield()
@@ -196,11 +196,16 @@ class TranslationEngineLifetimeTest {
     @Test fun providerPairChangesInvalidateImmediatelyButSwapRetains() = runTest {
         val engines = mutableListOf<Provider>()
         val create: (Set<LanguagePair>) -> TranslationEngine = { Provider().also(engines::add) }
-        val lifetime = TranslationEngineLifetime(backgroundScope, TranslationEngineRegistry(create, create))
-        val first = lifetime.lease("mlkit", setOf(pair))
+        val descriptor = io.github.ngoroth.offlinetranslator.tencent.TencentTranslationEngine.descriptor
+        val registry = TranslationEngineRegistry(listOf(
+            TranslationEngineRegistry.Registration(descriptor.copy(id = "isolated-provider"), { TranslationCapability.Direct }, create),
+            TranslationEngineRegistry.Registration(descriptor, { TranslationCapability.Direct }, create),
+        ))
+        val lifetime = TranslationEngineLifetime(backgroundScope, registry)
+        val first = lifetime.lease("isolated-provider", setOf(pair))
         first.prepareLocal()
         first.closeAndJoin()
-        lifetime.invalidateSelection("mlkit", pair.reverse())
+        lifetime.invalidateSelection("isolated-provider", pair.reverse())
         assertEquals(0, engines.single().closes)
         lifetime.invalidateSelection("tencent", pair)
         assertEquals(1, engines.single().closes)
@@ -221,8 +226,8 @@ class TranslationEngineLifetimeTest {
     @Test fun failedDrainStillAttemptsCloseAndPreservesFirstFailureIdentity() = runTest {
         val provider = Provider()
         val lifetime = TranslationEngineLifetime(backgroundScope,
-            TranslationEngineRegistry({ provider }, { error("Unexpected") }))
-        val lease = lifetime.lease("mlkit", setOf(pair))
+            TranslationEngineRegistry({ provider }))
+        val lease = lifetime.lease("tencent", setOf(pair))
         lease.prepareLocal()
         val draining = IllegalStateException("actual drain")
         val closing = IllegalStateException("actual close")
@@ -240,12 +245,12 @@ class TranslationEngineLifetimeTest {
     @Test fun lateCloseAfterEvictionNeverDrainsClosedProviderOrSuccessor() = runTest {
         val engines = mutableListOf<Provider>()
         val lifetime = TranslationEngineLifetime(backgroundScope,
-            TranslationEngineRegistry({ Provider().also(engines::add) }, { error("Unexpected") }))
-        val old = lifetime.lease("mlkit", setOf(pair))
+            TranslationEngineRegistry({ Provider().also(engines::add) }))
+        val old = lifetime.lease("tencent", setOf(pair))
         old.prepareLocal()
         lifetime.leaveForeground()
         lifetime.enterForeground()
-        val successor = lifetime.lease("mlkit", setOf(pair.reverse()))
+        val successor = lifetime.lease("tencent", setOf(pair.reverse()))
         successor.prepareLocal()
         val drains = engines.last().drains
         old.closeAndJoin()
@@ -259,8 +264,8 @@ class TranslationEngineLifetimeTest {
     @Test fun fatalFailureReleasesDelegateAndCleanupPoisonRetainsExactIdentity() = runTest {
         val engines = mutableListOf<Provider>()
         val lifetime = TranslationEngineLifetime(backgroundScope,
-            TranslationEngineRegistry({ Provider().also(engines::add) }, { error("Unexpected") }))
-        val lease = lifetime.lease("mlkit", setOf(pair))
+            TranslationEngineRegistry({ Provider().also(engines::add) }))
+        val lease = lifetime.lease("tencent", setOf(pair))
         lease.prepareLocal()
         val fatal = TranslationFailure.RuntimeLoad(IllegalStateException("native"))
         engines.single().translationError = fatal
@@ -302,15 +307,15 @@ class TranslationEngineLifetimeTest {
                 }
                 override fun close() { releases++ }
             }
-        }, { error("Unexpected provider") })
+        })
         val lifetime = TranslationEngineLifetime(backgroundScope, registry)
-        suspend fun lease(pairs: Set<LanguagePair>) = lifetime.lease("mlkit", pairs)
+        suspend fun lease(pairs: Set<LanguagePair>) = lifetime.lease("tencent", pairs)
         val controller = RuntimeOwnerController(backgroundScope)
-        val first = controller.replace { TextRuntimeOwner(TextRuntimeConfig(pair, "mlkit"), lease(setOf(pair))) }
+        val first = controller.replace { TextRuntimeOwner(TextRuntimeConfig(pair, "tencent"), lease(setOf(pair))) }
         first.translation.prepare()
         val conversation = controller.replace {
             ConversationRuntimeOwner(
-                ConversationSessionConfig(listOf(pair.source, pair.target), "mlkit", SpeechRecognitionBackend.SYSTEM_OFFLINE,
+                ConversationSessionConfig(listOf(pair.source, pair.target), "tencent", SpeechRecognitionBackend.SYSTEM_OFFLINE,
                     "vad", 500, 100, SpeechOutputBackend.SYSTEM_OFFLINE),
                 object : ConversationModelRepository {
                     override val models = MutableStateFlow(emptyList<SpeechModelStatus>())
@@ -344,7 +349,7 @@ class TranslationEngineLifetimeTest {
         }
         conversation.translation.prepare()
         assertEquals("reverse", conversation.translation.translate(pair.reverse(), "reverse"))
-        val last = controller.replace { TextRuntimeOwner(TextRuntimeConfig(pair, "mlkit"), lease(setOf(pair))) }
+        val last = controller.replace { TextRuntimeOwner(TextRuntimeConfig(pair, "tencent"), lease(setOf(pair))) }
         last.translation.prepare()
         assertTrue(captureClosed && recognitionClosed && outputClosed)
         controller.release(first)

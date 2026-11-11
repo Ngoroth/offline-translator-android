@@ -11,15 +11,12 @@
     <string name="conversation_empty_title">Hiểu nhau hơn</string>
     <string name="conversation_empty">Hãy lần lượt nói.</string>
     <string name="conversation_empty_result">Bản dịch sẽ xuất hiện ở đây.</string>
-    <string name="google_translate_link">Mở Google Translate</string>
-    <string name="usage_terms_link">Điều khoản sử dụng</string>
     <string name="close_action">Đóng</string>
     <string name="swap_direction">Hoán đổi</string>
     <string name="input_hint">Nhập văn bản</string>
     <string name="error_input_too_long">Văn bản quá dài. Độ dài tối đa: %1$d. Văn bản trước đó được giữ lại.</string>
     <string name="result_label">Bản dịch</string>
     <string name="result_placeholder">Bản dịch sẽ xuất hiện ở đây</string>
-    <string name="google_translate_attribution">Do Google Translate cung cấp</string>
     <string name="status_checking">Đang kiểm tra mô hình ngôn ngữ…</string>
     <string name="status_downloading">Đang chuẩn bị các mô hình ngôn ngữ đã chọn qua Wi‑Fi…</string>
     <string name="status_translating">Đang dịch trên thiết bị…</string>
@@ -104,11 +101,7 @@
     <string name="settings_translation_engine">Dịch · văn bản và hội thoại</string>
     <string name="translation_setup_title">Chọn công cụ dịch</string>
     <string name="translation_setup_explanation">Một lựa chọn cho văn bản và hội thoại, có thể đổi trong Cài đặt. Việc chọn không tải mô hình hay dùng micrô.</string>
-    <string name="translation_choice_fast">Nhanh</string>
-    <string name="translation_choice_accurate">Chính xác</string>
-    <string name="translation_choice_fast_description">Ưu tiên tốc độ · Google ML Kit</string>
-    <string name="translation_choice_accurate_description">Ưu tiên chất lượng · Tencent. Có thể lâu hơn và cần nhiều dung lượng lưu trữ và bộ nhớ hơn.</string>
-    <string name="translation_choice_disclaimer">Cả hai đều có thể sai. Đây là ưu tiên, không bảo đảm tốc độ hay chất lượng trên thiết bị của bạn.</string>
+    <string name="translation_setup_unavailable">Không có nhà cung cấp dịch nào khả dụng.</string>
     <string name="settings_advanced">Cài đặt nâng cao</string>
     <string name="settings_advanced_expanded">Đã mở rộng</string>
     <string name="settings_advanced_collapsed">Đã thu gọn</string>
@@ -158,8 +151,6 @@
     <string name="settings_interface_language">Ngôn ngữ giao diện</string>
     <string name="settings_interface_language_immediate">Áp dụng ngay</string>
     <string name="settings_interface_language_error">Không thể đổi ngôn ngữ giao diện. Hãy chọn lại để thử lại.</string>
-    <string name="help_google_translation">ML Kit sử dụng Google Translate để dịch trên thiết bị. Liên kết bên dưới giải thích yêu cầu ghi công của Google.</string>
-    <string name="google_attribution_requirements_link">Yêu cầu ghi công của Google</string>
     <string name="language_name_en">Tiếng Anh</string>
     <string name="language_name_vi">Tiếng Việt</string>
     <string name="language_name_es">Tiếng Tây Ban Nha</string>

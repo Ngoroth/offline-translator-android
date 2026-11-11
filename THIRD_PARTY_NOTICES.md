@@ -32,7 +32,7 @@ Corresponding Source and compatible combined-work terms; see
 
 ## Tencent local translation
 
-The optional selectable Tencent provider embeds CPU **llama.cpp** at commit
+The sole registered Tencent translation provider embeds CPU **llama.cpp** at commit
 [`d8d92973c8c21bb4dd5d592f0fec26fe2cd1e654`](https://github.com/ggml-org/llama.cpp/tree/d8d92973c8c21bb4dd5d592f0fec26fe2cd1e654)
 under MIT. It is explicitly built into a verified local JNI AAR, not downloaded
 as executable application content. Exact source/toolchain/ABI and license
@@ -59,11 +59,8 @@ coordinates are in [the version catalog](gradle/libs.versions.toml).
 - **Apache Commons Compress 1.28.0**, `org.apache.commons:commons-compress`:
   Apache-2.0; the full upstream [NOTICE](LICENSES/commons-compress-NOTICE.txt)
   is preserved from the [release source](https://github.com/apache/commons-compress/blob/rel/commons-compress-1.28.0/NOTICE.txt).
-- AndroidX/Compose/DataStore, Kotlin coroutines, Google ML Kit Translate,
-  `org.json:json`, JUnit and Android test libraries retain their artifact licenses
-  and applicable transitive notices.
-- Google ML Kit and Google Translate names, logos and attribution artwork are
-  subject to their own SDK/service and branding terms, not the project license.
+- AndroidX/Compose/DataStore, Kotlin coroutines, `org.json:json`, JUnit and Android
+  test libraries retain their artifact licenses and applicable transitive notices.
 
 ## Downloaded model weights and voice data
 

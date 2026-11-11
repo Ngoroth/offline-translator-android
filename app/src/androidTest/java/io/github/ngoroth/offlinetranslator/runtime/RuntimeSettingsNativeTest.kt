@@ -25,7 +25,7 @@ class RuntimeSettingsNativeTest {
         val config = AppSettings(
             speechOutputBackend = SpeechOutputBackend.PIPER,
             speechRecognitionBackend = SpeechRecognitionBackend.WHISPER,
-            translationEngineId = "mlkit",
+            translationEngineId = "tencent",
         )
         commitNativeSettings(runtime, config)
     }
@@ -58,6 +58,7 @@ class RuntimeSettingsNativeTest {
             speechOutputProblem = { runtime.speechOutputProblem(owner.config) })
 
         try {
+            assertEquals("Prepared translation weights required; no downloads", ModelAvailability.READY, owner.translation.prepareLocal())
             assertTrue("Selected speech resources must be ready", runtime.conversationReady(owner))
             withTimeout(30_000) { viewModel.ready.first { it } }
 
@@ -163,9 +164,9 @@ class RuntimeSettingsNativeTest {
         val selected = runtime.settings.current()
         assertTrue(selected.translationSetupComplete)
         assertEquals("tencent", selected.translationEngineId)
-        assertFalse(runtime.completeTranslationSetup("mlkit"))
+        assertFalse(runtime.completeTranslationSetup("tencent"))
         assertEquals(selected, runtime.settings.current())
-        assertTrue(runtime.applySettings(selected.copy(translationEngineId = "mlkit", translationSetupComplete = false)))
+        assertTrue(runtime.applySettings(selected.copy(translationEngineId = "tencent", translationSetupComplete = false)))
         assertTrue(runtime.settings.current().translationSetupComplete)
         assertTrue(runtime.updateLanguagePair(selected.languagePair, selected.languagePair.reverse()))
         assertTrue(runtime.settings.current().translationSetupComplete)

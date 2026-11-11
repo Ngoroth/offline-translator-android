@@ -114,7 +114,7 @@ skill: ubiquitous-language
 ### Direct translation
 - **Definition**: A translation path reported as one source-to-target model invocation, supported by provider-specific routing evidence.
 - **NOT**: A guarantee of output quality or the absence of internal intermediate representations.
-- **Evidence**: `core/src/main/java/io/github/ngoroth/offlinetranslator/core/TranslationCapabilities.kt`, `MlKitTranslationEngine.capability`, `TencentTranslationEngine.capability`.
+- **Evidence**: `core/src/main/java/io/github/ngoroth/offlinetranslator/core/TranslationCapabilities.kt`, `TencentTranslationEngine.capability`.
 
 ### Install
 - **Definition**: Explicitly obtain and verify speech resources owned by the model repository.
@@ -189,7 +189,7 @@ skill: ubiquitous-language
 
 ### Speech model
 - **Definition**: An identifiable description of an executable speech model, including its role, languages, adapter parameters and references to required files.
-- **NOT**: Speech resource package or an ML Kit translation model; a Piper voice has the TTS role, but a System voice is not a model in this catalog.
+- **NOT**: Speech resource package or a Translation artifact; a Piper voice has the TTS role, but a System voice is not a model in this catalog.
 - **Related**: Speech model role.
 - **Evidence**: `speech-models/src/main/java/io/github/ngoroth/offlinetranslator/speechmodels/SpeechModelDefinition.kt:9-17`.
 
@@ -277,7 +277,7 @@ skill: ubiquitous-language
 - **Evidence**: `core/src/main/java/io/github/ngoroth/offlinetranslator/core/TranslationCapabilities.kt:25-32`. SDK information stays in the provider description, not ordinary Help.
 
 ### Translation setup
-- **Definition**: The required explicit first choice of a common Translation engine, completed only when that choice and its completion are persisted together.
+- **Definition**: Selection of a common Translation engine, automatic for one registered provider and explicit for multiple providers, completed only when the selection and its completion are persisted together.
 - **NOT**: Translation preparation; completing setup does not install resources or start processing.
 - **Related**: App settings, Translation engine.
 - **Evidence**: `core/src/main/java/io/github/ngoroth/offlinetranslator/core/AppSettings.kt`, `app/src/main/java/io/github/ngoroth/offlinetranslator/runtime/AppRuntime.kt` (`completeTranslationSetup`).

@@ -20,7 +20,6 @@ import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.onNodeWithText
-import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.test.platform.app.InstrumentationRegistry
 import io.github.ngoroth.offlinetranslator.R
 import org.junit.Assert.assertEquals
@@ -31,7 +30,7 @@ import io.github.ngoroth.offlinetranslator.conversation.ConversationScreen
 import io.github.ngoroth.offlinetranslator.conversation.ConversationTestTags
 import io.github.ngoroth.offlinetranslator.core.ConversationState
 import io.github.ngoroth.offlinetranslator.core.TranslationProviderDescriptor
-import io.github.ngoroth.offlinetranslator.mlkit.MlKitTranslationEngine
+import io.github.ngoroth.offlinetranslator.tencent.TencentTranslationEngine
 import io.github.ngoroth.offlinetranslator.translation.ModelUiStatus
 import io.github.ngoroth.offlinetranslator.translation.TranslationScreen
 import io.github.ngoroth.offlinetranslator.translation.TranslationTestTags
@@ -74,10 +73,10 @@ class TranslatorHelpTest {
                     Box(Modifier.width(420.dp).height(700.dp)) {
                         if (fixture.conversation) {
                             ConversationScreen(ConversationState(), emptyList(), ConversationPreparation.IDLE,
-                                true, false, {}, {}, provider = MlKitTranslationEngine.descriptor)
+                                true, false, {}, {}, provider = TencentTranslationEngine.descriptor)
                         } else {
                             TranslationScreen(TranslationUiState(modelStatus = ModelUiStatus.READY),
-                                {}, {}, {}, {}, {}, homeControls = {}, provider = MlKitTranslationEngine.descriptor)
+                                {}, {}, {}, {}, {}, homeControls = {}, provider = TencentTranslationEngine.descriptor)
                         }
                     }
                 }
@@ -104,7 +103,7 @@ class TranslatorHelpTest {
         compose.onNodeWithTag(TranslatorHelpTestTags.ACTION).assertHeightIsAtLeast(48.dp).performClick()
         compose.onNodeWithTag(TranslatorHelpTestTags.DIALOG).assertIsDisplayed()
         compose.onNodeWithTag(TranslatorHelpTestTags.TERMS_ACTION).assertDoesNotExist()
-        compose.runOnIdle { provider.value = MlKitTranslationEngine.descriptor }
+        compose.runOnIdle { provider.value = TencentTranslationEngine.descriptor }
         compose.onNodeWithTag(TranslatorHelpTestTags.DIALOG).assertIsDisplayed()
         compose.onNodeWithTag(TranslatorHelpTestTags.TERMS_ACTION).performScrollTo().performClick()
         compose.onNodeWithTag(TranslatorHelpTestTags.TERMS_DIALOG).assertIsDisplayed()
@@ -117,22 +116,37 @@ class TranslatorHelpTest {
         compose.onNodeWithTag(TranslatorHelpTestTags.ACTION).assertIsDisplayed()
     }
     @Test fun otherProviderTermsUseOnlyItsOwnAttributionAndLegalDestination() {
-        val other = MlKitTranslationEngine.descriptor.copy(id = "isolated-descriptor", displayName = "Other translator",
+        val other = TencentTranslationEngine.descriptor.copy(id = "isolated-descriptor", displayName = "Other translator",
             provider = "Other", attribution = "Other translator attribution", termsUrl = "https://example.test/terms")
+        val provider = mutableStateOf(other)
         val opened = mutableListOf<String>()
         val context = InstrumentationRegistry.getInstrumentation().targetContext
         compose.setContent { MaterialTheme {
-            TranslatorHelp(conversation = true, provider = other, onOpenUri = opened::add)
+            TranslatorHelp(conversation = true, provider = provider.value, onOpenUri = opened::add)
         } }
         compose.onNodeWithTag(TranslatorHelpTestTags.ACTION).performClick()
         compose.onNodeWithTag(TranslatorHelpTestTags.TERMS_ACTION).performScrollTo().performClick()
         compose.onNodeWithText(other.attribution).assertIsDisplayed()
-        compose.onNodeWithText(context.getString(R.string.google_disclaimer)).assertDoesNotExist()
-        compose.onNodeWithContentDescription(context.getString(R.string.google_translate_attribution)).assertDoesNotExist()
-        compose.onNodeWithText(context.getString(R.string.google_translate_link)).assertDoesNotExist()
-        compose.onNodeWithText(context.getString(R.string.google_attribution_requirements_link)).assertDoesNotExist()
         compose.onNodeWithText(context.getString(R.string.provider_terms)).performScrollTo().performClick()
         compose.runOnIdle { assertEquals(listOf(other.termsUrl), opened) }
+        compose.runOnIdle { provider.value = other.copy(attribution = " \n") }
+        compose.onNodeWithText(other.attribution).assertDoesNotExist()
+        compose.onNodeWithText(context.getString(R.string.provider_terms)).performScrollTo().assertIsDisplayed()
+        compose.runOnIdle { provider.value = other.copy(termsUrl = "\t") }
+        compose.onNodeWithText(other.attribution).assertIsDisplayed()
+        compose.onNodeWithText(context.getString(R.string.provider_terms)).assertDoesNotExist()
+        compose.onNodeWithTag(TranslatorHelpTestTags.TERMS_BACK).performClick()
+        compose.onNodeWithTag(TranslatorHelpTestTags.TERMS_ACTION).performScrollTo().assertIsDisplayed()
+    }
+
+    @Test fun blankProviderMetadataKeepsHelpAvailableWithoutLegalActions() {
+        val provider = TencentTranslationEngine.descriptor.copy(attribution = " \n", termsUrl = "\t")
+        compose.setContent { MaterialTheme { TranslatorHelp(conversation = false, provider = provider) } }
+        compose.onNodeWithTag(TranslatorHelpTestTags.ACTION).performClick()
+        compose.onNodeWithTag(TranslatorHelpTestTags.DIALOG).assertIsDisplayed()
+        compose.onNodeWithTag(TranslatorHelpTestTags.TERMS_ACTION).assertDoesNotExist()
+        compose.onNodeWithTag(TranslatorHelpTestTags.CLOSE).performClick()
+        compose.onNodeWithTag(TranslatorHelpTestTags.DIALOG).assertDoesNotExist()
     }
 
 }

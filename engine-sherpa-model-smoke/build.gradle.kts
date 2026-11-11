@@ -26,7 +26,7 @@ val generateEvaluationUi = tasks.register<EvaluationSourceSync>("generateEvaluat
 }
 val generateEvaluationResources = tasks.register<EvaluationSourceSync>("generateEvaluationResources") {
     from(rootProject.file("app/src/main/res")) {
-        include("values/strings.xml", "values-ru/strings.xml", "drawable-nodpi/powered_by_google_translate.png",
+        include("values/strings.xml", "values-ru/strings.xml",
             "drawable/conversation_empty.xml", "drawable/conversation_microphone.xml",
             "drawable/conversation_microphone_off.xml", "drawable/conversation_speaker.xml",
             "drawable/conversation_speaker_off.xml")
@@ -94,7 +94,6 @@ dependencies {
     implementation(project(":core"))
     implementation(project(":speech-models"))
     implementation(project(":engine-sherpa"))
-    implementation(project(":engine-mlkit"))
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.compose.ui)
     implementation(libs.androidx.compose.material3)

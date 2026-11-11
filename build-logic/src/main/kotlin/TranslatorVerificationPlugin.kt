@@ -61,7 +61,7 @@ class TranslatorVerificationPlugin : Plugin<Project> {
         val cleanOwnership=gradle.sharedServices.registerIfAbsent("translatorCleanOwnership",CleanOwnership::class.java) {parameters.repo.set(layout.projectDirectory)}
         val clean=tasks.register("clean") {
             group="build";description="Remove module builds and verification reports while preserving the stable lock."
-            dependsOn(":app:clean",":core:clean",":engine-mlkit:clean",":engine-sherpa:clean",":engine-sherpa-model-smoke:clean",":translator-test-kit:clean",gradle.includedBuild("build-logic").task(":clean"))
+            dependsOn(":app:clean",":core:clean",":engine-tencent:clean",":engine-sherpa:clean",":engine-sherpa-model-smoke:clean",":translator-test-kit:clean",gradle.includedBuild("build-logic").task(":clean"))
             usesService(cleanOwnership)
             notCompatibleWithConfigurationCache("Owns the verification cleanup lock across all clean dependencies")
             doLast {cleanOwnership.get().cleanRoot()}
@@ -77,7 +77,7 @@ class TranslatorVerificationPlugin : Plugin<Project> {
             task.usesService(completion)
             task.outputs.upToDateWhen { false }
             task.notCompatibleWithConfigurationCache("Owns external emulator lifecycle and a failure-finalizing build service")
-            task.dependsOn(":core:testDebugUnitTest",":engine-mlkit:testDebugUnitTest",":engine-sherpa:testDebugUnitTest",":app:testDebugUnitTest",":translator-test-kit:testDebugUnitTest",":app:lintDebug",":engine-sherpa-model-smoke:assembleModelSmoke",":engine-sherpa-model-smoke:assembleModelSmokeAndroidTest",gradle.includedBuild("build-logic").task(":test"))
+            task.dependsOn(":core:testDebugUnitTest",":engine-tencent:testDebugUnitTest",":engine-sherpa:testDebugUnitTest",":app:testDebugUnitTest",":translator-test-kit:testDebugUnitTest",":app:lintDebug",":engine-sherpa-model-smoke:assembleModelSmoke",":engine-sherpa-model-smoke:assembleModelSmokeAndroidTest",gradle.includedBuild("build-logic").task(":test"))
         }
         gradle.taskGraph.whenReady(object : org.gradle.api.Action<org.gradle.api.execution.TaskExecutionGraph> {
             override fun execute(graph: org.gradle.api.execution.TaskExecutionGraph) {

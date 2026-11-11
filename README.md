@@ -20,14 +20,14 @@ Recorded on an emulator with networking disabled and languages prepared. Test au
 
 Choose two languages, prepare their resources, and start a conversation. Either person can speak a turn; the app recognizes and translates it. The speaker button beside Start/Stop enables or disables reading translations aloud. With speech output enabled, listening resumes after playback; with it disabled, synthesis and playback are skipped. **Text** uses the same language pair without the microphone.
 
-- **Translation choice:** first launch offers Fast (Google ML Kit) or Accurate (Tencent Hy-MT2), with one saved choice for Text and Conversation. These labels describe priorities, not guaranteed speed or correctness.
+- **Translation setup:** Tencent Hy-MT2 is the sole registered provider. Fresh startup automatically saves it with setup completion before opening Text or Conversation; no chooser tap is needed. Explicit choice remains available when multiple providers are registered; no providers or a failed save block entry, with explicit retry after failure.
 - **Speech alternatives:** Whisper is the recognition default; Android on-device recognition and System/Piper output remain in Advanced settings. Piper retains its curated Russian/English coverage.
 - **Conversation controls:** the pinned lower panel shows actual microphone availability, independently of recognition/translation progress. Speech output is on by default and its choice survives reopening. Mute interrupts current speech without discarding translated text or stopping the conversation; enabling affects subsequent results, not old translations. Unavailable voices leave output off without switching providers or downloading implicitly. For supported Piper languages with missing voice data, Stop and explicitly prepare the voices; preparation keeps output off until you enable it again.
 - **17 languages:** a shared language pair across Conversation and Text, with a localized interface.
 
-Basic Settings contains translation choice, interface language and voice speed; Advanced contains recognition/service, output, end-of-speech silence and Reset. Reset immediately restores Tencent, Whisper, System output and speech output on while preserving the language pair, interface language and completed setup. Ordinary Apply and pair changes preserve the latest speaker choice. Opening, choosing or resetting does not download models or record. Current settings use schema 7 only; older schemas are not supported in this development iteration. Schema-7 documents without the speaker flag default to on; older binaries cannot read the newly written field, so downgrading requires restoring their original settings first.
+Basic Settings contains the shared translation provider, interface language and voice speed; Advanced contains recognition/service, output, end-of-speech silence and Reset. Reset immediately restores Tencent, Whisper, System output and speech output on while preserving the language pair, interface language and completed setup. Ordinary Apply and pair changes preserve the latest speaker choice. Opening, selecting or resetting does not download models or record. Current settings retain schema 7; no legacy ML Kit selection migration is provided. A fresh install or reinstall is acceptable for this development cutover. Schema-7 documents without the speaker flag default to on; older binaries cannot read the newly written field, so downgrading requires restoring their original settings first.
 
-The catalog is `en`, `vi`, `es`, `id`, `it`, `zh`, `ko`, `de`, `pl`, `pt`, `ru`, `th`, `tr`, `fr`, `hi`, `ja`, `nl`. Chinese means Mainland Simplified Mandarin. Dutch uses `nl` for ML Kit and `nl-NL` for Android recognition/output. Whisper covers the current 17 recognition codes through one shared Small INT8 download; it does not expand Piper voices or install System voices. Coverage is not quality qualification or proof of installed Android resources.
+The catalog is `en`, `vi`, `es`, `id`, `it`, `zh`, `ko`, `de`, `pl`, `pt`, `ru`, `th`, `tr`, `fr`, `hi`, `ja`, `nl`. Chinese means Mainland Simplified Mandarin. Dutch uses catalog ID `nl` and `nl-NL` for Android recognition/output. Whisper covers the current 17 recognition codes through one shared Small INT8 download; it does not expand Piper voices or install System voices. Coverage is not quality qualification or proof of installed Android resources.
 
 ## How it works
 
@@ -42,7 +42,7 @@ flowchart LR
     F -->|No| H[Continue without speech output]
 ```
 
-ML Kit can use English as an intermediary for non-English pairs. Source-language resolution follows the explicitly selected recognition backend's policy. Downloads are a separate, explicit preparation step—not part of inference.
+Tencent uses one multilingual model invocation for each translation. Source-language resolution follows the explicitly selected recognition backend's policy. Downloads are a separate, explicit preparation step—not part of inference or provider selection.
 
 Whisper uses one multilingual Small INT8 model and one encoder per utterance.
 The same encoder output feeds a language-token comparison restricted to the two
@@ -56,7 +56,6 @@ silence, is not by itself proof that someone spoke.
 | --- | --- |
 | `app` | Compose UI, settings, Android speech adapters and runtime ownership |
 | `core` | Language/configuration types, engine contracts and conversation processing |
-| `engine-mlkit` | On-device text translation and actual Google Task lifetimes |
 | `speech-models` | Shared strict catalog, verified package storage, download and installation |
 | `engine-tencent` | Shared pinned GGUF preparation and owner-scoped embedded CPU llama.cpp JNI inference |
 | `engine-sherpa` | Native VAD, joint selected-pair Whisper, retained evaluator ASR and Piper synthesis |
@@ -170,7 +169,7 @@ Recognition and speech output are separate choices. **System offline speech**, w
 
 ### Tencent model preparation and boundaries
 
-Choose **Accurate · Tencent Hy-MT2** in the shared translation choice; Reset also selects it. Use **Prepare** over Wi-Fi to download the **1.13 GB** model. On entry, both Text and Conversation automatically initialize the verified, already installed model when needed without automatically downloading or repairing resources; Conversation also requires the required speech resources to be locally ready. Downloads and repairs remain explicit **Prepare** actions over Wi-Fi. With the same provider and selected two-language pair, foreground Text and Conversation share the prepared translator, so switching modes does not reload or warm it again. Microphone and speech components still close when leaving Conversation. The cached translator is released when the app enters the background, under memory pressure, or when the provider or selected pair changes; returning automatically initializes the installed model locally when needed. No model is bundled in the APK.
+Tencent Hy-MT2 is selected automatically at fresh startup; Reset also selects it. Use **Prepare** over Wi-Fi to download the **1.13 GB** model. On entry, both Text and Conversation automatically initialize the verified, already installed model when needed without automatically downloading or repairing resources; Conversation also requires the required speech resources to be locally ready. Downloads and repairs remain explicit **Prepare** actions over Wi-Fi. With the same provider and selected two-language pair, foreground Text and Conversation share the prepared translator, so switching modes does not reload or warm it again. Microphone and speech components still close when leaving Conversation. The cached translator is released when the app enters the background, under memory pressure, or when the provider or selected pair changes; returning automatically initializes the installed model locally when needed. No model is bundled in the APK.
 
 Tencent remains experimental despite becoming the default. Conversation targets **8 GiB or more RAM**, with phone performance still unqualified. Known output errors affect meaning, including dates and negation—verify important details. See the [pinned model identity](engine-tencent/THIRD_PARTY.md) and [results, resource limits and verification boundaries](docs/testing/verify-translator.md#tencent-specific-preparation-and-native-checks).
 
@@ -181,7 +180,7 @@ Tencent remains experimental despite becoming the default. Conversation targets 
 - **Quality is not release-qualified.** Recognition and translation can change meaning; verify important details.
 - **Conversation is turn-based.** Simultaneous translation and reliable interruption by speaking are not implemented.
 - **Phone performance is unqualified.** Emulator checks do not establish real microphone/speaker behavior, sustained use or the two-second latency target.
-- **Offline does not guarantee privacy.** Recognized/translated text was found in ML Kit native logs; this remains unresolved. Do not post private recordings or raw logs.
+- **Offline does not guarantee privacy.** Historical ML Kit builds exposed content in native logs; ML Kit is now removed, not retroactively fixed. Do not post private recordings or raw logs. Optional Android speech services retain their own privacy terms and offline-request trust boundaries; see the [privacy policy](docs/privacy-policy.md).
 - **Third-party terms still apply.** The project license does not automatically cover runtimes, recordings, models, voices or provider branding.
 
 See [native distribution conditions](engine-sherpa/THIRD_PARTY.md#conditions-before-redistributing-this-aar-or-an-apk-containing-it) before redistributing the runtime or an APK containing it.

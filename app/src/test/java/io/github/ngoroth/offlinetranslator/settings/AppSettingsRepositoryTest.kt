@@ -68,7 +68,7 @@ class AppSettingsRepositoryTest {
 
     @Test
     fun explicitFirstChoicePersistsEngineAndCompletionTogetherAcrossRestart() = runBlocking {
-        for (engineId in listOf("mlkit", "tencent")) {
+        for (engineId in listOf("tencent", "isolated-provider")) {
             val file = File(temp.root, "$engineId-settings.json")
             val first = AppSettingsRepository(file)
             val selected: AppSettings
@@ -214,7 +214,7 @@ class AppSettingsRepositoryTest {
     fun failedPartialWritePreservesCommittedSettingsAndBytesUntilExplicitSuccessfulSave() = runBlocking {
         val file = File(temp.root, "settings.json")
         val initial = AppSettingsTestFixtures.freshInstall.copy(vadMinSilenceMs = 1100, ttsSpeedPercent = 115)
-        val changed = initial.copy(translationEngineId = "mlkit", translationSetupComplete = true)
+        val changed = initial.copy(translationEngineId = "tencent", translationSetupComplete = true)
         val shouldFail = AtomicBoolean(false)
         val delegate = AppSettingsSerializer()
         val faultingSerializer = object : Serializer<AppSettings> {
@@ -260,13 +260,13 @@ internal object AppSettingsTestFixtures {
         languagePair = LanguagePair(LanguageCatalog.ENGLISH, LanguageCatalog.RUSSIAN),
         speechOutputBackend = SpeechOutputBackend.PIPER,
         speechRecognitionBackend = SpeechRecognitionBackend.SYSTEM_OFFLINE,
-        translationEngineId = "mlkit",
+        translationEngineId = "tencent",
         translationSetupComplete = true,
         vadMinSilenceMs = 900,
         ttsSpeedPercent = 110,
     )
 
     fun document(): JSONObject = JSONObject(
-        """{"schemaVersion":7,"languagePair":{"source":"en","target":"ru"},"speechOutputBackend":"piper","speechRecognitionBackend":"system-offline","speechRecognitionService":null,"translationEngineId":"mlkit","translationSetupComplete":true,"vadModelId":"vad-silero-6.2.2","vadMinSilenceMs":900,"ttsSpeedPercent":110}""",
+        """{"schemaVersion":7,"languagePair":{"source":"en","target":"ru"},"speechOutputBackend":"piper","speechRecognitionBackend":"system-offline","speechRecognitionService":null,"translationEngineId":"tencent","translationSetupComplete":true,"vadModelId":"vad-silero-6.2.2","vadMinSilenceMs":900,"ttsSpeedPercent":110}""",
     )
 }

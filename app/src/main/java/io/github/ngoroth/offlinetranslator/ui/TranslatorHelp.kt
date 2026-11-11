@@ -56,6 +56,7 @@ fun TranslatorHelp(
     val context = LocalContext.current
     val configuration = LocalConfiguration.current
     val resources = LocalResources.current
+    val openUri = onOpenUri ?: LocalUriHandler.current::openUri
     CompositionLocalProvider(LocalContext provides context, LocalConfiguration provides configuration, LocalResources provides resources) {
     AlertDialog(
         onDismissRequest = dismiss,
@@ -63,7 +64,7 @@ fun TranslatorHelp(
         title = { Text(stringResource(if (showingTerms) R.string.help_terms_title else R.string.help_title)) },
         text = {
             if (showingTerms) {
-                TranslationTerms(provider, onOpenUri)
+                TranslationTerms(provider, openUri)
             } else {
                 Column(
                     Modifier.heightIn(max = 400.dp).verticalScroll(rememberScrollState()),
@@ -72,7 +73,7 @@ fun TranslatorHelp(
                     Text(stringResource(if (conversation) R.string.help_conversation else R.string.help_text))
                     Text(stringResource(if (provider?.id == "tencent") R.string.tencent_model_explanation else R.string.help_preparation))
                     Text(stringResource(R.string.provider_privacy))
-                    if (provider != null && (provider.id == "mlkit" || provider.attribution.isNotBlank() || provider.termsUrl.isNotBlank())) {
+                    if (provider != null && (provider.attribution.isNotBlank() || provider.termsUrl.isNotBlank())) {
                         TextButton(
                             onClick = { termsOpen = true },
                             modifier = Modifier.heightIn(min = 48.dp).testTag(TranslatorHelpTestTags.TERMS_ACTION),
@@ -95,33 +96,20 @@ fun TranslatorHelp(
 @Composable
 private fun TranslationTerms(
     provider: TranslationProviderDescriptor,
-    onOpenUri: ((String) -> Unit)?,
+    openUri: (String) -> Unit,
 ) {
-    val uriHandler = LocalUriHandler.current
-    val openUri = onOpenUri ?: uriHandler::openUri
     Column(
         Modifier.heightIn(max = 400.dp).verticalScroll(rememberScrollState()),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        if (provider.id == "mlkit") {
-            Text(stringResource(R.string.help_google_translation))
-            Text(stringResource(R.string.google_disclaimer))
-            TextButton(
-                onClick = { openUri("https://translate.google.com") },
-                modifier = Modifier.heightIn(min = 48.dp),
-            ) { Text(stringResource(R.string.google_translate_link)) }
-            TextButton(
-                onClick = { openUri("https://docs.cloud.google.com/translate/attribution") },
-                modifier = Modifier.heightIn(min = 48.dp),
-            ) { Text(stringResource(R.string.google_attribution_requirements_link)) }
-        } else if (provider.attribution.isNotBlank()) {
+        if (provider.attribution.isNotBlank()) {
             Text(provider.attribution)
         }
         if (provider.termsUrl.isNotBlank()) {
             TextButton(
                 onClick = { openUri(provider.termsUrl) },
                 modifier = Modifier.heightIn(min = 48.dp),
-            ) { Text(stringResource(if (provider.id == "mlkit") R.string.usage_terms_link else R.string.provider_terms)) }
+            ) { Text(stringResource(R.string.provider_terms)) }
         }
     }
 }

@@ -11,15 +11,12 @@
     <string name="conversation_empty_title">Entender-se mutuamente</string>
     <string name="conversation_empty">Falem à vez.</string>
     <string name="conversation_empty_result">A sua tradução aparecerá aqui.</string>
-    <string name="google_translate_link">Abrir Google Translate</string>
-    <string name="usage_terms_link">Termos de uso</string>
     <string name="close_action">Fechar</string>
     <string name="swap_direction">Trocar</string>
     <string name="input_hint">Introduza o texto</string>
     <string name="error_input_too_long">O texto é demasiado longo. Comprimento máximo: %1$d. O texto anterior foi mantido.</string>
     <string name="result_label">Tradução</string>
     <string name="result_placeholder">A tradução aparecerá aqui</string>
-    <string name="google_translate_attribution">Com a tecnologia do Google Translate</string>
     <string name="status_checking">A verificar o modelo de idioma…</string>
     <string name="status_downloading">A preparar os modelos dos idiomas selecionados por Wi‑Fi…</string>
     <string name="status_translating">A traduzir no dispositivo…</string>
@@ -104,11 +101,7 @@
     <string name="settings_translation_engine">Tradução · texto e conversa</string>
     <string name="translation_setup_title">Escolha o tradutor</string>
     <string name="translation_setup_explanation">Uma escolha para texto e conversa, alterável nas configurações. Escolher não transfere modelos nem usa o microfone.</string>
-    <string name="translation_choice_fast">Rápido</string>
-    <string name="translation_choice_accurate">Preciso</string>
-    <string name="translation_choice_fast_description">Prioridade à rapidez · Google ML Kit</string>
-    <string name="translation_choice_accurate_description">Prioridade à qualidade · Tencent. Pode demorar mais e requer mais armazenamento e memória.</string>
-    <string name="translation_choice_disclaimer">Ambos podem cometer erros. São prioridades, não garantias de rapidez ou qualidade no seu dispositivo.</string>
+    <string name="translation_setup_unavailable">Nenhum fornecedor de tradução disponível.</string>
     <string name="settings_advanced">Configurações avançadas</string>
     <string name="settings_advanced_expanded">Expandidas</string>
     <string name="settings_advanced_collapsed">Recolhidas</string>
@@ -158,8 +151,6 @@
     <string name="settings_interface_language">Idioma da interface</string>
     <string name="settings_interface_language_immediate">Aplica-se imediatamente</string>
     <string name="settings_interface_language_error">Não foi possível alterar o idioma da interface. Selecione-o novamente para tentar outra vez.</string>
-    <string name="help_google_translation">O ML Kit usa o Google Translate para traduzir no dispositivo. A ligação abaixo descreve os requisitos de atribuição do Google.</string>
-    <string name="google_attribution_requirements_link">Requisitos de atribuição do Google</string>
     <string name="language_name_en">Inglês</string>
     <string name="language_name_vi">Vietnamita</string>
     <string name="language_name_es">Espanhol</string>

@@ -76,7 +76,7 @@ class ConversationViewModelTest {
                     override suspend fun translate(pair: LanguagePair, text: String) = text
                     override fun close() = Unit
                 }
-            }, { error("Unexpected") }))
+            }))
         val controller = RuntimeOwnerController(scope)
         val models = FakeModels(true)
         val capture = FakeCapture()
@@ -84,10 +84,10 @@ class ConversationViewModelTest {
         val pair = LanguagePair(LanguageCatalog.RUSSIAN, LanguageCatalog.ENGLISH)
         val owner = controller.replace {
             ConversationRuntimeOwner(
-                config = ConversationSessionConfig(listOf(pair.source, pair.target), "mlkit", SpeechRecognitionBackend.SYSTEM_OFFLINE,
+                config = ConversationSessionConfig(listOf(pair.source, pair.target), "tencent", SpeechRecognitionBackend.SYSTEM_OFFLINE,
                     "vad", 900, 100, SpeechOutputBackend.SYSTEM_OFFLINE),
                 models = models, capture = capture, recognition = recognition,
-                translation = lifetime.lease("mlkit", setOf(pair, pair.reverse())), output = FakeOutput(),
+                translation = lifetime.lease("tencent", setOf(pair, pair.reverse())), output = FakeOutput(),
                 scope = scope, speechOutputEnabled = false,
             )
         }

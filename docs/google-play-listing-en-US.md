@@ -1,6 +1,6 @@
 # Google Play Store Listing — en-US
 
-Draft for the planned Tencent-based release. This document is not publication authorization. The current checkout still includes ML Kit; selecting Tencent for captures does not remove that dependency.
+Draft for the Tencent-based release. This document is not publication authorization. Tencent is the sole registered translation provider; ML Kit has been removed from current source/build wiring. Historical media do not establish the dependency inventory or qualification of a newly assembled release APK.
 
 ## App name
 

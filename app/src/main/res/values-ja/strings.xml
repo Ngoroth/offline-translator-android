@@ -11,15 +11,12 @@
     <string name="conversation_empty_title">お互いを理解しよう</string>
     <string name="conversation_empty">交互に話してください。</string>
     <string name="conversation_empty_result">ここに翻訳が表示されます。</string>
-    <string name="google_translate_link">Google Translateを開く</string>
-    <string name="usage_terms_link">利用規約</string>
     <string name="close_action">閉じる</string>
     <string name="swap_direction">入れ替え</string>
     <string name="input_hint">テキストを入力</string>
     <string name="error_input_too_long">テキストが長すぎます。最大長：%1$d。前のテキストを保持しました。</string>
     <string name="result_label">翻訳</string>
     <string name="result_placeholder">ここに翻訳が表示されます</string>
-    <string name="google_translate_attribution">Google Translateによる翻訳</string>
     <string name="status_checking">言語モデルを確認中…</string>
     <string name="status_downloading">選択した言語モデルをWi‑Fi経由で準備中…</string>
     <string name="status_translating">端末上で翻訳中…</string>
@@ -104,11 +101,7 @@
     <string name="settings_translation_engine">翻訳 · テキストと会話</string>
     <string name="translation_setup_title">翻訳機能を選択</string>
     <string name="translation_setup_explanation">テキストと会話に共通の選択です。設定で変更できます。選択してもモデルのダウンロードやマイクの使用は行いません。</string>
-    <string name="translation_choice_fast">高速</string>
-    <string name="translation_choice_accurate">高精度</string>
-    <string name="translation_choice_fast_description">速度優先 · Google ML Kit</string>
-    <string name="translation_choice_accurate_description">品質優先 · Tencent。処理に時間がかかり、より多くのストレージとメモリが必要な場合があります。</string>
-    <string name="translation_choice_disclaimer">どちらも誤訳することがあります。優先する方針であり、お使いの端末での速度や品質を保証するものではありません。</string>
+    <string name="translation_setup_unavailable">利用可能な翻訳プロバイダーがありません。</string>
     <string name="settings_advanced">詳細設定</string>
     <string name="settings_advanced_expanded">展開済み</string>
     <string name="settings_advanced_collapsed">折りたたみ済み</string>
@@ -158,8 +151,6 @@
     <string name="settings_interface_language">表示言語</string>
     <string name="settings_interface_language_immediate">すぐに適用されます</string>
     <string name="settings_interface_language_error">表示言語を変更できませんでした。もう一度選択して再試行してください。</string>
-    <string name="help_google_translation">ML Kitは端末上の翻訳にGoogle Translateを使用します。下のリンクでGoogleの帰属表示要件を確認できます。</string>
-    <string name="google_attribution_requirements_link">Googleの帰属表示要件</string>
     <string name="language_name_en">英語</string>
     <string name="language_name_vi">ベトナム語</string>
     <string name="language_name_es">スペイン語</string>
