@@ -3,9 +3,9 @@
     <string name="app_name">Офлайн-переводчик</string>
     <string name="help_action">Помощь</string>
     <string name="help_title">Помощь</string>
-    <string name="help_conversation">Выберите два языка и начните разговор. Говорите по очереди, когда микрофон включён. Читайте перевод здесь; кнопка динамика включает и выключает озвучку.</string>
+    <string name="help_conversation">Выберите два языка и начните разговор. Говорите по очереди, когда микрофон включён.</string>
     <string name="help_text">Выберите языки, введите текст и нажмите кнопку перевода.</string>
-    <string name="help_preparation">Один раз подготовьте языки по Wi‑Fi, чтобы переводить без интернета. Размер загрузки может быть неизвестен заранее.</string>
+    <string name="help_preparation">Подготовьте языки по Wi‑Fi, чтобы переводить без интернета.</string>
     <string name="help_terms_action">Условия перевода</string>
     <string name="help_terms_title">Условия перевода</string>
     <string name="conversation_empty_title">Понимайте друг друга</string>
@@ -48,7 +48,6 @@
     <string name="conversation_language_teardown_error">Не удалось безопасно завершить предыдущий разговор. Перезапустите приложение, прежде чем менять языки, готовить или начинать разговор.</string>
     <string name="conversation_preparation_error">Подготовка не завершена. Проверьте сеть и свободное место, затем повторите.</string>
     <string name="conversation_preparation_missing">Выбранные языки не готовы.</string>
-    <string name="conversation_download_progress">Загрузка · %1$d%%</string>
     <string name="conversation_resource_ready">Готов</string>
     <string name="conversation_permission_denied">Нужен доступ к микрофону. Нажмите «Начать разговор» ещё раз или разрешите доступ в настройках приложения.</string>
     <string name="conversation_dropped">Пропущено фраз: %1$d. Дождитесь завершения текущей фразы и повторите.</string>
@@ -177,7 +176,10 @@
     <string name="model_tts_lessac">Piper Lessac medium · английский</string>
     <string name="translation_verifying">Проверка целостности модели перевода…</string>
     <string name="translation_loading">Загрузка и прогрев локального перевода…</string>
-    <string name="translation_download_bytes">%1$d / %2$d байт</string>
+    <string name="speech_downloading">Скачиваем речевые ресурсы…</string>
+    <string name="translation_downloading">Скачиваем модель перевода…</string>
+    <string name="speech_verifying">Проверяем речевые ресурсы…</string>
+    <string name="preparation_download_percent">%1$d%%</string>
     <string name="translation_model_repair">Модель перевода отсутствует или повреждена. Подготовьте офлайн-перевод заново.</string>
     <string name="translation_storage_error">Не удалось сохранить или скачать модель. Проверьте свободное место и Wi‑Fi, затем повторите подготовку.</string>
     <string name="translation_runtime_error">Не удалось загрузить локальный движок перевода. Повторите подготовку; если ошибка остаётся, перезапустите приложение.</string>
@@ -187,7 +189,7 @@
     <string name="translation_timeout">Подготовка перевода заняла слишком много времени. Проверьте её состояние и повторите.</string>
     <string name="model_prepare_hint">Подготовьте модели.</string>
     <string name="tencent_model_download_hint">1,13 ГБ · загрузка по Wi‑Fi</string>
-    <string name="tencent_model_explanation">Tencent Hy-MT2 использует одну модель 1,13 ГБ для всех языков: скачивание только кнопкой подготовки по Wi‑Fi. После повторного открытия режим разговора автоматически инициализирует проверенную, уже установленную модель, когда необходимые речевые ресурсы готовы локально, без автоматического скачивания или восстановления. Режим текста также автоматически инициализирует проверенную, уже установленную модель при входе; скачивание и восстановление требуют явного нажатия кнопки подготовки по Wi‑Fi; оба режима выполняют локальную инициализацию только при необходимости. При том же провайдере и выбранной паре из двух языков режимы текста и разговора на переднем плане совместно используют подготовленный переводчик без повторной загрузки или прогрева при переключении. При выходе из режима разговора микрофон и речевые компоненты по-прежнему закрываются. Кэшированный переводчик освобождается при переходе приложения в фон, нехватке памяти или смене провайдера либо пары; при возвращении установленная модель автоматически инициализируется локально по мере необходимости. Может потребоваться несколько ГБ памяти; качество перевода и работа на телефоне не подтверждены.</string>
+    <string name="tencent_model_explanation">Подготовьте модель перевода 1,13 ГБ по Wi-Fi для работы без интернета. Может потребоваться несколько ГБ оперативной памяти.</string>
     <string name="settings_recognition_service">Служба распознавания речи</string>
     <string name="recognition_service_on_device">Локальная служба Android</string>
     <string name="conversation_recognition_incompatible_service">Выбранная служба распознавания не прошла проверку для офлайн-разговора. Выберите совместимую службу в расширенных настройках.</string>

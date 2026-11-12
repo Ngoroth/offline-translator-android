@@ -319,6 +319,7 @@ class TranslationEngineLifetimeTest {
                     "vad", 500, 100, SpeechOutputBackend.SYSTEM_OFFLINE),
                 object : ConversationModelRepository {
                     override val models = MutableStateFlow(emptyList<SpeechModelStatus>())
+                    override val downloadPackages = MutableStateFlow(emptyList<SpeechModelStatus>())
                     override suspend fun install(speechOutputRequired: Boolean) = Unit
                     override suspend fun isConversationReady(speechOutputRequired: Boolean) = true
                     override fun close() = Unit

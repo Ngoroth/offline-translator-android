@@ -3,9 +3,9 @@
     <string name="app_name">Tradutor sem conexão</string>
     <string name="help_action">Ajuda</string>
     <string name="help_title">Ajuda</string>
-    <string name="help_conversation">Escolha dois idiomas e inicie a conversa. Falem à vez quando o microfone estiver ativo. Leia a tradução aqui; o botão do altifalante liga ou desliga a leitura em voz alta.</string>
+    <string name="help_conversation">Escolha dois idiomas e inicie a conversa. Falem à vez quando o microfone estiver ativo.</string>
     <string name="help_text">Escolha os idiomas, introduza o texto e toque no botão de tradução.</string>
-    <string name="help_preparation">Prepare os idiomas uma única vez por Wi‑Fi para traduzir sem conexão. O tamanho do download pode não ser conhecido antecipadamente.</string>
+    <string name="help_preparation">Prepare os idiomas por Wi‑Fi para traduzir sem ligação à internet.</string>
     <string name="help_terms_action">Termos de tradução</string>
     <string name="help_terms_title">Termos de tradução</string>
     <string name="conversation_empty_title">Entender-se mutuamente</string>
@@ -48,7 +48,6 @@
     <string name="conversation_language_teardown_error">Não foi possível parar a conversa anterior em segurança. Reinicie a aplicação antes de alterar os idiomas ou preparar ou iniciar uma conversa.</string>
     <string name="conversation_preparation_error">Preparação incompleta. Verifique a conexão e o armazenamento e tente novamente.</string>
     <string name="conversation_preparation_missing">Os idiomas selecionados não estão prontos.</string>
-    <string name="conversation_download_progress">A baixar · %1$d%%</string>
     <string name="conversation_resource_ready">Pronto</string>
     <string name="conversation_permission_denied">É necessária permissão para usar o microfone. Toque em Iniciar conversa para tentar novamente ou conceda a permissão nas configurações da aplicação.</string>
     <string name="conversation_dropped">Intervenções ignoradas: %1$d. Aguarde o fim da intervenção atual e repita o que disse.</string>
@@ -177,7 +176,10 @@
     <string name="model_tts_lessac">Piper Lessac medium · inglês</string>
     <string name="translation_verifying">A verificar a integridade do modelo de tradução…</string>
     <string name="translation_loading">A carregar e aquecer a tradução local…</string>
-    <string name="translation_download_bytes">%1$d / %2$d bytes</string>
+    <string name="speech_downloading">A descarregar recursos de voz…</string>
+    <string name="translation_downloading">A descarregar o modelo de tradução…</string>
+    <string name="speech_verifying">A verificar recursos de voz…</string>
+    <string name="preparation_download_percent">%1$d%%</string>
     <string name="translation_model_repair">O modelo está em falta ou danificado. Prepare novamente a tradução offline.</string>
     <string name="translation_storage_error">Não foi possível guardar ou descarregar o modelo. Verifique espaço livre e Wi‑Fi e prepare novamente.</string>
     <string name="translation_runtime_error">Não foi possível carregar o motor local. Prepare novamente; se persistir, reinicie a aplicação.</string>
@@ -187,7 +189,7 @@
     <string name="translation_timeout">A preparação demorou demasiado. Verifique o estado e tente novamente.</string>
     <string name="model_prepare_hint">Prepare os modelos.</string>
     <string name="tencent_model_download_hint">1,13 GB · download por Wi‑Fi</string>
-    <string name="tencent_model_explanation">O Tencent Hy-MT2 usa um modelo de 1,13 GB para todos os idiomas, descarregado apenas com Preparar por Wi‑Fi. Após reabrir, Conversa inicializa automaticamente o modelo verificado já instalado quando os recursos de voz necessários estão prontos localmente, sem transferências nem reparações automáticas. Texto também inicializa automaticamente o modelo verificado já instalado ao entrar; transferências e reparações exigem a ação explícita Preparar por Wi‑Fi; ambos os modos inicializam localmente apenas quando necessário. Com o mesmo fornecedor e o mesmo par de dois idiomas selecionado, Texto e Conversa em primeiro plano partilham o tradutor preparado, sem o recarregar nem voltar a aquecê-lo ao mudar de modo. O microfone e os componentes de voz continuam a ser fechados ao sair de Conversa. O tradutor em cache é libertado quando a aplicação passa para segundo plano, sob pressão de memória ou ao mudar o fornecedor ou o par; ao regressar, o modelo instalado é inicializado automaticamente em local quando necessário. Pode precisar de vários GB de memória; qualidade e desempenho no telefone não estão qualificados.</string>
+    <string name="tencent_model_explanation">Prepare o modelo de tradução de 1,13 GB por Wi‑Fi para o usar sem ligação à internet. Podem ser necessários vários GB de RAM.</string>
     <string name="settings_recognition_service">Serviço de reconhecimento de fala</string>
     <string name="recognition_service_on_device">Serviço local do Android</string>
     <string name="conversation_recognition_incompatible_service">O serviço de reconhecimento selecionado não foi validado para conversas sem conexão. Escolha um serviço compatível nas configurações avançadas.</string>

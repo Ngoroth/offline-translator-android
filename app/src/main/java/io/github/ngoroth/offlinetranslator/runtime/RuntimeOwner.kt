@@ -270,6 +270,7 @@ private class ConversationResources(
     private val recognition: ConversationRecognitionEngine,
 ) : ConversationModelRepository {
     override val models: StateFlow<List<SpeechModelStatus>> get() = native.models
+    override val downloadPackages: StateFlow<List<SpeechModelStatus>> get() = native.downloadPackages
     override suspend fun install(speechOutputRequired: Boolean) {
         native.install(speechOutputRequired)
         recognition.install()

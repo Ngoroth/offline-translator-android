@@ -883,6 +883,7 @@ class ConversationPipelineTest {
     private class Models(private val recognition: Recognition) : ConversationModelRepository {
         var ready = true
         override val models = MutableStateFlow<List<SpeechModelStatus>>(emptyList())
+        override val downloadPackages = MutableStateFlow<List<SpeechModelStatus>>(emptyList())
         override suspend fun install(speechOutputRequired: Boolean) { ready = true; recognition.install() }
         override suspend fun isConversationReady(speechOutputRequired: Boolean) = ready && recognition.readiness() == SpeechRecognitionReadiness.READY
         override fun close() = Unit

@@ -42,7 +42,7 @@ import io.github.ngoroth.offlinetranslator.ui.LanguagePairControls
 import io.github.ngoroth.offlinetranslator.ui.configurationProblemMessage
 import io.github.ngoroth.offlinetranslator.ui.ProviderAttribution
 import io.github.ngoroth.offlinetranslator.ui.TranslatorHelp
-
+import io.github.ngoroth.offlinetranslator.ui.PreparationProgress
 object TranslationTestTags {
     const val INPUT = "translation_input"
     const val OUTPUT = "translation_output"
@@ -188,23 +188,27 @@ private fun StatusPanel(state: TranslationUiState, confirmedMissing: Boolean) {
             TranslationPreparationPhase.VERIFYING, TranslationPreparationPhase.LOADING,
             TranslationPreparationPhase.DOWNLOADING,
         ))
-    if (state.isTranslating || (!visiblePreparation && state.modelStatus in setOf(
-            ModelUiStatus.DOWNLOADING, ModelUiStatus.VERIFYING, ModelUiStatus.LOADING))) {
+    if (state.isTranslating) {
         Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
             CircularProgressIndicator(
                 modifier = Modifier.height(24.dp).testTag(TranslationTestTags.PROGRESS),
                 strokeWidth = 3.dp,
             )
             Text(
-                when {
-                    state.isTranslating -> stringResource(R.string.status_translating)
-                    state.modelStatus == ModelUiStatus.DOWNLOADING -> stringResource(R.string.status_downloading)
-                    state.modelStatus == ModelUiStatus.VERIFYING -> stringResource(R.string.translation_verifying)
-                    state.modelStatus == ModelUiStatus.LOADING -> stringResource(R.string.translation_loading)
-                    else -> stringResource(R.string.status_translating)
-                },
+                stringResource(R.string.status_translating),
             )
         }
+    }
+    if (!state.isTranslating && !visiblePreparation && state.modelStatus in setOf(
+            ModelUiStatus.DOWNLOADING, ModelUiStatus.VERIFYING, ModelUiStatus.LOADING)) {
+        PreparationProgress(
+            label = stringResource(when (state.modelStatus) {
+                ModelUiStatus.VERIFYING -> R.string.translation_verifying
+                ModelUiStatus.LOADING -> R.string.translation_loading
+                else -> R.string.translation_downloading
+            }),
+            modifier = Modifier.testTag(io.github.ngoroth.offlinetranslator.ui.TranslationPreparationTestTags.PROGRESS),
+        )
     }
 
     if (visiblePreparation && preparation != null) {

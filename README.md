@@ -2,7 +2,7 @@
 
 **Two people. One Android phone. A conversation across languages — with recognition, translation and speech running on the device.**
 
-> **Status:** working development project, not a production-qualified release. Language resources must be prepared online before offline use. Available speech languages depend on the device and its installed services.
+> **Status:** working development project. Language resources must be prepared online before offline use. Available speech languages depend on the device and its installed services.
 
 ## See it working
 
@@ -25,9 +25,9 @@ Choose two languages, prepare their resources, and start a conversation. Either 
 - **Conversation controls:** the pinned lower panel shows actual microphone availability, independently of recognition/translation progress. Speech output is on by default and its choice survives reopening. Mute interrupts current speech without discarding translated text or stopping the conversation; enabling affects subsequent results, not old translations. Unavailable voices leave output off without switching providers or downloading implicitly. For supported Piper languages with missing voice data, Stop and explicitly prepare the voices; preparation keeps output off until you enable it again.
 - **17 languages:** a shared language pair across Conversation and Text, with a localized interface.
 
-Basic Settings contains the shared translation provider, interface language and voice speed; Advanced contains recognition/service, output, end-of-speech silence and Reset. Reset immediately restores Tencent, Whisper, System output and speech output on while preserving the language pair, interface language and completed setup. Ordinary Apply and pair changes preserve the latest speaker choice. Opening, selecting or resetting does not download models or record. Current settings retain schema 7; no legacy ML Kit selection migration is provided. A fresh install or reinstall is acceptable for this development cutover. Schema-7 documents without the speaker flag default to on; older binaries cannot read the newly written field, so downgrading requires restoring their original settings first.
+Basic Settings contains the shared translation provider, interface language and voice speed; Advanced contains recognition/service, output, end-of-speech silence and Reset. Reset immediately restores Tencent, Whisper, System output and speech output on while preserving the language pair, interface language and completed setup. Ordinary Apply and pair changes preserve the latest speaker choice. Opening, selecting or resetting does not download models or record. Current settings retain schema 7. Schema-7 documents without the speaker flag default to on; older binaries cannot read the newly written field, so downgrading requires restoring their original settings first.
 
-The catalog is `en`, `vi`, `es`, `id`, `it`, `zh`, `ko`, `de`, `pl`, `pt`, `ru`, `th`, `tr`, `fr`, `hi`, `ja`, `nl`. Chinese means Mainland Simplified Mandarin. Dutch uses catalog ID `nl` and `nl-NL` for Android recognition/output. Whisper covers the current 17 recognition codes through one shared Small INT8 download; it does not expand Piper voices or install System voices. Coverage is not quality qualification or proof of installed Android resources.
+The catalog is `en`, `vi`, `es`, `id`, `it`, `zh`, `ko`, `de`, `pl`, `pt`, `ru`, `th`, `tr`, `fr`, `hi`, `ja`, `nl`. Chinese means Mainland Simplified Mandarin. Dutch uses catalog ID `nl` and `nl-NL` for Android recognition/output. Whisper covers the current 17 recognition codes through one shared Small INT8 download; it does not expand Piper voices or install System voices.
 
 ## How it works
 
@@ -171,16 +171,14 @@ Recognition and speech output are separate choices. **System offline speech**, w
 
 Tencent Hy-MT2 is selected automatically at fresh startup; Reset also selects it. Use **Prepare** over Wi-Fi to download the **1.13 GB** model. On entry, both Text and Conversation automatically initialize the verified, already installed model when needed without automatically downloading or repairing resources; Conversation also requires the required speech resources to be locally ready. Downloads and repairs remain explicit **Prepare** actions over Wi-Fi. With the same provider and selected two-language pair, foreground Text and Conversation share the prepared translator, so switching modes does not reload or warm it again. Microphone and speech components still close when leaving Conversation. The cached translator is released when the app enters the background, under memory pressure, or when the provider or selected pair changes; returning automatically initializes the installed model locally when needed. No model is bundled in the APK.
 
-Tencent remains experimental despite becoming the default. Conversation targets **8 GiB or more RAM**, with phone performance still unqualified. Known output errors affect meaning, including dates and negation—verify important details. See the [pinned model identity](engine-tencent/THIRD_PARTY.md) and [results, resource limits and verification boundaries](docs/testing/verify-translator.md#tencent-specific-preparation-and-native-checks).
+Conversation targets **8 GiB or more RAM**. See the [pinned model identity](engine-tencent/THIRD_PARTY.md) and [preparation guide](docs/testing/verify-translator.md#tencent-specific-preparation-and-native-checks).
 
 </details>
 
 ## Known limitations
 
-- **Quality is not release-qualified.** Recognition and translation can change meaning; verify important details.
 - **Conversation is turn-based.** Simultaneous translation and reliable interruption by speaking are not implemented.
-- **Phone performance is unqualified.** Emulator checks do not establish real microphone/speaker behavior, sustained use or the two-second latency target.
-- **Offline does not guarantee privacy.** Historical ML Kit builds exposed content in native logs; ML Kit is now removed, not retroactively fixed. Do not post private recordings or raw logs. Optional Android speech services retain their own privacy terms and offline-request trust boundaries; see the [privacy policy](docs/privacy-policy.md).
+- **Privacy.** Translation is processed on the device. The app does not save a text history. Do not post private recordings or raw logs. Optional Android speech services have their own privacy terms; see the [privacy policy](docs/privacy-policy.md).
 - **Third-party terms still apply.** The project license does not automatically cover runtimes, recordings, models, voices or provider branding.
 
 See [native distribution conditions](engine-sherpa/THIRD_PARTY.md#conditions-before-redistributing-this-aar-or-an-apk-containing-it) before redistributing the runtime or an APK containing it.

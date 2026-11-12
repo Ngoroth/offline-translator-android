@@ -3,9 +3,9 @@
     <string name="app_name">Offline vertaler</string>
     <string name="help_action">Help</string>
     <string name="help_title">Help</string>
-    <string name="help_conversation">Kies twee talen en start het gesprek. Spreek om de beurt als de microfoon actief is. Lees hier de vertaling; met de luidsprekerknop zet je het voorlezen aan of uit.</string>
+    <string name="help_conversation">Kies twee talen en start het gesprek. Spreek om de beurt als de microfoon actief is.</string>
     <string name="help_text">Kies de talen, voer je tekst in en tik op de vertaalknop.</string>
-    <string name="help_preparation">Bereid de talen eenmalig via wifi voor om offline te vertalen. De downloadgrootte is mogelijk niet vooraf bekend.</string>
+    <string name="help_preparation">Bereid de talen via wifi voor om offline te vertalen.</string>
     <string name="help_terms_action">Vertaalvoorwaarden</string>
     <string name="help_terms_title">Vertaalvoorwaarden</string>
     <string name="conversation_empty_title">Elkaar begrijpen</string>
@@ -48,7 +48,6 @@
     <string name="conversation_language_teardown_error">Het vorige gesprek kon niet veilig worden gestopt. Start de app opnieuw voordat je talen wijzigt of een gesprek voorbereidt of start.</string>
     <string name="conversation_preparation_error">De voorbereiding is niet voltooid. Controleer je verbinding en opslagruimte en probeer het opnieuw.</string>
     <string name="conversation_preparation_missing">De geselecteerde talen zijn niet gereed.</string>
-    <string name="conversation_download_progress">Downloaden · %1$d%%</string>
     <string name="conversation_resource_ready">Gereed</string>
     <string name="conversation_permission_denied">Toestemming voor de microfoon is nodig. Tik op Gesprek starten om het opnieuw te proberen of geef toestemming in de app-instellingen.</string>
     <string name="conversation_dropped">Overgeslagen spraakbeurten: %1$d. Wacht tot de huidige beurt is afgerond en herhaal dan wat je zei.</string>
@@ -184,7 +183,10 @@
     <string name="conversation_recognition_service_unavailable">De geselecteerde spraakherkenningsservice is niet beschikbaar. Kies een geïnstalleerde service in de geavanceerde instellingen.</string>
     <string name="translation_verifying">Integriteit van het vertaalmodel controleren…</string>
     <string name="translation_loading">Lokale vertaling laden en opwarmen…</string>
-    <string name="translation_download_bytes">%1$d / %2$d bytes</string>
+    <string name="speech_downloading">Spraakbronnen downloaden…</string>
+    <string name="translation_downloading">Vertaalmodel downloaden…</string>
+    <string name="speech_verifying">Spraakbronnen verifiëren…</string>
+    <string name="preparation_download_percent">%1$d%%</string>
     <string name="translation_model_repair">Het vertaalmodel ontbreekt of is beschadigd. Bereid offline vertalen opnieuw voor.</string>
     <string name="translation_storage_error">Het model kon niet worden opgeslagen of gedownload. Controleer de vrije ruimte en wifi en bereid opnieuw voor.</string>
     <string name="translation_memory_error">Onvoldoende geheugen voor lokaal vertalen. Sluit andere apps en bereid opnieuw voor of kies een kortere tekst.</string>
@@ -194,5 +196,5 @@
     <string name="translation_timeout">De voorbereiding van de vertaling duurde te lang. Controleer de voorbereidingsstatus en probeer het opnieuw.</string>
     <string name="model_prepare_hint">Bereid de modellen voor.</string>
     <string name="tencent_model_download_hint">1,13 GB · downloaden via wifi</string>
-    <string name="tencent_model_explanation">Tencent Hy-MT2 gebruikt één model van 1,13 GB voor alle talen. Het wordt alleen via Voorbereiden over wifi gedownload. Na opnieuw openen initialiseert Gesprek automatisch het geverifieerde, al geïnstalleerde model zodra de vereiste spraakbronnen lokaal gereed zijn, zonder automatische downloads of reparaties. Tekst initialiseert bij het openen ook automatisch het geverifieerde, al geïnstalleerde model; downloads en reparaties vereisen expliciet Voorbereiden over wifi; beide modi initialiseren alleen lokaal wanneer nodig. Met dezelfde provider en hetzelfde geselecteerde tweetalenpaar delen Tekst en Gesprek op de voorgrond de voorbereide vertaler, zonder deze bij het wisselen opnieuw te laden of op te warmen. Microfoon en spraakcomponenten worden nog steeds gesloten bij het verlaten van Gesprek. De gecachte vertaler wordt vrijgegeven wanneer de app naar de achtergrond gaat, bij geheugendruk of bij een wijziging van provider of talenpaar; bij terugkeer wordt het geïnstalleerde model zo nodig automatisch lokaal geïnitialiseerd. Dit kan meerdere GB geheugen vereisen; de vertaalkwaliteit en prestaties op telefoons zijn niet gekwalificeerd.</string>
+    <string name="tencent_model_explanation">Bereid het vertaalmodel van 1,13 GB via wifi voor om het offline te gebruiken. Er kan meerdere GB RAM nodig zijn.</string>
 </resources>

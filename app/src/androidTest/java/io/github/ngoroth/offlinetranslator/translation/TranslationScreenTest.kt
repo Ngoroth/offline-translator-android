@@ -67,6 +67,13 @@ import io.github.ngoroth.offlinetranslator.core.TranslationProviderDescriptor
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.SemanticsMatcher
 import io.github.ngoroth.offlinetranslator.core.TranslationEngine
+import androidx.compose.ui.semantics.ProgressBarRangeInfo
+import androidx.compose.ui.semantics.getOrNull
+import androidx.compose.foundation.layout.width
+import io.github.ngoroth.offlinetranslator.core.TranslationPreparationPhase
+import io.github.ngoroth.offlinetranslator.core.TranslationPreparationState
+import io.github.ngoroth.offlinetranslator.core.TranslationFailure
+import io.github.ngoroth.offlinetranslator.ui.TranslationPreparationTestTags
 
 class TranslationScreenTest {
     @get:Rule val compose = createComposeRule()
@@ -221,18 +228,13 @@ class TranslationScreenTest {
         for ((phase, label) in listOf(
             io.github.ngoroth.offlinetranslator.core.TranslationPreparationPhase.VERIFYING to R.string.translation_verifying,
             io.github.ngoroth.offlinetranslator.core.TranslationPreparationPhase.LOADING to R.string.translation_loading,
-            io.github.ngoroth.offlinetranslator.core.TranslationPreparationPhase.DOWNLOADING to R.string.status_downloading)) {
-            for (knownBytes in listOf(false, true)) {
-                compose.runOnIdle { state.value = state.value.copy(preparation =
-                    io.github.ngoroth.offlinetranslator.core.TranslationPreparationState(phase,
-                        downloadedBytes = if (knownBytes) 25 else null, totalBytes = if (knownBytes) 100 else null)) }
-                compose.onNodeWithText(context.getString(label)).performScrollTo().assertIsDisplayed()
-                if (phase == io.github.ngoroth.offlinetranslator.core.TranslationPreparationPhase.DOWNLOADING && knownBytes) {
-                    compose.onNodeWithText(context.getString(R.string.translation_download_bytes, 25L, 100L))
-                        .performScrollTo().assertIsDisplayed()
-                }
-                compose.onNodeWithTag(TranslationTestTags.TRANSLATE).assertIsNotEnabled()
-            }
+            io.github.ngoroth.offlinetranslator.core.TranslationPreparationPhase.DOWNLOADING to R.string.translation_downloading)) {
+            compose.runOnIdle { state.value = state.value.copy(preparation =
+                io.github.ngoroth.offlinetranslator.core.TranslationPreparationState(phase,
+                    downloadedBytes = 25, totalBytes = 100)) }
+            compose.onNodeWithText(context.getString(label)).performScrollTo().assertIsDisplayed()
+            assertPreparationRange(if (phase == TranslationPreparationPhase.DOWNLOADING) 0.25f else null)
+            compose.onNodeWithTag(TranslationTestTags.TRANSLATE).assertIsNotEnabled()
         }
         val failure = io.github.ngoroth.offlinetranslator.core.TranslationFailure.RuntimeLoad()
         compose.runOnIdle { state.value = state.value.copy(error = TranslationUiError.PREPARATION_FAILED,
@@ -257,7 +259,7 @@ class TranslationScreenTest {
         for ((phase, label) in listOf(
             io.github.ngoroth.offlinetranslator.core.TranslationPreparationPhase.LOADING to R.string.translation_loading,
             io.github.ngoroth.offlinetranslator.core.TranslationPreparationPhase.VERIFYING to R.string.translation_verifying,
-            io.github.ngoroth.offlinetranslator.core.TranslationPreparationPhase.DOWNLOADING to R.string.status_downloading)) {
+            io.github.ngoroth.offlinetranslator.core.TranslationPreparationPhase.DOWNLOADING to R.string.translation_downloading)) {
             compose.runOnIdle { state.value = state.value.copy(preparation =
                 io.github.ngoroth.offlinetranslator.core.TranslationPreparationState(phase)) }
             compose.onNodeWithText(context.getString(label)).assertDoesNotExist()
@@ -267,12 +269,12 @@ class TranslationScreenTest {
         compose.runOnIdle { state.value = state.value.copy(isTranslating = true) }
         compose.onNodeWithTag(TranslationTestTags.PROGRESS).assertExists()
         compose.onNodeWithText(context.getString(R.string.status_translating)).assertIsDisplayed()
-        compose.onNodeWithText(context.getString(R.string.status_downloading)).assertDoesNotExist()
+        compose.onNodeWithTag(TranslationPreparationTestTags.PROGRESS).assertDoesNotExist()
     }
 
     @Test fun downloadingAndTranslatingHaveProgressAndBlockActions() {
         val state = show(TranslationUiState(modelStatus = ModelUiStatus.DOWNLOADING))
-        compose.onNodeWithTag(TranslationTestTags.PROGRESS).assertExists()
+        assertPreparationRange(null)
         compose.onNodeWithTag(TranslationTestTags.INPUT).assertIsNotEnabled()
 
         compose.runOnIdle {
@@ -284,6 +286,97 @@ class TranslationScreenTest {
         }
         compose.onNodeWithTag(TranslationTestTags.PROGRESS).assertExists()
         compose.onNodeWithTag(TranslationTestTags.TRANSLATE).assertIsNotEnabled()
+    }
+
+    @Test fun downloadProgressRequiresBothCountsAndNeverSkipsVerificationOrLoading() {
+        val state = show(TranslationUiState(input = "hello", modelStatus = ModelUiStatus.CHECKING, isPreparing = true))
+        val context = InstrumentationRegistry.getInstrumentation().targetContext
+        for (percent in listOf(0, 1, 50, 58, 99, 100)) {
+            compose.runOnIdle { state.value = state.value.copy(preparation = TranslationPreparationState(
+                TranslationPreparationPhase.DOWNLOADING, downloadedBytes = percent.toLong(), totalBytes = 100)) }
+            assertPreparationRange(percent / 100f)
+            compose.onNodeWithTag(TranslationPreparationTestTags.PROGRESS)
+                .assertContentDescriptionEquals(context.getString(R.string.translation_downloading))
+            compose.onNodeWithText(context.getString(R.string.preparation_download_percent, percent))
+                .performScrollTo().assertIsDisplayed()
+            compose.onNodeWithTag(TranslationTestTags.TRANSLATE).assertIsNotEnabled()
+            compose.onNodeWithTag(TranslationTestTags.PREPARE).assertDoesNotExist()
+        }
+        for ((downloaded, total) in listOf(null to 100L, 25L to null, null to null)) {
+            compose.runOnIdle { state.value = state.value.copy(preparation = TranslationPreparationState(
+                TranslationPreparationPhase.DOWNLOADING, downloadedBytes = downloaded, totalBytes = total)) }
+            assertPreparationRange(null)
+            assertNoVisiblePercentageOrBytes()
+        }
+        for (phase in listOf(TranslationPreparationPhase.VERIFYING, TranslationPreparationPhase.LOADING)) {
+            compose.runOnIdle { state.value = state.value.copy(preparation =
+                TranslationPreparationState(phase, downloadedBytes = 100, totalBytes = 100)) }
+            assertPreparationRange(null)
+            assertNoVisiblePercentageOrBytes()
+            compose.onNodeWithTag(TranslationTestTags.TRANSLATE).assertIsNotEnabled()
+        }
+        compose.runOnIdle { state.value = state.value.copy(
+            modelStatus = ModelUiStatus.READY, isPreparing = false,
+            preparation = TranslationPreparationState(TranslationPreparationPhase.READY)) }
+        compose.onNodeWithTag(TranslationPreparationTestTags.PROGRESS).assertDoesNotExist()
+        compose.onNodeWithTag(TranslationTestTags.TRANSLATE).assertIsEnabled()
+    }
+
+    @Test fun portraitFontTwoDownloadAndRetryRemainReachable() {
+        checkDownloadRecoveryLayout(wide = false)
+    }
+
+    @Test fun shortWideFontTwoDownloadAndRetryRemainReachable() {
+        checkDownloadRecoveryLayout(wide = true)
+    }
+
+    private fun checkDownloadRecoveryLayout(wide: Boolean) {
+        val state = mutableStateOf(TranslationUiState(input = "hello", modelStatus = ModelUiStatus.DOWNLOADING,
+            isPreparing = true, preparation = TranslationPreparationState(
+                TranslationPreparationPhase.DOWNLOADING, downloadedBytes = 50, totalBytes = 100)))
+        var retries = 0
+        compose.setContent {
+            val density = LocalDensity.current
+            CompositionLocalProvider(LocalDensity provides Density(density.density, 2f)) { MaterialTheme {
+                Box(Modifier.width(if (wide) 600.dp else 320.dp).height(if (wide) 260.dp else 480.dp)) {
+                    TranslationScreen(state.value, {}, {}, {}, {}, {
+                        retries++
+                        state.value = state.value.copy(isPreparing = true, preparation =
+                            TranslationPreparationState(TranslationPreparationPhase.DOWNLOADING))
+                    }, homeControls = {}, provider = TencentTranslationEngine.descriptor)
+                }
+            } }
+        }
+        assertPreparationRange(0.5f)
+        compose.onNodeWithTag(TranslationTestTags.INPUT).performScrollTo().assertIsNotEnabled()
+        compose.runOnIdle { state.value = state.value.copy(isPreparing = false, preparation =
+            TranslationPreparationState(TranslationPreparationPhase.FAILED, lastFailure = TranslationFailure.Storage())) }
+        compose.onNodeWithTag(TranslationPreparationTestTags.PROGRESS).assertDoesNotExist()
+        val retry = compose.onNodeWithTag(TranslationTestTags.RETRY).assertIsDisplayed().assertIsEnabled()
+            .assertHeightIsAtLeast(48.dp).fetchSemanticsNode().boundsInRoot
+        val attribution = compose.onNodeWithText(TencentTranslationEngine.descriptor.attribution)
+            .assertIsDisplayed().fetchSemanticsNode().boundsInRoot
+        assertTrue("Retry and attribution must not overlap", retry.bottom <= attribution.top + 1f)
+        compose.onNodeWithTag(TranslationTestTags.RETRY).performClick()
+        compose.runOnIdle { assertEquals(1, retries) }
+        compose.onNodeWithTag(TranslationTestTags.RETRY).assertDoesNotExist()
+        assertPreparationRange(null)
+        compose.onNodeWithTag(TranslationTestTags.PREPARE).assertDoesNotExist()
+        compose.onNodeWithTag(TranslationTestTags.TRANSLATE).assertDoesNotExist()
+    }
+
+    private fun assertPreparationRange(progress: Float?) {
+        compose.onNodeWithTag(TranslationPreparationTestTags.PROGRESS).performScrollTo().assertIsDisplayed()
+            .assert(SemanticsMatcher.expectValue(SemanticsProperties.ProgressBarRangeInfo,
+                progress?.let { ProgressBarRangeInfo(it, 0f..1f) } ?: ProgressBarRangeInfo.Indeterminate))
+    }
+
+    private fun assertNoVisiblePercentageOrBytes() {
+        compose.onNode(SemanticsMatcher("percentage or byte counter") { node ->
+            node.config.getOrNull(SemanticsProperties.Text)?.any {
+                Regex("\\d+\\s*%|\\d+\\s*/\\s*\\d+").containsMatchIn(it.text)
+            } == true
+        }).assertDoesNotExist()
     }
 
     @Test fun readyResultIsVisibleAndTranslateEnabled() {

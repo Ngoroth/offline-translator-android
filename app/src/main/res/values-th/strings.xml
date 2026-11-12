@@ -3,9 +3,9 @@
     <string name="app_name">แปลภาษาออฟไลน์</string>
     <string name="help_action">ช่วยเหลือ</string>
     <string name="help_title">ช่วยเหลือ</string>
-    <string name="help_conversation">เลือกสองภาษาแล้วเริ่มสนทนา ผลัดกันพูดเมื่อไมโครโฟนทำงาน อ่านคำแปลได้ที่นี่ ใช้ปุ่มลำโพงเพื่อเปิดหรือปิดการอ่านออกเสียง</string>
+    <string name="help_conversation">เลือกสองภาษาแล้วเริ่มสนทนา ผลัดกันพูดเมื่อไมโครโฟนทำงาน</string>
     <string name="help_text">เลือกภาษา ป้อนข้อความ แล้วแตะปุ่มแปล</string>
-    <string name="help_preparation">เตรียมภาษาผ่าน Wi‑Fi เพียงครั้งเดียวเพื่อแปลแบบออฟไลน์ อาจไม่ทราบขนาดการดาวน์โหลดล่วงหน้า</string>
+    <string name="help_preparation">เตรียมภาษาผ่าน Wi‑Fi เพื่อแปลแบบออฟไลน์</string>
     <string name="help_terms_action">ข้อกำหนดการแปล</string>
     <string name="help_terms_title">ข้อกำหนดการแปล</string>
     <string name="conversation_empty_title">เข้าใจกันและกัน</string>
@@ -48,7 +48,6 @@
     <string name="conversation_language_teardown_error">หยุดการสนทนาก่อนหน้าอย่างปลอดภัยไม่ได้ เริ่มแอปใหม่ก่อนเปลี่ยนภาษา เตรียม หรือเริ่มสนทนา</string>
     <string name="conversation_preparation_error">การเตรียมยังไม่เสร็จ ตรวจสอบการเชื่อมต่อและพื้นที่จัดเก็บ แล้วลองอีกครั้ง</string>
     <string name="conversation_preparation_missing">ภาษาที่เลือกยังไม่พร้อม</string>
-    <string name="conversation_download_progress">กำลังดาวน์โหลด · %1$d%%</string>
     <string name="conversation_resource_ready">พร้อม</string>
     <string name="conversation_permission_denied">ต้องอนุญาตให้ใช้ไมโครโฟน แตะเริ่มสนทนาเพื่อลองอีกครั้ง หรือเปิดสิทธิ์ในการตั้งค่าแอป</string>
     <string name="conversation_dropped">คำพูดที่ข้าม: %1$d รอให้ช่วงพูดปัจจุบันจบ แล้วพูดซ้ำ</string>
@@ -177,7 +176,10 @@
     <string name="model_tts_lessac">Piper Lessac medium · อังกฤษ</string>
     <string name="translation_verifying">กำลังตรวจสอบความสมบูรณ์ของโมเดลแปล…</string>
     <string name="translation_loading">กำลังโหลดและเตรียมเครื่องแปลภายในอุปกรณ์…</string>
-    <string name="translation_download_bytes">%1$d / %2$d ไบต์</string>
+    <string name="speech_downloading">กำลังดาวน์โหลดทรัพยากรเสียงพูด…</string>
+    <string name="translation_downloading">กำลังดาวน์โหลดโมเดลแปล…</string>
+    <string name="speech_verifying">กำลังตรวจสอบทรัพยากรเสียงพูด…</string>
+    <string name="preparation_download_percent">%1$d%%</string>
     <string name="translation_model_repair">โมเดลแปลหายไปหรือเสียหาย โปรดเตรียมการแปลออฟไลน์อีกครั้ง</string>
     <string name="translation_storage_error">บันทึกหรือดาวน์โหลดโมเดลไม่ได้ ตรวจสอบพื้นที่ว่างและ Wi‑Fi แล้วเตรียมอีกครั้ง</string>
     <string name="translation_runtime_error">โหลดเครื่องแปลภายในไม่ได้ โปรดเตรียมอีกครั้ง หากยังเกิดปัญหาให้เริ่มแอปใหม่</string>
@@ -187,7 +189,7 @@
     <string name="translation_timeout">การเตรียมการแปลใช้เวลานานเกินไป โปรดตรวจสอบสถานะแล้วลองเตรียมอีกครั้ง</string>
     <string name="model_prepare_hint">เตรียมโมเดล</string>
     <string name="tencent_model_download_hint">1.13 GB · ดาวน์โหลดผ่าน Wi‑Fi</string>
-    <string name="tencent_model_explanation">Tencent Hy-MT2 ใช้โมเดล 1.13 GB เดียวสำหรับทุกภาษา ดาวน์โหลดเมื่อกดเตรียมผ่าน Wi‑Fi เท่านั้น หลังเปิดใหม่ โหมดสนทนาจะเริ่มต้นโมเดลที่ติดตั้งและตรวจสอบแล้วโดยอัตโนมัติเมื่อทรัพยากรเสียงที่จำเป็นพร้อมในเครื่อง โดยไม่ดาวน์โหลดหรือซ่อมแซมอัตโนมัติ โหมดข้อความจะเริ่มต้นโมเดลที่ติดตั้งและตรวจสอบแล้วโดยอัตโนมัติเมื่อเข้าใช้งานเช่นกัน การดาวน์โหลดและซ่อมแซมต้องกดเตรียมผ่าน Wi‑Fi อย่างชัดเจน ทั้งสองโหมดเริ่มต้นในเครื่องเฉพาะเมื่อจำเป็น เมื่อใช้ผู้ให้บริการและคู่ภาษาสองภาษาที่เลือกเหมือนกัน โหมดข้อความและสนทนาในเบื้องหน้าจะใช้ตัวแปลที่เตรียมไว้ร่วมกัน โดยไม่โหลดหรืออุ่นเครื่องซ้ำเมื่อสลับโหมด ไมโครโฟนและส่วนประกอบเสียงยังคงปิดเมื่อออกจากโหมดสนทนา ตัวแปลที่แคชไว้จะถูกปล่อยเมื่อแอปเข้าสู่เบื้องหลัง เมื่อหน่วยความจำตึงตัว หรือเมื่อเปลี่ยนผู้ให้บริการหรือคู่ภาษา เมื่อกลับมาจะเริ่มต้นโมเดลที่ติดตั้งไว้ในเครื่องโดยอัตโนมัติตามความจำเป็น อาจใช้หน่วยความจำหลาย GB คุณภาพการแปลและประสิทธิภาพบนโทรศัพท์ยังไม่ผ่านการรับรอง</string>
+    <string name="tencent_model_explanation">เตรียมโมเดลแปลภาษาขนาด 1.13 GB ผ่าน Wi‑Fi เพื่อใช้งานแบบออฟไลน์ อาจต้องใช้ RAM หลาย GB</string>
     <string name="settings_recognition_service">บริการรู้จำเสียงพูด</string>
     <string name="recognition_service_on_device">บริการบนอุปกรณ์ของ Android</string>
     <string name="conversation_recognition_incompatible_service">บริการรู้จำเสียงที่เลือกยังไม่ได้รับการยืนยันว่าเหมาะสำหรับการสนทนาออฟไลน์ เลือกบริการที่เข้ากันได้ในการตั้งค่าขั้นสูง</string>

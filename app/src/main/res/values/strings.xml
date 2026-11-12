@@ -3,9 +3,9 @@
     <string name="app_name">Offline Translator</string>
     <string name="help_action">Help</string>
     <string name="help_title">Help</string>
-    <string name="help_conversation">Choose two languages and start the conversation. Take turns speaking when the microphone is active. Read the translation here; use the speaker button to turn speech output on or off.</string>
+    <string name="help_conversation">Choose two languages and start the conversation. Take turns speaking when the microphone is active.</string>
     <string name="help_text">Choose the languages, enter your text and tap the translation button.</string>
-    <string name="help_preparation">Prepare the languages once over Wi‑Fi to translate offline. The download size may not be known in advance.</string>
+    <string name="help_preparation">Prepare the languages over Wi‑Fi to translate offline.</string>
     <string name="help_terms_action">Translation terms</string>
     <string name="help_terms_title">Translation terms</string>
     <string name="conversation_empty_title">Understand each other</string>
@@ -48,7 +48,6 @@
     <string name="conversation_language_teardown_error">Could not safely stop the previous conversation. Restart the app before changing languages or preparing or starting a conversation.</string>
     <string name="conversation_preparation_error">Preparation incomplete. Check your connection and storage, then retry.</string>
     <string name="conversation_preparation_missing">Selected languages are not ready.</string>
-    <string name="conversation_download_progress">Downloading · %1$d%%</string>
     <string name="conversation_resource_ready">Ready</string>
     <string name="conversation_permission_denied">Microphone permission is needed. Tap Start conversation to retry, or enable the permission in app settings.</string>
     <string name="conversation_dropped">Speech skipped: %1$d. Please wait for the current turn, then repeat.</string>
@@ -177,7 +176,10 @@
     <string name="model_tts_lessac">Piper Lessac medium · English</string>
     <string name="translation_verifying">Verifying translation model integrity…</string>
     <string name="translation_loading">Loading and warming up local translation…</string>
-    <string name="translation_download_bytes">%1$d / %2$d bytes</string>
+    <string name="speech_downloading">Downloading speech resources…</string>
+    <string name="translation_downloading">Downloading translation model…</string>
+    <string name="speech_verifying">Verifying speech resources…</string>
+    <string name="preparation_download_percent">%1$d%%</string>
     <string name="translation_model_repair">The translation model is missing or damaged. Prepare offline translation again.</string>
     <string name="translation_storage_error">The model could not be stored or downloaded. Check free space and Wi‑Fi, then prepare again.</string>
     <string name="translation_runtime_error">The local translation engine could not load. Prepare again; restart the app if it persists.</string>
@@ -187,7 +189,7 @@
     <string name="translation_timeout">Translation preparation took too long. Check the preparation state and retry.</string>
     <string name="model_prepare_hint">Prepare the models.</string>
     <string name="tencent_model_download_hint">1.13 GB · Wi-Fi download</string>
-    <string name="tencent_model_explanation">Tencent Hy-MT2 uses one 1.13 GB model for all languages, downloaded only with Prepare over Wi‑Fi. After reopening, Conversation automatically initializes the verified, already installed model when required speech resources are locally ready, without automatic downloads or repairs. Text also automatically initializes the verified, already installed model on entry; downloads and repairs require explicit Prepare over Wi‑Fi; both modes initialize locally only when needed. With the same provider and selected two-language pair, foreground Text and Conversation share the prepared translator without reloading or warming it again on switching. Microphone and speech components still close on leaving Conversation. The cached translator is released on app backgrounding, memory pressure, or provider or pair changes; returning automatically initializes the installed model locally when needed. It can require several GB of memory; translation quality and phone performance are not qualified.</string>
+    <string name="tencent_model_explanation">Prepare the 1.13 GB translation model over Wi-Fi for offline use. Several GB of RAM may be needed.</string>
     <string name="settings_recognition_service">Recognition service</string>
     <string name="recognition_service_on_device">Android on-device service</string>
     <string name="conversation_recognition_incompatible_service">The selected recognition service is not qualified for offline conversation. Choose a compatible service in advanced settings.</string>

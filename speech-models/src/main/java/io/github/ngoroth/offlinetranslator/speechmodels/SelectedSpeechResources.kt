@@ -18,6 +18,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.map
 import java.util.concurrent.atomic.AtomicBoolean
 
 /** Route-owned projections; closing one never closes the process-shared installer. */
@@ -85,6 +86,11 @@ object SelectedSpeechResources {
         private val closed = AtomicBoolean(false)
         val models: StateFlow<List<SpeechModelStatus>> = combine(store.packages, selected, ::project)
             .stateIn(scope, SharingStarted.Eagerly, project(store.packages.value, selected.value))
+        val downloadPackages: StateFlow<List<SpeechModelStatus>> = combine(
+            store.packages,
+            selected.map { models -> models.flatMap { it.requiredRefs }.mapTo(linkedSetOf()) { it.packageId } },
+        ) { packages, ids -> packages.filter { it.id in ids } }
+            .stateIn(scope, SharingStarted.Eagerly, store.packages.value.filter { it.id in packageIds })
 
         private fun project(packages: List<SpeechModelStatus>, selected: List<SpeechModelDefinition>): List<SpeechModelStatus> {
             val byId = packages.associateBy { it.id }

@@ -69,11 +69,11 @@ import io.github.ngoroth.offlinetranslator.core.SpeechOutputReadiness
 import io.github.ngoroth.offlinetranslator.core.SpeechRecognitionReadiness
 import io.github.ngoroth.offlinetranslator.ui.LanguagePairControls
 import io.github.ngoroth.offlinetranslator.core.TranslationProviderDescriptor
-import io.github.ngoroth.offlinetranslator.core.SpeechModelRole
 import io.github.ngoroth.offlinetranslator.ui.languageName
 import io.github.ngoroth.offlinetranslator.ui.configurationProblemMessage
 import io.github.ngoroth.offlinetranslator.ui.ProviderAttribution
 import io.github.ngoroth.offlinetranslator.ui.TranslatorHelp
+import io.github.ngoroth.offlinetranslator.ui.PreparationProgress
 import io.github.ngoroth.offlinetranslator.core.SpeechModelInstallState
 import io.github.ngoroth.offlinetranslator.core.SpeechModelStatus
 
@@ -119,6 +119,7 @@ object ConversationTestTags {
 fun ConversationScreen(
     state: ConversationState,
     models: List<SpeechModelStatus>,
+    downloadPackages: List<SpeechModelStatus>,
     preparation: ConversationPreparation,
     ready: Boolean,
     permissionDenied: Boolean,
@@ -164,12 +165,13 @@ fun ConversationScreen(
     val canEditLanguages = languageSelectionEnabled && !languageChanging && !languageBlocked && !preparing
     val visibleTranslationPreparation = translationPreparation?.phase ==
         io.github.ngoroth.offlinetranslator.core.TranslationPreparationPhase.FAILED ||
-        (ownerAvailable && preparing && translationPreparation?.phase in setOf(
+        (ownerAvailable && preparation == ConversationPreparation.TRANSLATION && translationPreparation?.phase in setOf(
             io.github.ngoroth.offlinetranslator.core.TranslationPreparationPhase.VERIFYING,
             io.github.ngoroth.offlinetranslator.core.TranslationPreparationPhase.LOADING,
             io.github.ngoroth.offlinetranslator.core.TranslationPreparationPhase.DOWNLOADING,
         ))
-    val preparationWorkVisible = preparation == ConversationPreparation.INSTALLING ||
+    val speechWorkVisible = ownerAvailable && preparation == ConversationPreparation.INSTALLING
+    val preparationWorkVisible = speechWorkVisible ||
         (visibleTranslationPreparation && translationPreparation?.phase !=
             io.github.ngoroth.offlinetranslator.core.TranslationPreparationPhase.FAILED)
     val confirmedMissing = ownerAvailable && preparation == ConversationPreparation.IDLE && !ready
@@ -213,7 +215,6 @@ fun ConversationScreen(
     val outputState = stringResource(if (speechOutputEnabled) R.string.conversation_output_on else R.string.conversation_output_off)
     val outputAction = stringResource(if (speechOutputEnabled) R.string.conversation_output_disable else R.string.conversation_output_enable)
     val sessionActionDescription = stringResource(if (state.sessionActive) R.string.conversation_stop else R.string.conversation_start)
-    val languages = listOf(pair.source, pair.target)
     val current = state.transcripts.lastOrNull()
     val previous = state.transcripts.getOrNull(state.transcripts.lastIndex - 1)
     val scroll = rememberScrollState()
@@ -373,8 +374,7 @@ fun ConversationScreen(
                 if (configurationProblem == null && preparationRecoveryVisible) {
                     Card(Modifier.fillMaxWidth().testTag(ConversationTestTags.PREPARATION)) {
                         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                            if (preparation == ConversationPreparation.INSTALLING ||
-                                preparation == ConversationPreparation.ERROR || confirmedMissing) {
+                            if (preparation == ConversationPreparation.ERROR || confirmedMissing) {
                                 Text(stringResource(preparationLabel(preparation)), style = MaterialTheme.typography.bodyMedium,
                                     color = if (preparation == ConversationPreparation.ERROR) MaterialTheme.colorScheme.error
                                         else MaterialTheme.colorScheme.onSurface)
@@ -388,24 +388,37 @@ fun ConversationScreen(
                             preparationFailure?.let {
                                 Text(stringResource(io.github.ngoroth.offlinetranslator.ui.translationFailureLabel(it)), color = MaterialTheme.colorScheme.error)
                             }
-                            if (preparation == ConversationPreparation.INSTALLING) {
-                                var total = 0L
-                                var downloaded = 0L
-                                var downloading = false
-                                models.forEach { model ->
-                                    if (model.role == SpeechModelRole.VAD ||
-                                        ((model.role == SpeechModelRole.ASR || ((speechOutputEnabled || preparingSpeechOutput) && model.role == SpeechModelRole.TTS)) &&
-                                            languages.any { it in model.languages })) {
-                                        total += model.sizeBytes
-                                        downloaded += if (model.state == SpeechModelInstallState.READY) model.sizeBytes else model.downloadedBytes
-                                        downloading = downloading || model.state == SpeechModelInstallState.DOWNLOADING
+                            if (speechWorkVisible) {
+                                val systemDownload = systemRecognition &&
+                                    recognitionReadiness == SpeechRecognitionReadiness.DOWNLOADING
+                                val verifying = !systemDownload &&
+                                    downloadPackages.any { it.state == SpeechModelInstallState.VERIFYING }
+                                val downloading = systemDownload ||
+                                    downloadPackages.any { it.state == SpeechModelInstallState.DOWNLOADING }
+                                var total = 0.0
+                                var downloaded = 0.0
+                                var known = downloadPackages.isNotEmpty() && !systemDownload
+                                downloadPackages.forEach { resource ->
+                                    known = known && resource.sizeBytes > 0 &&
+                                        (resource.state != SpeechModelInstallState.DOWNLOADING || resource.downloadedBytes >= 0)
+                                    total += resource.sizeBytes.toDouble()
+                                    downloaded += when (resource.state) {
+                                        SpeechModelInstallState.READY -> resource.sizeBytes.toDouble()
+                                        SpeechModelInstallState.DOWNLOADING ->
+                                            resource.downloadedBytes.coerceIn(0, resource.sizeBytes.coerceAtLeast(0)).toDouble()
+                                        else -> 0.0
                                     }
                                 }
-                                if (downloading && total > 0) {
-                                    Text(stringResource(R.string.conversation_download_progress,
-                                        (downloaded.coerceIn(0, total) * 100 / total).toInt()),
-                                        modifier = Modifier.testTag(ConversationTestTags.PREPARATION_PROGRESS))
-                                }
+                                PreparationProgress(
+                                    label = stringResource(when {
+                                        verifying -> R.string.speech_verifying
+                                        downloading -> R.string.speech_downloading
+                                        else -> R.string.conversation_preparing_languages
+                                    }),
+                                    downloadedBytes = if (downloading && !verifying && known) downloaded else null,
+                                    totalBytes = if (downloading && !verifying && known) total else null,
+                                    modifier = Modifier.testTag(ConversationTestTags.PREPARATION_PROGRESS),
+                                )
                             }
                             Button(
                                 onClick = onPrepare,

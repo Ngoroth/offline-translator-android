@@ -84,6 +84,8 @@ Keep generated reports, recordings, model downloads and machine-local configurat
 
 ## Signed release APK (Windows)
 
+Release builds use AGP 9.4's `optimization { enable = true }`: R8 code/resource shrinking, optimization and obfuscation with default repackaging. Debug remains unminified. App-owned `app/src/release/keepRules/release.keep` preserves only the pinned Sherpa JNI-read field/descriptor closure, four native-created constructors and the boxed streaming callback; Android native-method defaults and Tencent's existing narrow consumer rules supply the other boundaries. Re-derive those rules from the pinned JNI sources and prepared `classes.jar` when updating Sherpa; do not keep the whole SDK or disable processing to hide native failures.
+
 Use PowerShell 7, JDK 17 and `ANDROID_HOME` pointing to an Android SDK with Build Tools 36.0.0. Keep the signing keystore and its password file outside the repository; do not pass the password itself on the command line.
 
 ```powershell
@@ -91,6 +93,10 @@ Use PowerShell 7, JDK 17 and `ANDROID_HOME` pointing to an Android SDK with Buil
 ```
 
 The script builds and lints the release, aligns it for 16 KB pages, signs it, verifies its signature and alignment, and writes the APK and SHA-256 checksum under `app/build/outputs/apk/release/`. The default key alias is `release`; use `-KeyAlias` for another alias. Back up the key and store its password securely: updates require the same signing identity.
+
+The helper produces **only an APK**. `:app:bundleRelease` is a separate build; without an external signing configuration its AAB is unsigned. Sign the AAB separately with the same established external key using JDK `jarsigner` (not APK `apksigner`), without adding private signing configuration to source. Building or signing does not authorize a version bump, upload or publication.
+
+Follow [optimized release verification](docs/testing/verify-translator.md#optimized-release-verification) before qualifying either artifact. Retain each exact signed artifact, its hashes and corresponding R8 mapping/configuration/retrace evidence outside disposable build outputs; save bundle mapping before a subsequent APK build. Separate local DEX measurements and analyzer results from Play Console acceptance: from February 2027, apps with DEX greater than 10 MB require at least 25% each for shrinking, optimization and obfuscation. Inspect the exact submitted bundle's results when an upload is authorized; a local analyzer score is not Console acceptance.
 
 The APK includes license texts and third-party notices in `assets/licenses/`. These files do not replace other obligations, including applicable GPL Corresponding Source requirements; see [THIRD_PARTY_NOTICES](THIRD_PARTY_NOTICES.md).
 

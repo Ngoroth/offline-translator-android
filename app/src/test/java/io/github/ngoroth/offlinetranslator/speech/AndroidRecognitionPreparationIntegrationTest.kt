@@ -757,6 +757,7 @@ class AndroidRecognitionPreparationIntegrationTest {
     private class NativeResources(var ready: Boolean) : ConversationModelRepository {
         var installations = 0
         override val models = MutableStateFlow<List<SpeechModelStatus>>(emptyList())
+        override val downloadPackages = MutableStateFlow<List<SpeechModelStatus>>(emptyList())
         override suspend fun install(speechOutputRequired: Boolean) { installations++; ready = true }
         override suspend fun isConversationReady(speechOutputRequired: Boolean) = ready
         override fun close() = Unit

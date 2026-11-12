@@ -12,12 +12,15 @@ import io.github.ngoroth.offlinetranslator.speech.AndroidRecognitionDataInstallR
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
+import io.github.ngoroth.offlinetranslator.ui.ScreenAwake
 
 class ConversationViewModel(
     private val owner: ConversationRuntimeOwner,
     private val owners: RuntimeOwnerController,
     private val saveSpeechOutput: suspend (Boolean, () -> Boolean) -> Boolean,
     private val speechOutputProblem: () -> ConfigurationProblem? = { null },
+    private val screenAwake: ScreenAwake? = null,
 ) : ViewModel() {
     val config = owner.config
     val hasCurrentOwner: Boolean get() = owners.isCurrent(owner)
@@ -25,6 +28,7 @@ class ConversationViewModel(
     private val pipeline = owner.pipeline
     val state = pipeline.state
     val modelStatuses = models.models
+    val downloadPackages = models.downloadPackages
     val recognitionReadiness = owner.recognition.readinessState
     private val mutablePreparation = MutableStateFlow(ConversationPreparation.CHECKING)
     val preparation = mutablePreparation.asStateFlow()
@@ -78,9 +82,12 @@ class ConversationViewModel(
                         mutableSpeechOutputUnavailable.value = true
                         return@launch
                     }
-                    val ready = pipeline.prepareSpeechOutput(generation) {
-                        val output = owner.output
-                        if (output is SystemConversationSpeechOutput) output.recheck() else output.readiness()
+                    // Only actual output initialization owns a demand, not preference persistence.
+                    val ready = withScreenAwake {
+                        pipeline.prepareSpeechOutput(generation) {
+                            val output = owner.output
+                            if (output is SystemConversationSpeechOutput) output.recheck() else output.readiness()
+                        }
                     } ?: return@launch
                     if (!fresh()) return@launch
                     mutableOutputReadiness.value = ready
@@ -160,6 +167,13 @@ class ConversationViewModel(
     private var sessionAction: Job? = null
     private var cleanupJob: Deferred<Result<Unit>>? = null
     private var foregroundCleanup: Job? = null
+    private val awakeOwner = screenAwake?.owner { !disposed && foreground && hasCurrentOwner }
+    private var sessionDemand: ScreenAwake.Demand? = null
+    private val ownershipObservation = viewModelScope.launch {
+        combine(owners.ownershipVersion, owners.teardownFailed) { _, _ -> Unit }.collect {
+            screenAwake?.refresh()
+        }
+    }
     private var readinessJob: Job = checkReadiness(prepareLocal = true)
 
     private fun checkReadiness(recheckSystem: Boolean = false, prepareLocal: Boolean = false) = viewModelScope.launch {
@@ -167,7 +181,7 @@ class ConversationViewModel(
             foregroundCleanup?.join()
             currentCoroutineContext().ensureActive()
             if (disposed || !foreground || !hasCurrentOwner) return@launch
-            val ready = owners.use(owner) { resourcesReady(recheckSystem, prepareLocal) } ?: false
+            val ready = owners.use(owner) { withScreenAwake { resourcesReady(recheckSystem, prepareLocal) } } ?: false
             currentCoroutineContext().ensureActive()
             mutableReady.value = ready && !disposed && foreground && hasCurrentOwner
             if (!disposed && foreground && hasCurrentOwner && mutablePreparation.value == ConversationPreparation.TRANSLATION) {
@@ -210,6 +224,12 @@ class ConversationViewModel(
     }
     private val readinessObservation = viewModelScope.launch {
         state.collect { current ->
+            if (current.sessionActive) {
+                if (sessionDemand == null) sessionDemand = awakeOwner?.acquire()
+            } else {
+                sessionDemand?.close()
+                sessionDemand = null
+            }
             if (current.failure == ConversationFailure.MODELS_MISSING || current.failure == ConversationFailure.PLAYBACK_FAILED) {
                 mutableReady.value = false
                 if (pipeline.releaseFailed) cleanup() else refreshReadiness()
@@ -260,7 +280,7 @@ class ConversationViewModel(
         preparationJob = viewModelScope.launch {
             readinessJob.cancelAndJoin()
             try {
-                val ready = owners.use(owner) {
+                val ready = owners.use(owner) { withScreenAwake {
                     models.install(speechOutputEnabled.value || recoveringSpeechOutput)
                     currentCoroutineContext().ensureActive()
                     if (recoveringSpeechOutput) {
@@ -279,7 +299,7 @@ class ConversationViewModel(
                         }
                         else -> translationReady && resourcesReady()
                     }
-                } ?: return@launch
+                } } ?: return@launch
                 currentCoroutineContext().ensureActive()
                 if (disposed || !foreground || !hasCurrentOwner) return@launch
                 mutableReady.value = ready
@@ -331,7 +351,16 @@ class ConversationViewModel(
         mutablePermissionDenied.value = false
         sessionAction = viewModelScope.launch {
             try {
-                owners.use(owner) { pipeline.start() }
+                owners.use(owner) {
+                    sessionDemand?.close()
+                    sessionDemand = awakeOwner?.acquire()
+                    try { pipeline.start() } finally {
+                        if (!state.value.sessionActive) {
+                            sessionDemand?.close()
+                            sessionDemand = null
+                        }
+                    }
+                }
             } catch (cancelled: CancellationException) {
                 throw cancelled
             } catch (_: Throwable) {
@@ -369,6 +398,8 @@ class ConversationViewModel(
     fun leaveForeground() {
         if (disposed) return
         foreground = false
+        awakeOwner?.clear()
+        sessionDemand = null
         mutableReady.value = false
         if (speechOutputEnabled.value != savedSpeechOutputEnabled) mutableSpeechOutputSaveError.value = true
         speechOutputJob?.cancel()
@@ -432,6 +463,8 @@ class ConversationViewModel(
         cleanupJob?.let { return it }
         disposed = true
         foreground = false
+        awakeOwner?.close()
+        sessionDemand = null
         mutableReady.value = false
         val action = sessionAction
         val preparing = preparationJob
@@ -442,6 +475,7 @@ class ConversationViewModel(
             readinessObservation.join()
             recognitionObservation.join()
             translationObservation.join()
+            ownershipObservation.join()
             preparing?.join()
             action?.join()
             outputAction?.join()
@@ -456,9 +490,15 @@ class ConversationViewModel(
         readinessObservation.cancel()
         recognitionObservation.cancel()
         translationObservation.cancel()
+        ownershipObservation.cancel()
         preparing?.cancel()
         result.start()
         return result
+    }
+
+    private suspend fun <T> withScreenAwake(action: suspend () -> T): T {
+        val demand = awakeOwner?.acquire()
+        try { return action() } finally { demand?.close() }
     }
 
     override fun onCleared() { dispose() }

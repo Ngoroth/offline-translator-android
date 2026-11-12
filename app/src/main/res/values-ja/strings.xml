@@ -3,9 +3,9 @@
     <string name="app_name">オフライン翻訳</string>
     <string name="help_action">ヘルプ</string>
     <string name="help_title">ヘルプ</string>
-    <string name="help_conversation">2つの言語を選んで会話を開始します。マイクが有効なときに交互に話してください。翻訳はここで読めます。スピーカーボタンで読み上げをオンまたはオフにできます。</string>
+    <string name="help_conversation">2つの言語を選んで会話を開始します。マイクが有効なときに交互に話してください。</string>
     <string name="help_text">言語を選び、テキストを入力して翻訳ボタンをタップします。</string>
-    <string name="help_preparation">Wi‑Fi経由で一度言語データを準備すれば、オフラインで翻訳できます。ダウンロードサイズは事前にわからない場合があります。</string>
+    <string name="help_preparation">オフラインで翻訳するには、Wi‑Fi経由で言語データを準備してください。</string>
     <string name="help_terms_action">翻訳に関する規約</string>
     <string name="help_terms_title">翻訳に関する規約</string>
     <string name="conversation_empty_title">お互いを理解しよう</string>
@@ -48,7 +48,6 @@
     <string name="conversation_language_teardown_error">前の会話を安全に停止できませんでした。言語の変更や会話の準備・開始の前に、アプリを再起動してください。</string>
     <string name="conversation_preparation_error">準備が完了していません。接続とストレージを確認して再試行してください。</string>
     <string name="conversation_preparation_missing">選択した言語の準備ができていません。</string>
-    <string name="conversation_download_progress">ダウンロード中 · %1$d%%</string>
     <string name="conversation_resource_ready">準備完了</string>
     <string name="conversation_permission_denied">マイクの権限が必要です。「会話を開始」をタップして再試行するか、アプリの設定で権限を有効にしてください。</string>
     <string name="conversation_dropped">スキップされた音声：%1$d。現在の発言の処理が終わるまで待ってから、もう一度話してください。</string>
@@ -177,7 +176,10 @@
     <string name="model_tts_lessac">Piper Lessac medium · 英語</string>
     <string name="translation_verifying">翻訳モデルの整合性を確認しています…</string>
     <string name="translation_loading">ローカル翻訳を読み込み、ウォームアップしています…</string>
-    <string name="translation_download_bytes">%1$d / %2$d バイト</string>
+    <string name="speech_downloading">音声リソースをダウンロード中…</string>
+    <string name="translation_downloading">翻訳モデルをダウンロード中…</string>
+    <string name="speech_verifying">音声リソースを検証中…</string>
+    <string name="preparation_download_percent">%1$d%%</string>
     <string name="translation_model_repair">翻訳モデルがないか破損しています。オフライン翻訳を再準備してください。</string>
     <string name="translation_storage_error">モデルを保存またはダウンロードできません。空き容量とWi‑Fiを確認して再準備してください。</string>
     <string name="translation_runtime_error">ローカル翻訳エンジンを読み込めません。再準備し、続く場合はアプリを再起動してください。</string>
@@ -187,7 +189,7 @@
     <string name="translation_timeout">翻訳の準備に時間がかかりすぎています。準備状況を確認して再試行してください。</string>
     <string name="model_prepare_hint">モデルを準備してください。</string>
     <string name="tencent_model_download_hint">1.13 GB・Wi‑Fiでダウンロード</string>
-    <string name="tencent_model_explanation">Tencent Hy-MT2は全言語で1つの1.13 GBモデルを使い、Wi‑Fi接続中の準備操作でのみダウンロードします。再度開くと、会話モードは必要な音声リソースがローカルで準備済みの場合に、検証済みでインストール済みのモデルを自動初期化します。自動ダウンロードや修復は行いません。テキストモードも開いたときに検証済みでインストール済みのモデルを自動初期化します。ダウンロードや修復にはWi‑Fi接続中の明示的な準備操作が必要です。両モードとも必要な場合にのみローカルで初期化します。同じプロバイダーと選択した2言語の組み合わせでは、フォアグラウンドのテキストと会話が準備済みの翻訳器を共有し、切り替え時に再読み込みや再ウォームアップを行いません。会話を離れる際は、引き続きマイクと音声コンポーネントを閉じます。アプリがバックグラウンドに移行したとき、メモリ逼迫時、またはプロバイダーや言語の組み合わせを変更したときに、キャッシュした翻訳器を解放します。戻った際は必要に応じてインストール済みモデルをローカルで自動初期化します。数GBのメモリを使う場合があり、翻訳品質と実機性能は未認定です。</string>
+    <string name="tencent_model_explanation">オフラインで使うには、Wi‑Fi経由で1.13 GBの翻訳モデルを準備してください。数GBのRAMが必要になる場合があります。</string>
     <string name="settings_recognition_service">音声認識サービス</string>
     <string name="recognition_service_on_device">Android のオンデバイスサービス</string>
     <string name="conversation_recognition_incompatible_service">選択した認識サービスは、オフライン会話での動作が確認されていません。詳細設定で互換性のあるサービスを選択してください。</string>

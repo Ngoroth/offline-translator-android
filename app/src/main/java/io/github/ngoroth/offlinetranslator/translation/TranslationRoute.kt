@@ -10,9 +10,14 @@ import io.github.ngoroth.offlinetranslator.core.*
 import io.github.ngoroth.offlinetranslator.runtime.AppRuntime
 import kotlinx.coroutines.*
 import kotlin.coroutines.coroutineContext
+import io.github.ngoroth.offlinetranslator.ui.ScreenAwake
 
 @Composable
-fun TranslationRoute(homeControls: @Composable () -> Unit, onLanguageTransitionChanged: (Boolean) -> Unit = {}) {
+fun TranslationRoute(
+    homeControls: @Composable () -> Unit,
+    onLanguageTransitionChanged: (Boolean) -> Unit = {},
+    screenAwake: ScreenAwake? = null,
+) {
     val context = LocalContext.current
     val runtime = remember(context.applicationContext) { AppRuntime.get(context.applicationContext) }
     val settingsState by runtime.settings.state.collectAsStateWithLifecycle()
@@ -64,6 +69,7 @@ fun TranslationRoute(homeControls: @Composable () -> Unit, onLanguageTransitionC
                 viewModel = TranslationViewModel(
                     owner, runtime.owners, descriptor,
                     initialInput = input, initialInputTooLong = inputTooLong,
+                    screenAwake = screenAwake,
                 )
                 if (languageError == TranslationLanguageChangeError.OPEN) languageError = null
             } else {

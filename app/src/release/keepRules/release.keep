@@ -1,0 +1,407 @@
+# Standard release R8 shrinking, optimization and obfuscation remain enabled.
+# Preserve only the native binding names and shapes required below.
+
+# sherpa-onnx 1.13.8, source 11afbd009a7f8c08f4bcf2fc1b265d0df4670fbf.
+# JNI GetOfflineConfig, GetOnlineModelConfig/GetConfig, GetOfflineTtsConfig and
+# GetVadModelConfig read these exact fields through common.h macros/GetFieldID.
+# Types come from classes.jar in the prepared sherpa-onnx-1.13.8-pair-v1.aar.
+# All sibling configs are traversed, including unselected models. Keep field
+# storage/values and descriptor classes; unrelated methods remain shrinkable.
+# Native entry points use Android's default native-method rules; Tencent retains
+# its two boundary classes through its existing AAR consumer rules.
+
+-keep,includedescriptorclasses class com.k2fsa.sherpa.onnx.EndpointConfig {
+    com.k2fsa.sherpa.onnx.EndpointRule rule1;
+    com.k2fsa.sherpa.onnx.EndpointRule rule2;
+    com.k2fsa.sherpa.onnx.EndpointRule rule3;
+}
+
+-keep,includedescriptorclasses class com.k2fsa.sherpa.onnx.EndpointRule {
+    boolean mustContainNonSilence;
+    float minTrailingSilence;
+    float minUtteranceLength;
+}
+
+-keep,includedescriptorclasses class com.k2fsa.sherpa.onnx.FeatureConfig {
+    int sampleRate;
+    int featureDim;
+    float dither;
+}
+
+-keep,includedescriptorclasses class com.k2fsa.sherpa.onnx.HomophoneReplacerConfig {
+    java.lang.String lexicon;
+    java.lang.String ruleFsts;
+}
+
+-keep,includedescriptorclasses class com.k2fsa.sherpa.onnx.OfflineCanaryModelConfig {
+    java.lang.String encoder;
+    java.lang.String decoder;
+    java.lang.String srcLang;
+    java.lang.String tgtLang;
+    boolean usePnc;
+}
+
+-keep,includedescriptorclasses class com.k2fsa.sherpa.onnx.OfflineCohereTranscribeModelConfig {
+    java.lang.String encoder;
+    java.lang.String decoder;
+    java.lang.String language;
+    boolean usePunct;
+    boolean useItn;
+}
+
+-keep,includedescriptorclasses class com.k2fsa.sherpa.onnx.OfflineDolphinModelConfig {
+    java.lang.String model;
+}
+
+-keep,includedescriptorclasses class com.k2fsa.sherpa.onnx.OfflineFireRedAsrCtcModelConfig {
+    java.lang.String model;
+}
+
+-keep,includedescriptorclasses class com.k2fsa.sherpa.onnx.OfflineFireRedAsrModelConfig {
+    java.lang.String encoder;
+    java.lang.String decoder;
+}
+
+-keep,includedescriptorclasses class com.k2fsa.sherpa.onnx.OfflineFunAsrNanoModelConfig {
+    java.lang.String encoderAdaptor;
+    java.lang.String llm;
+    java.lang.String embedding;
+    java.lang.String tokenizer;
+    java.lang.String systemPrompt;
+    java.lang.String userPrompt;
+    java.lang.String language;
+    boolean itn;
+    java.lang.String hotwords;
+    int maxNewTokens;
+    float temperature;
+    float topP;
+    int seed;
+}
+
+-keep,includedescriptorclasses class com.k2fsa.sherpa.onnx.OfflineMedAsrCtcModelConfig {
+    java.lang.String model;
+}
+
+-keep,includedescriptorclasses class com.k2fsa.sherpa.onnx.OfflineModelConfig {
+    java.lang.String tokens;
+    int numThreads;
+    boolean debug;
+    java.lang.String provider;
+    java.lang.String modelType;
+    java.lang.String modelingUnit;
+    java.lang.String bpeVocab;
+    com.k2fsa.sherpa.onnx.OfflineTransducerModelConfig transducer;
+    com.k2fsa.sherpa.onnx.OfflineParaformerModelConfig paraformer;
+    com.k2fsa.sherpa.onnx.OfflineWhisperModelConfig whisper;
+    com.k2fsa.sherpa.onnx.OfflineFireRedAsrModelConfig fireRedAsr;
+    com.k2fsa.sherpa.onnx.OfflineMoonshineModelConfig moonshine;
+    com.k2fsa.sherpa.onnx.OfflineSenseVoiceModelConfig senseVoice;
+    com.k2fsa.sherpa.onnx.OfflineNemoEncDecCtcModelConfig nemo;
+    com.k2fsa.sherpa.onnx.OfflineZipformerCtcModelConfig zipformerCtc;
+    com.k2fsa.sherpa.onnx.OfflineWenetCtcModelConfig wenetCtc;
+    com.k2fsa.sherpa.onnx.OfflineOmnilingualAsrCtcModelConfig omnilingual;
+    com.k2fsa.sherpa.onnx.OfflineMedAsrCtcModelConfig medasr;
+    com.k2fsa.sherpa.onnx.OfflineFunAsrNanoModelConfig funasrNano;
+    com.k2fsa.sherpa.onnx.OfflineQwen3AsrModelConfig qwen3Asr;
+    com.k2fsa.sherpa.onnx.OfflineFireRedAsrCtcModelConfig fireRedAsrCtc;
+    com.k2fsa.sherpa.onnx.OfflineCanaryModelConfig canary;
+    com.k2fsa.sherpa.onnx.OfflineCohereTranscribeModelConfig cohereTranscribe;
+    com.k2fsa.sherpa.onnx.OfflineDolphinModelConfig dolphin;
+    java.lang.String teleSpeech;
+}
+
+-keep,includedescriptorclasses class com.k2fsa.sherpa.onnx.OfflineMoonshineModelConfig {
+    java.lang.String preprocessor;
+    java.lang.String encoder;
+    java.lang.String uncachedDecoder;
+    java.lang.String cachedDecoder;
+    java.lang.String mergedDecoder;
+}
+
+-keep,includedescriptorclasses class com.k2fsa.sherpa.onnx.OfflineNemoEncDecCtcModelConfig {
+    java.lang.String model;
+}
+
+-keep,includedescriptorclasses class com.k2fsa.sherpa.onnx.OfflineOmnilingualAsrCtcModelConfig {
+    java.lang.String model;
+}
+
+-keep,includedescriptorclasses class com.k2fsa.sherpa.onnx.OfflineParaformerModelConfig {
+    java.lang.String model;
+    com.k2fsa.sherpa.onnx.QnnConfig qnnConfig;
+}
+
+-keep,includedescriptorclasses class com.k2fsa.sherpa.onnx.OfflineQwen3AsrModelConfig {
+    java.lang.String convFrontend;
+    java.lang.String encoder;
+    java.lang.String decoder;
+    java.lang.String tokenizer;
+    java.lang.String hotwords;
+    int maxTotalLen;
+    int maxNewTokens;
+    float temperature;
+    float topP;
+    int seed;
+}
+
+-keep,includedescriptorclasses class com.k2fsa.sherpa.onnx.OfflineRecognizerConfig {
+    java.lang.String decodingMethod;
+    int maxActivePaths;
+    java.lang.String hotwordsFile;
+    float hotwordsScore;
+    java.lang.String ruleFsts;
+    java.lang.String ruleFars;
+    float blankPenalty;
+    com.k2fsa.sherpa.onnx.FeatureConfig featConfig;
+    com.k2fsa.sherpa.onnx.OfflineModelConfig modelConfig;
+    com.k2fsa.sherpa.onnx.HomophoneReplacerConfig hr;
+}
+
+-keep,includedescriptorclasses class com.k2fsa.sherpa.onnx.OfflineSenseVoiceModelConfig {
+    java.lang.String model;
+    java.lang.String language;
+    boolean useInverseTextNormalization;
+    com.k2fsa.sherpa.onnx.QnnConfig qnnConfig;
+}
+
+-keep,includedescriptorclasses class com.k2fsa.sherpa.onnx.OfflineTransducerModelConfig {
+    java.lang.String encoder;
+    java.lang.String decoder;
+    java.lang.String joiner;
+    com.k2fsa.sherpa.onnx.QnnConfig qnnConfig;
+}
+
+-keep,includedescriptorclasses class com.k2fsa.sherpa.onnx.OfflineTtsConfig {
+    com.k2fsa.sherpa.onnx.OfflineTtsModelConfig model;
+    java.lang.String ruleFsts;
+    java.lang.String ruleFars;
+    int maxNumSentences;
+    float silenceScale;
+}
+
+-keep,includedescriptorclasses class com.k2fsa.sherpa.onnx.OfflineTtsKittenModelConfig {
+    java.lang.String model;
+    java.lang.String voices;
+    java.lang.String tokens;
+    java.lang.String dataDir;
+    float lengthScale;
+}
+
+-keep,includedescriptorclasses class com.k2fsa.sherpa.onnx.OfflineTtsKokoroModelConfig {
+    java.lang.String model;
+    java.lang.String voices;
+    java.lang.String tokens;
+    java.lang.String lexicon;
+    java.lang.String lang;
+    java.lang.String dataDir;
+    float lengthScale;
+}
+
+-keep,includedescriptorclasses class com.k2fsa.sherpa.onnx.OfflineTtsMatchaModelConfig {
+    java.lang.String acousticModel;
+    java.lang.String vocoder;
+    java.lang.String lexicon;
+    java.lang.String tokens;
+    java.lang.String dataDir;
+    float noiseScale;
+    float lengthScale;
+}
+
+-keep,includedescriptorclasses class com.k2fsa.sherpa.onnx.OfflineTtsModelConfig {
+    com.k2fsa.sherpa.onnx.OfflineTtsVitsModelConfig vits;
+    com.k2fsa.sherpa.onnx.OfflineTtsMatchaModelConfig matcha;
+    com.k2fsa.sherpa.onnx.OfflineTtsKokoroModelConfig kokoro;
+    com.k2fsa.sherpa.onnx.OfflineTtsZipVoiceModelConfig zipvoice;
+    com.k2fsa.sherpa.onnx.OfflineTtsKittenModelConfig kitten;
+    com.k2fsa.sherpa.onnx.OfflineTtsPocketModelConfig pocket;
+    com.k2fsa.sherpa.onnx.OfflineTtsSupertonicModelConfig supertonic;
+    int numThreads;
+    boolean debug;
+    java.lang.String provider;
+}
+
+-keep,includedescriptorclasses class com.k2fsa.sherpa.onnx.OfflineTtsPocketModelConfig {
+    java.lang.String lmFlow;
+    java.lang.String lmMain;
+    java.lang.String encoder;
+    java.lang.String decoder;
+    java.lang.String textConditioner;
+    java.lang.String vocabJson;
+    java.lang.String tokenScoresJson;
+    int voiceEmbeddingCacheCapacity;
+}
+
+-keep,includedescriptorclasses class com.k2fsa.sherpa.onnx.OfflineTtsSupertonicModelConfig {
+    java.lang.String durationPredictor;
+    java.lang.String textEncoder;
+    java.lang.String vectorEstimator;
+    java.lang.String vocoder;
+    java.lang.String ttsJson;
+    java.lang.String unicodeIndexer;
+    java.lang.String voiceStyle;
+}
+
+-keep,includedescriptorclasses class com.k2fsa.sherpa.onnx.OfflineTtsVitsModelConfig {
+    java.lang.String model;
+    java.lang.String lexicon;
+    java.lang.String tokens;
+    java.lang.String dataDir;
+    float noiseScale;
+    float noiseScaleW;
+    float lengthScale;
+}
+
+-keep,includedescriptorclasses class com.k2fsa.sherpa.onnx.OfflineTtsZipVoiceModelConfig {
+    java.lang.String tokens;
+    java.lang.String encoder;
+    java.lang.String decoder;
+    java.lang.String vocoder;
+    java.lang.String dataDir;
+    java.lang.String lexicon;
+    float featScale;
+    float tShift;
+    float targetRms;
+    float guidanceScale;
+}
+
+-keep,includedescriptorclasses class com.k2fsa.sherpa.onnx.OfflineWenetCtcModelConfig {
+    java.lang.String model;
+}
+
+-keep,includedescriptorclasses class com.k2fsa.sherpa.onnx.OfflineWhisperModelConfig {
+    java.lang.String encoder;
+    java.lang.String decoder;
+    java.lang.String language;
+    java.lang.String task;
+    int tailPaddings;
+    boolean enableTokenTimestamps;
+    boolean enableSegmentTimestamps;
+}
+
+-keep,includedescriptorclasses class com.k2fsa.sherpa.onnx.OfflineZipformerCtcModelConfig {
+    java.lang.String model;
+    com.k2fsa.sherpa.onnx.QnnConfig qnnConfig;
+}
+
+-keep,includedescriptorclasses class com.k2fsa.sherpa.onnx.OnlineCtcFstDecoderConfig {
+    java.lang.String graph;
+    int maxActive;
+}
+
+-keep,includedescriptorclasses class com.k2fsa.sherpa.onnx.OnlineLMConfig {
+    java.lang.String model;
+    float scale;
+}
+
+-keep,includedescriptorclasses class com.k2fsa.sherpa.onnx.OnlineModelConfig {
+    com.k2fsa.sherpa.onnx.OnlineTransducerModelConfig transducer;
+    com.k2fsa.sherpa.onnx.OnlineParaformerModelConfig paraformer;
+    com.k2fsa.sherpa.onnx.OnlineZipformer2CtcModelConfig zipformer2Ctc;
+    com.k2fsa.sherpa.onnx.OnlineNeMoCtcModelConfig neMoCtc;
+    com.k2fsa.sherpa.onnx.OnlineToneCtcModelConfig toneCtc;
+    java.lang.String tokens;
+    int numThreads;
+    boolean debug;
+    java.lang.String provider;
+    java.lang.String modelType;
+    java.lang.String modelingUnit;
+    java.lang.String bpeVocab;
+}
+
+-keep,includedescriptorclasses class com.k2fsa.sherpa.onnx.OnlineNeMoCtcModelConfig {
+    java.lang.String model;
+}
+
+-keep,includedescriptorclasses class com.k2fsa.sherpa.onnx.OnlineParaformerModelConfig {
+    java.lang.String encoder;
+    java.lang.String decoder;
+}
+
+-keep,includedescriptorclasses class com.k2fsa.sherpa.onnx.OnlineRecognizerConfig {
+    java.lang.String decodingMethod;
+    int maxActivePaths;
+    java.lang.String hotwordsFile;
+    float hotwordsScore;
+    java.lang.String ruleFsts;
+    java.lang.String ruleFars;
+    float blankPenalty;
+    com.k2fsa.sherpa.onnx.FeatureConfig featConfig;
+    boolean enableEndpoint;
+    com.k2fsa.sherpa.onnx.EndpointConfig endpointConfig;
+    com.k2fsa.sherpa.onnx.OnlineModelConfig modelConfig;
+    com.k2fsa.sherpa.onnx.OnlineLMConfig lmConfig;
+    com.k2fsa.sherpa.onnx.OnlineCtcFstDecoderConfig ctcFstDecoderConfig;
+    com.k2fsa.sherpa.onnx.HomophoneReplacerConfig hr;
+}
+
+-keep,includedescriptorclasses class com.k2fsa.sherpa.onnx.OnlineToneCtcModelConfig {
+    java.lang.String model;
+}
+
+-keep,includedescriptorclasses class com.k2fsa.sherpa.onnx.OnlineTransducerModelConfig {
+    java.lang.String encoder;
+    java.lang.String decoder;
+    java.lang.String joiner;
+    com.k2fsa.sherpa.onnx.QnnConfig qnnConfig;
+}
+
+-keep,includedescriptorclasses class com.k2fsa.sherpa.onnx.OnlineZipformer2CtcModelConfig {
+    java.lang.String model;
+}
+
+-keep,includedescriptorclasses class com.k2fsa.sherpa.onnx.QnnConfig {
+    java.lang.String backendLib;
+    java.lang.String contextBinary;
+    java.lang.String systemLib;
+}
+
+-keep,includedescriptorclasses class com.k2fsa.sherpa.onnx.SileroVadModelConfig {
+    java.lang.String model;
+    float threshold;
+    float minSilenceDuration;
+    float minSpeechDuration;
+    int windowSize;
+    float maxSpeechDuration;
+}
+
+-keep,includedescriptorclasses class com.k2fsa.sherpa.onnx.TenVadModelConfig {
+    java.lang.String model;
+    float threshold;
+    float minSilenceDuration;
+    float minSpeechDuration;
+    int windowSize;
+    float maxSpeechDuration;
+}
+
+-keep,includedescriptorclasses class com.k2fsa.sherpa.onnx.VadModelConfig {
+    com.k2fsa.sherpa.onnx.SileroVadModelConfig sileroVadModelConfig;
+    com.k2fsa.sherpa.onnx.TenVadModelConfig tenVadModelConfig;
+    int sampleRate;
+    int numThreads;
+    java.lang.String provider;
+    boolean debug;
+}
+
+# FindClass/GetMethodID create these results; only the exact constructors are
+# native roots. Getters and other Java/Kotlin uses are discovered normally.
+-keep class com.k2fsa.sherpa.onnx.OfflineRecognizerResult {
+    <init>(java.lang.String, java.lang.String[], float[], java.lang.String, java.lang.String, java.lang.String, float[]);
+}
+
+-keep class com.k2fsa.sherpa.onnx.OnlineRecognizerResult {
+    <init>(java.lang.String, java.lang.String[], float[], float[]);
+}
+
+-keep class com.k2fsa.sherpa.onnx.GeneratedAudio {
+    <init>(float[], int);
+}
+
+-keep class com.k2fsa.sherpa.onnx.SpeechSegment {
+    <init>(int, float[]);
+}
+
+# offline-tts.cc calls invoke with descriptor ([F)Ljava/lang/Integer;.
+# The boxed return is neither primitive int nor the Object bridge.
+-keep class io.github.ngoroth.offlinetranslator.sherpa.SherpaConversationSpeechOutput$StreamingSynthesisCallback {
+    java.lang.Integer invoke(float[]);
+}

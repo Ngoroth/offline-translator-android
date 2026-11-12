@@ -26,6 +26,7 @@ import io.github.ngoroth.offlinetranslator.core.SpeechRecognitionBackend
 import io.github.ngoroth.offlinetranslator.core.SpeechRecognitionReadiness
 import io.github.ngoroth.offlinetranslator.runtime.ConversationRuntimeOwner
 import io.github.ngoroth.offlinetranslator.runtime.RuntimeOwnerController
+import io.github.ngoroth.offlinetranslator.ui.ScreenAwake
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.CoroutineDispatcher
@@ -50,6 +51,79 @@ import org.junit.Test
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class ConversationViewModelTest {
+    @Test fun screenDemandCoversWaitingAndReleasesOnStopAndBackgroundWithoutResumingSession() = runTest {
+        withModel { fixture ->
+            assertFalse(fixture.screen.keepScreenOn)
+            fixture.model.start()
+            runCurrent()
+            assertTrue(fixture.model.state.value.sessionActive)
+            assertTrue(fixture.screen.keepScreenOn)
+            fixture.model.stop()
+            runCurrent()
+            assertFalse(fixture.screen.keepScreenOn)
+            fixture.model.start()
+            runCurrent()
+            assertTrue(fixture.screen.keepScreenOn)
+            fixture.model.leaveForeground()
+            assertFalse(fixture.screen.keepScreenOn)
+            runCurrent()
+            fixture.model.enterForeground()
+            runCurrent()
+            assertFalse(fixture.model.state.value.sessionActive)
+            assertFalse(fixture.screen.keepScreenOn)
+        }
+    }
+
+    @Test fun preparationErrorReleasesOnlyItsOwnDemandAndDisposedOwnerCannotReacquire() = runTest {
+        withModel(initiallyReady = false) { fixture ->
+            val other = fixture.screen.owner().acquire()
+            fixture.models.installationGate = CompletableDeferred()
+            fixture.models.installFailure = true
+            fixture.model.prepareLanguages()
+            runCurrent()
+            other.close()
+            assertTrue(fixture.screen.keepScreenOn)
+            fixture.models.installationGate?.complete(Unit)
+            runCurrent()
+            assertEquals(ConversationPreparation.ERROR, fixture.model.preparation.value)
+            assertFalse(fixture.screen.keepScreenOn)
+            fixture.model.dispose()
+            fixture.model.prepareLanguages()
+            runCurrent()
+            assertFalse(fixture.screen.keepScreenOn)
+        }
+    }
+
+    @Test fun outputWarmupOwnsDemandButPreferenceSaveDoesNot() = runTest {
+        withModel(speechOutputEnabled = false) { fixture ->
+            fixture.preference.gate = CompletableDeferred()
+            fixture.output.prepareGate = CompletableDeferred()
+            fixture.model.toggleSpeechOutput()
+            runCurrent()
+            assertFalse(fixture.screen.keepScreenOn)
+            fixture.preference.gate?.complete(Unit)
+            runCurrent()
+            assertTrue(fixture.screen.keepScreenOn)
+            fixture.model.stop()
+            runCurrent()
+            assertFalse(fixture.screen.keepScreenOn)
+        }
+    }
+
+    @Test fun localInitializationDemandIsRevokedBeforeLateNativeCompletion() = runTest {
+        withModel(configure = {
+            it.translation.localInstalled = true
+            it.translation.localGate = CompletableDeferred()
+        }) { fixture ->
+            assertTrue(fixture.screen.keepScreenOn)
+            fixture.model.leaveForeground()
+            assertFalse(fixture.screen.keepScreenOn)
+            fixture.translation.localGate?.complete(Unit)
+            runCurrent()
+            assertFalse(fixture.screen.keepScreenOn)
+        }
+    }
+
     @Test fun trimDuringInitialLocalPreparationSettlesIdleAndAllowsRecovery() = runTest {
         val dispatcher = StandardTestDispatcher(testScheduler)
         Dispatchers.setMain(dispatcher)
@@ -1416,6 +1490,7 @@ class ConversationViewModelTest {
             )
         }
         val preference = OutputPreference().apply { saved = speechOutputEnabled }
+        val screen = ScreenAwake {}.apply { setStarted(true) }
         val model = ConversationViewModel(owner, controller, saveSpeechOutput = { enabled, fresh ->
             controller.saveSpeechOutput(owner, fresh) {
                 preference.gate?.await()
@@ -1429,8 +1504,8 @@ class ConversationViewModelTest {
                     true
                 }
             }
-        })
-        return Fixture(controller, observationJob, models, capture, recognition, translation, output, owner, model, preference)
+        }, screenAwake = screen)
+        return Fixture(controller, observationJob, models, capture, recognition, translation, output, owner, model, preference, screen)
     }
 
     private class Fixture(
@@ -1444,6 +1519,7 @@ class ConversationViewModelTest {
         val owner: ConversationRuntimeOwner,
         val model: ConversationViewModel,
         val preference: OutputPreference,
+        val screen: ScreenAwake,
     )
 
     private class OutputPreference {
@@ -1467,6 +1543,7 @@ class ConversationViewModelTest {
         val readinessExiting = CompletableDeferred<Unit>()
         var readinessFinished = false
         override val models = MutableStateFlow<List<SpeechModelStatus>>(emptyList())
+        override val downloadPackages = MutableStateFlow<List<SpeechModelStatus>>(emptyList())
         override suspend fun install(speechOutputRequired: Boolean) {
             installs++
             installationGate?.await()

@@ -79,6 +79,12 @@ android {
         versionNameSuffix = "-debug"
     }
 
+    buildTypes.getByName("release") {
+        optimization {
+            enable = true
+        }
+    }
+
     buildFeatures { compose = true }
 
     compileOptions {

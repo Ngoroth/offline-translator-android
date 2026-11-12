@@ -10,6 +10,8 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.flow.combine
+import io.github.ngoroth.offlinetranslator.ui.ScreenAwake
 
 class TranslationViewModel(
     private val owner: TextRuntimeOwner,
@@ -17,6 +19,7 @@ class TranslationViewModel(
     provider: TranslationProviderDescriptor? = null,
     initialInput: String = "",
     initialInputTooLong: Boolean = false,
+    private val screenAwake: ScreenAwake? = null,
 ) : ViewModel() {
     val config = owner.config
     val hasCurrentOwner: Boolean get() = owners.isCurrent(owner)
@@ -38,6 +41,12 @@ class TranslationViewModel(
     private var cleanupJob: Deferred<Result<Unit>>? = null
     private var preparationObservation: Job? = null
     private var localPreparation = false
+    private val awakeOwner = screenAwake?.owner { !disposed && foreground && hasCurrentOwner }
+    private val ownershipObservation = viewModelScope.launch {
+        combine(owners.ownershipVersion, owners.teardownFailed) { _, _ -> Unit }.collect {
+            screenAwake?.refresh()
+        }
+    }
 
     init {
         preparationObservation = viewModelScope.launch {
@@ -155,6 +164,7 @@ class TranslationViewModel(
     fun leaveForeground() {
         if (disposed) return
         foreground = false
+        awakeOwner?.clear()
         generation++
         operation?.cancel()
         mutableState.update { it.copy(isTranslating = false, isPreparing = false, modelStatus = ModelUiStatus.CHECKING) }
@@ -169,9 +179,11 @@ class TranslationViewModel(
         cleanupJob?.let { return it }
         disposed = true
         foreground = false
+        awakeOwner?.close()
         generation++
         operation?.cancel()
         preparationObservation?.cancel()
+        ownershipObservation.cancel()
         val cleanupScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
         val result = cleanupScope.async(start = CoroutineStart.LAZY) {
             operation?.join()
@@ -217,7 +229,10 @@ class TranslationViewModel(
     }
 
     private suspend fun <T> useEngine(action: suspend (TranslationEngine) -> T): T? =
-        owners.use(owner) { owner.operation { action(owner.translation) } }
+        owners.use(owner) {
+            val demand = awakeOwner?.acquire()
+            try { owner.operation { action(owner.translation) } } finally { demand?.close() }
+        }
 
     private fun updateAfterCancellation(request: Long) {
         val preparation = owner.translation.preparation.value

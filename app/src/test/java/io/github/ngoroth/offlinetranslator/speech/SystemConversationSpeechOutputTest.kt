@@ -1003,6 +1003,7 @@ class SystemConversationSpeechOutputTest {
         var closes = 0
         var closeFailure: Throwable? = null
         override val models = MutableStateFlow<List<SpeechModelStatus>>(emptyList())
+        override val downloadPackages = MutableStateFlow<List<SpeechModelStatus>>(emptyList())
         override suspend fun install(speechOutputRequired: Boolean) = Unit
         override suspend fun isConversationReady(speechOutputRequired: Boolean) = true
         override fun close() { closes++; closeFailure?.let { throw it } }

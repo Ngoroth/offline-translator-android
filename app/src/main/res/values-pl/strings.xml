@@ -3,9 +3,9 @@
     <string name="app_name">Tłumacz offline</string>
     <string name="help_action">Pomoc</string>
     <string name="help_title">Pomoc</string>
-    <string name="help_conversation">Wybierz dwa języki i rozpocznij rozmowę. Mówcie na zmianę, gdy mikrofon jest aktywny. Czytaj tłumaczenie tutaj; przycisk głośnika włącza lub wyłącza odczytywanie.</string>
+    <string name="help_conversation">Wybierz dwa języki i rozpocznij rozmowę. Mówcie na zmianę, gdy mikrofon jest aktywny.</string>
     <string name="help_text">Wybierz języki, wpisz tekst i dotknij przycisku tłumaczenia.</string>
-    <string name="help_preparation">Przygotuj języki jednorazowo przez Wi‑Fi, aby tłumaczyć offline. Rozmiar pobierania może nie być znany z góry.</string>
+    <string name="help_preparation">Przygotuj języki przez Wi‑Fi, aby tłumaczyć offline.</string>
     <string name="help_terms_action">Warunki tłumaczenia</string>
     <string name="help_terms_title">Warunki tłumaczenia</string>
     <string name="conversation_empty_title">Zrozumcie się nawzajem</string>
@@ -48,7 +48,6 @@
     <string name="conversation_language_teardown_error">Nie udało się bezpiecznie zatrzymać poprzedniej rozmowy. Uruchom aplikację ponownie przed zmianą języków, przygotowaniem lub rozpoczęciem rozmowy.</string>
     <string name="conversation_preparation_error">Przygotowanie nie jest zakończone. Sprawdź połączenie i miejsce w pamięci, a następnie spróbuj ponownie.</string>
     <string name="conversation_preparation_missing">Wybrane języki nie są gotowe.</string>
-    <string name="conversation_download_progress">Pobieranie · %1$d%%</string>
     <string name="conversation_resource_ready">Gotowe</string>
     <string name="conversation_permission_denied">Potrzebne jest uprawnienie do mikrofonu. Dotknij Rozpocznij rozmowę, aby spróbować ponownie, lub włącz uprawnienie w ustawieniach aplikacji.</string>
     <string name="conversation_dropped">Pominięte wypowiedzi: %1$d. Poczekaj na zakończenie bieżącej wypowiedzi, a następnie powtórz.</string>
@@ -177,7 +176,10 @@
     <string name="model_tts_lessac">Piper Lessac medium · angielski</string>
     <string name="translation_verifying">Sprawdzanie integralności modelu tłumaczenia…</string>
     <string name="translation_loading">Ładowanie i rozgrzewanie lokalnego tłumaczenia…</string>
-    <string name="translation_download_bytes">%1$d / %2$d bajtów</string>
+    <string name="speech_downloading">Pobieranie zasobów mowy…</string>
+    <string name="translation_downloading">Pobieranie modelu tłumaczenia…</string>
+    <string name="speech_verifying">Weryfikowanie zasobów mowy…</string>
+    <string name="preparation_download_percent">%1$d%%</string>
     <string name="translation_model_repair">Brak modelu tłumaczenia lub model jest uszkodzony. Przygotuj tłumaczenie offline ponownie.</string>
     <string name="translation_storage_error">Nie można zapisać lub pobrać modelu. Sprawdź wolne miejsce i Wi‑Fi, a potem przygotuj ponownie.</string>
     <string name="translation_runtime_error">Nie można załadować lokalnego silnika. Przygotuj ponownie; jeśli błąd pozostaje, uruchom aplikację ponownie.</string>
@@ -187,7 +189,7 @@
     <string name="translation_timeout">Przygotowanie trwało zbyt długo. Sprawdź stan i spróbuj ponownie.</string>
     <string name="model_prepare_hint">Przygotuj modele.</string>
     <string name="tencent_model_download_hint">1,13 GB · pobieranie przez Wi‑Fi</string>
-    <string name="tencent_model_explanation">Tencent Hy-MT2 używa jednego modelu 1,13 GB dla wszystkich języków. Pobieranie tylko przez Przygotuj w Wi‑Fi; po ponownym otwarciu Rozmowa automatycznie inicjalizuje zweryfikowany, już zainstalowany model, gdy wymagane zasoby mowy są gotowe lokalnie, bez automatycznego pobierania ani naprawy. Tekst również automatycznie inicjalizuje zweryfikowany, już zainstalowany model przy wejściu; pobieranie i naprawa wymagają jawnego wybrania Przygotuj w Wi‑Fi; oba tryby inicjalizują lokalnie tylko w razie potrzeby. Przy tym samym dostawcy i wybranej parze dwóch języków Tekst i Rozmowa na pierwszym planie współdzielą przygotowany translator, bez ponownego ładowania ani rozgrzewania przy przełączaniu trybów. Mikrofon i komponenty mowy nadal są zamykane przy opuszczaniu Rozmowy. Translator w pamięci podręcznej jest zwalniany po przejściu aplikacji w tło, przy presji pamięci lub zmianie dostawcy bądź pary; po powrocie zainstalowany model jest w razie potrzeby automatycznie inicjalizowany lokalnie. Może wymagać kilku GB pamięci; jakość i wydajność na telefonie nie są zakwalifikowane.</string>
+    <string name="tencent_model_explanation">Przygotuj model tłumaczenia o rozmiarze 1,13 GB przez Wi‑Fi do użytku offline. Może być potrzebne kilka GB pamięci RAM.</string>
     <string name="settings_recognition_service">Usługa rozpoznawania mowy</string>
     <string name="recognition_service_on_device">Lokalna usługa Androida</string>
     <string name="conversation_recognition_incompatible_service">Wybrana usługa rozpoznawania nie została zweryfikowana do rozmów offline. Wybierz zgodną usługę w ustawieniach zaawansowanych.</string>

@@ -3,9 +3,9 @@
     <string name="app_name">Çevrimdışı Çevirmen</string>
     <string name="help_action">Yardım</string>
     <string name="help_title">Yardım</string>
-    <string name="help_conversation">İki dil seçip konuşmayı başlatın. Mikrofon etkinken sırayla konuşun. Çeviriyi buradan okuyun; hoparlör düğmesiyle sesli okumayı açıp kapatın.</string>
+    <string name="help_conversation">İki dil seçip konuşmayı başlatın. Mikrofon etkinken sırayla konuşun.</string>
     <string name="help_text">Dilleri seçin, metninizi girin ve çeviri düğmesine dokunun.</string>
-    <string name="help_preparation">Çevrimdışı çeviri için dilleri bir kez Wi‑Fi üzerinden hazırlayın. İndirme boyutu önceden bilinmeyebilir.</string>
+    <string name="help_preparation">Çevrimdışı çeviri için dilleri Wi‑Fi üzerinden hazırlayın.</string>
     <string name="help_terms_action">Çeviri koşulları</string>
     <string name="help_terms_title">Çeviri koşulları</string>
     <string name="conversation_empty_title">Birbirinizi anlayın</string>
@@ -48,7 +48,6 @@
     <string name="conversation_language_teardown_error">Önceki konuşma güvenli biçimde durdurulamadı. Dil değiştirmeden, konuşmayı hazırlamadan veya başlatmadan önce uygulamayı yeniden başlatın.</string>
     <string name="conversation_preparation_error">Hazırlık tamamlanmadı. Bağlantınızı ve depolama alanını kontrol edip yeniden deneyin.</string>
     <string name="conversation_preparation_missing">Seçilen diller hazır değil.</string>
-    <string name="conversation_download_progress">İndiriliyor · %1$d%%</string>
     <string name="conversation_resource_ready">Hazır</string>
     <string name="conversation_permission_denied">Mikrofon izni gerekiyor. Tekrar denemek için Konuşmayı başlat düğmesine dokunun veya uygulama ayarlarında izin verin.</string>
     <string name="conversation_dropped">Atlanan konuşmalar: %1$d. Geçerli konuşma sırasının bitmesini bekleyip tekrar söyleyin.</string>
@@ -177,7 +176,10 @@
     <string name="model_tts_lessac">Piper Lessac medium · İngilizce</string>
     <string name="translation_verifying">Çeviri modelinin bütünlüğü doğrulanıyor…</string>
     <string name="translation_loading">Yerel çeviri yükleniyor ve ısıtılıyor…</string>
-    <string name="translation_download_bytes">%1$d / %2$d bayt</string>
+    <string name="speech_downloading">Konuşma kaynakları indiriliyor…</string>
+    <string name="translation_downloading">Çeviri modeli indiriliyor…</string>
+    <string name="speech_verifying">Konuşma kaynakları doğrulanıyor…</string>
+    <string name="preparation_download_percent">%1$d%%</string>
     <string name="translation_model_repair">Çeviri modeli eksik veya bozuk. Çevrimdışı çeviriyi yeniden hazırlayın.</string>
     <string name="translation_storage_error">Model kaydedilemedi veya indirilemedi. Boş alanı ve Wi‑Fi bağlantısını kontrol edip yeniden hazırlayın.</string>
     <string name="translation_runtime_error">Yerel çeviri motoru yüklenemedi. Yeniden hazırlayın; sürerse uygulamayı yeniden başlatın.</string>
@@ -187,7 +189,7 @@
     <string name="translation_timeout">Çeviri hazırlığı çok uzun sürdü. Hazırlık durumunu kontrol edip yeniden deneyin.</string>
     <string name="model_prepare_hint">Modelleri hazırlayın.</string>
     <string name="tencent_model_download_hint">1,13 GB · Wi‑Fi ile indirme</string>
-    <string name="tencent_model_explanation">Tencent Hy-MT2 tüm diller için 1,13 GB tek model kullanır; yalnızca Wi‑Fi üzerinden Hazırla ile indirilir. Yeniden açıldığında, gerekli konuşma kaynakları yerel olarak hazırsa Sohbet doğrulanmış ve zaten kurulu modeli otomatik başlatır; otomatik indirme veya onarım yapılmaz. Metin de girişte doğrulanmış ve zaten kurulu modeli otomatik başlatır; indirme ve onarım için Wi‑Fi üzerinden açıkça Hazırla seçilmelidir; her iki mod da yalnızca gerektiğinde yerel olarak başlatır. Aynı sağlayıcı ve seçili iki dilli çift için ön plandaki Metin ve Sohbet, hazırlanmış çeviriciyi paylaşır; mod değiştirirken yeniden yükleme veya ısınma yapılmaz. Sohbetten çıkarken mikrofon ve konuşma bileşenleri yine kapatılır. Önbellekteki çevirici uygulama arka plana geçtiğinde, bellek baskısında veya sağlayıcı ya da dil çifti değiştiğinde serbest bırakılır; geri dönüldüğünde kurulu model gerektiğinde otomatik olarak yerel başlatılır. Birkaç GB bellek gerekebilir; çeviri kalitesi ve telefon performansı doğrulanmamıştır.</string>
+    <string name="tencent_model_explanation">Çevrimdışı kullanım için 1,13 GB çeviri modelini Wi‑Fi üzerinden hazırlayın. Birkaç GB RAM gerekebilir.</string>
     <string name="settings_recognition_service">Konuşma tanıma hizmeti</string>
     <string name="recognition_service_on_device">Android cihaz üzeri hizmeti</string>
     <string name="conversation_recognition_incompatible_service">Seçilen tanıma hizmetinin çevrimdışı konuşma için uygunluğu doğrulanmamıştır. Gelişmiş ayarlardan uyumlu bir hizmet seçin.</string>

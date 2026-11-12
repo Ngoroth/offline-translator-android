@@ -5,6 +5,8 @@ import kotlinx.coroutines.flow.StateFlow
 /** Preparation is explicit; inference must never download a missing resource. */
 interface ConversationModelRepository : AutoCloseable {
     val models: StateFlow<List<SpeechModelStatus>>
+    /** Distinct selected installable packages, including recognition and currently required output. */
+    val downloadPackages: StateFlow<List<SpeechModelStatus>>
     suspend fun install(speechOutputRequired: Boolean)
     suspend fun isConversationReady(speechOutputRequired: Boolean): Boolean
     override fun close()

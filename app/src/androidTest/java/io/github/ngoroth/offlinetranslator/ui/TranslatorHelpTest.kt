@@ -72,7 +72,7 @@ class TranslatorHelpTest {
                 MaterialTheme {
                     Box(Modifier.width(420.dp).height(700.dp)) {
                         if (fixture.conversation) {
-                            ConversationScreen(ConversationState(), emptyList(), ConversationPreparation.IDLE,
+                            ConversationScreen(ConversationState(), emptyList(), emptyList(), ConversationPreparation.IDLE,
                                 true, false, {}, {}, provider = TencentTranslationEngine.descriptor)
                         } else {
                             TranslationScreen(TranslationUiState(modelStatus = ModelUiStatus.READY),

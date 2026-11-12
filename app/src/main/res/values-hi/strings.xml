@@ -3,9 +3,9 @@
     <string name="app_name">ऑफ़लाइन अनुवादक</string>
     <string name="help_action">सहायता</string>
     <string name="help_title">सहायता</string>
-    <string name="help_conversation">दो भाषाएँ चुनें और बातचीत शुरू करें। माइक्रोफ़ोन सक्रिय होने पर बारी-बारी से बोलें। अनुवाद यहाँ पढ़ें; स्पीकर बटन से अनुवाद की आवाज़ चालू या बंद करें।</string>
+    <string name="help_conversation">दो भाषाएँ चुनें और बातचीत शुरू करें। माइक्रोफ़ोन सक्रिय होने पर बारी-बारी से बोलें।</string>
     <string name="help_text">भाषाएँ चुनें, अपना पाठ दर्ज करें और अनुवाद बटन पर टैप करें।</string>
-    <string name="help_preparation">ऑफ़लाइन अनुवाद के लिए भाषाओं को एक बार Wi‑Fi से तैयार करें। डाउनलोड का आकार पहले से ज्ञात न हो सकता है।</string>
+    <string name="help_preparation">ऑफ़लाइन अनुवाद के लिए भाषाओं को Wi‑Fi से तैयार करें।</string>
     <string name="help_terms_action">अनुवाद की शर्तें</string>
     <string name="help_terms_title">अनुवाद की शर्तें</string>
     <string name="conversation_empty_title">एक-दूसरे को समझें</string>
@@ -48,7 +48,6 @@
     <string name="conversation_language_teardown_error">पिछली बातचीत सुरक्षित रूप से रोकी नहीं जा सकी। भाषा बदलने या बातचीत तैयार करने या शुरू करने से पहले ऐप दोबारा शुरू करें।</string>
     <string name="conversation_preparation_error">तैयारी अधूरी है। कनेक्शन और स्टोरेज जाँचें, फिर कोशिश करें।</string>
     <string name="conversation_preparation_missing">चुनी हुई भाषाएँ तैयार नहीं हैं।</string>
-    <string name="conversation_download_progress">डाउनलोड हो रहा है · %1$d%%</string>
     <string name="conversation_resource_ready">तैयार</string>
     <string name="conversation_permission_denied">माइक्रोफ़ोन की अनुमति चाहिए। फिर कोशिश करने के लिए बातचीत शुरू करें पर टैप करें, या ऐप की सेटिंग में अनुमति दें।</string>
     <string name="conversation_dropped">छूटे हुए कथन: %1$d। मौजूदा बारी पूरी होने तक प्रतीक्षा करें, फिर दोहराएँ।</string>
@@ -177,7 +176,10 @@
     <string name="model_tts_lessac">Piper Lessac medium · अंग्रेज़ी</string>
     <string name="translation_verifying">अनुवाद मॉडल की अखंडता जाँची जा रही है…</string>
     <string name="translation_loading">स्थानीय अनुवाद लोड और तैयार किया जा रहा है…</string>
-    <string name="translation_download_bytes">%1$d / %2$d बाइट</string>
+    <string name="speech_downloading">वाक् संसाधन डाउनलोड हो रहे हैं…</string>
+    <string name="translation_downloading">अनुवाद मॉडल डाउनलोड हो रहा है…</string>
+    <string name="speech_verifying">वाक् संसाधनों का सत्यापन हो रहा है…</string>
+    <string name="preparation_download_percent">%1$d%%</string>
     <string name="translation_model_repair">अनुवाद मॉडल नहीं है या क्षतिग्रस्त है। ऑफलाइन अनुवाद फिर तैयार करें।</string>
     <string name="translation_storage_error">मॉडल सहेजा या डाउनलोड नहीं किया जा सका। खाली जगह और Wi‑Fi जाँचकर फिर तैयार करें।</string>
     <string name="translation_runtime_error">स्थानीय अनुवाद इंजन लोड नहीं हुआ। फिर तैयार करें; समस्या रहे तो ऐप फिर शुरू करें।</string>
@@ -187,7 +189,7 @@
     <string name="translation_timeout">अनुवाद की तैयारी में बहुत समय लगा। तैयारी की स्थिति जाँचकर फिर प्रयास करें।</string>
     <string name="model_prepare_hint">मॉडल तैयार करें।</string>
     <string name="tencent_model_download_hint">1.13 GB · वाई-फ़ाई से डाउनलोड</string>
-    <string name="tencent_model_explanation">Tencent Hy-MT2 सभी भाषाओं के लिए एक 1.13 GB मॉडल उपयोग करता है, जो केवल Wi‑Fi पर तैयार करें दबाने से डाउनलोड होता है। फिर खोलने पर, बातचीत आवश्यक वाक् संसाधन स्थानीय रूप से तैयार होने पर सत्यापित, पहले से स्थापित मॉडल को अपने आप आरंभ करती है; कोई स्वचालित डाउनलोड या मरम्मत नहीं होती। टेक्स्ट भी खोलने पर सत्यापित, पहले से स्थापित मॉडल को अपने आप आरंभ करता है; डाउनलोड और मरम्मत के लिए Wi‑Fi पर स्पष्ट रूप से तैयार करें दबाना ज़रूरी है; दोनों मोड केवल ज़रूरत होने पर स्थानीय रूप से आरंभ करते हैं। समान प्रदाता और चुने गए दो भाषाओं के जोड़े के लिए, अग्रभूमि में टेक्स्ट और बातचीत तैयार अनुवादक साझा करते हैं; मोड बदलने पर उसे फिर से लोड या वॉर्म-अप नहीं किया जाता। बातचीत से निकलने पर माइक्रोफ़ोन और वाक् घटक अब भी बंद होते हैं। ऐप के पृष्ठभूमि में जाने, मेमोरी दबाव या प्रदाता या भाषा-जोड़ा बदलने पर कैश किया गया अनुवादक मुक्त कर दिया जाता है; वापस आने पर ज़रूरत के अनुसार स्थापित मॉडल अपने आप स्थानीय रूप से आरंभ होता है। कई GB मेमोरी लग सकती है; अनुवाद गुणवत्ता और फोन प्रदर्शन अभी प्रमाणित नहीं हैं।</string>
+    <string name="tencent_model_explanation">ऑफ़लाइन उपयोग के लिए 1.13 GB का अनुवाद मॉडल Wi‑Fi से तैयार करें। कई GB RAM की ज़रूरत पड़ सकती है।</string>
     <string name="settings_recognition_service">वाक् पहचान सेवा</string>
     <string name="recognition_service_on_device">Android की डिवाइस पर चलने वाली सेवा</string>
     <string name="conversation_recognition_incompatible_service">चुनी गई पहचान सेवा ऑफ़लाइन बातचीत के लिए सत्यापित नहीं है। बेहतर सेटिंग में कोई संगत सेवा चुनें।</string>

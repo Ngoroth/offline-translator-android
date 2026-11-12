@@ -79,6 +79,10 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
+import androidx.compose.ui.semantics.ProgressBarRangeInfo
+import androidx.compose.ui.semantics.getOrNull
+import androidx.compose.ui.test.assertContentDescriptionEquals
+import io.github.ngoroth.offlinetranslator.ui.TranslationPreparationTestTags
 
 class ConversationScreenTest {
     @get:Rule val compose = createComposeRule()
@@ -91,7 +95,7 @@ class ConversationScreenTest {
         val changing = mutableStateOf(false)
         val context = InstrumentationRegistry.getInstrumentation().targetContext
         compose.setContent { MaterialTheme {
-            ConversationScreen(state.value, readyModels(), ConversationPreparation.IDLE, true, false, {}, {},
+            ConversationScreen(state.value, readyModels(), emptyList(), ConversationPreparation.IDLE, true, false, {}, {},
                 ownerAvailable = ownerAvailable.value, languageChanging = changing.value)
         } }
         val capture = compose.onNodeWithTag(ConversationTestTags.CAPTURE_STATUS)
@@ -126,7 +130,7 @@ class ConversationScreenTest {
         val context = InstrumentationRegistry.getInstrumentation().targetContext
         compose.setContent { MaterialTheme {
             ConversationScreen(ConversationState(sessionActive = true, captureActive = false, phase = ConversationPhase.SPEAKING),
-                readyModels(), ConversationPreparation.IDLE, true, false, {}, { stops++ },
+                readyModels(), emptyList(), ConversationPreparation.IDLE, true, false, {}, { stops++ },
                 speechOutputEnabled = enabled.value, speechOutputChanging = changing.value,
                 ownerAvailable = ownerAvailable.value, onToggleSpeechOutput = { enabled.value = !enabled.value; toggles++ })
         } }
@@ -160,7 +164,7 @@ class ConversationScreenTest {
         var rechecks = 0
         var settings = 0
         compose.setContent { MaterialTheme {
-            ConversationScreen(state.value, readyModels(), ConversationPreparation.IDLE, true, false, {}, {},
+            ConversationScreen(state.value, readyModels(), emptyList(), ConversationPreparation.IDLE, true, false, {}, {},
                 systemOutput = true, outputReadiness = SpeechOutputReadiness.MISSING_LOCAL_VOICE,
                 speechOutputEnabled = false, speechOutputUnavailable = unavailable.value,
                 speechOutputProblem = problem.value, speechOutputSaveError = saveError.value,
@@ -194,7 +198,7 @@ class ConversationScreenTest {
         var prepares = 0
         val context = InstrumentationRegistry.getInstrumentation().targetContext
         compose.setContent { MaterialTheme {
-            ConversationScreen(state.value, readyModels(), preparation.value, true, false,
+            ConversationScreen(state.value, readyModels(), emptyList(), preparation.value, true, false,
                 { prepares++; preparation.value = ConversationPreparation.INSTALLING },
                 { state.value = ConversationState() },
                 systemOutput = false, outputReadiness = readiness.value,
@@ -232,7 +236,7 @@ class ConversationScreenTest {
     @Test fun outputOnlyStartupBlockerStillAllowsSilentEscapeWithoutAnOwner() {
         val enabled = mutableStateOf(true)
         compose.setContent { MaterialTheme {
-            ConversationScreen(ConversationState(), emptyList(), ConversationPreparation.IDLE, false, false, {}, {},
+            ConversationScreen(ConversationState(), emptyList(), emptyList(), ConversationPreparation.IDLE, false, false, {}, {},
                 ownerAvailable = false, configurationProblem = ConfigurationProblem.UNSUPPORTED_VOICE,
                 speechOutputEnabled = enabled.value, onToggleSpeechOutput = { enabled.value = false })
         } }
@@ -258,7 +262,7 @@ class ConversationScreenTest {
                 LocalResources provides context.resources, LocalDensity provides Density(density.density, 2f)) {
                 MaterialTheme {
                     Box(Modifier.width(320.dp).height(360.dp)) {
-                        ConversationScreen(state.value, readyModels(), ConversationPreparation.IDLE, true, false, {}, {},
+                        ConversationScreen(state.value, readyModels(), emptyList(), ConversationPreparation.IDLE, true, false, {}, {},
                             provider = TencentTranslationEngine.descriptor, speechOutputEnabled = false,
                             speechOutputUnavailable = true, systemOutput = true,
                             outputReadiness = SpeechOutputReadiness.MISSING_LOCAL_VOICE, canInstallVoiceData = true)
@@ -305,7 +309,7 @@ class ConversationScreenTest {
         compose.setContent {
             val density = LocalDensity.current
             CompositionLocalProvider(LocalDensity provides Density(density.density, fontScale.value)) { MaterialTheme {
-                ConversationScreen(ConversationState(), emptyList(),
+                ConversationScreen(ConversationState(), emptyList(), emptyList(),
                     if (installing.value) ConversationPreparation.CHECKING else ConversationPreparation.IDLE,
                     true, false, {}, {},
                     systemRecognition = true, recognitionReadiness = readiness.value,
@@ -332,7 +336,7 @@ class ConversationScreenTest {
     @Test fun outputRecoveryKeepsInstallAvailableForEverySelectedPairWithoutStarting() {
         val pair = mutableStateOf(LanguagePair(LanguageCatalog.RUSSIAN, LanguageCatalog.ENGLISH))
         compose.setContent { MaterialTheme {
-            ConversationScreen(ConversationState(), emptyList(), ConversationPreparation.IDLE, false, false, {}, {},
+            ConversationScreen(ConversationState(), emptyList(), emptyList(), ConversationPreparation.IDLE, false, false, {}, {},
                 pair = pair.value, systemOutput = true, outputReadiness = SpeechOutputReadiness.MISSING_LOCAL_VOICE,
                 canInstallVoiceData = true)
         } }
@@ -357,7 +361,7 @@ class ConversationScreenTest {
         var checks = 0
         var opens = 0
         compose.setContent { MaterialTheme {
-            ConversationScreen(ConversationState(), emptyList(), ConversationPreparation.IDLE, true, false, {}, {},
+            ConversationScreen(ConversationState(), emptyList(), emptyList(), ConversationPreparation.IDLE, true, false, {}, {},
                 systemRecognition = true, recognitionReadiness = readiness.value, canChooseLocalRecognition = eligible.value,
                 onRecheck = { checks++ }, onOpenAdvancedSettings = { opens++ })
         } }
@@ -395,7 +399,7 @@ class ConversationScreenTest {
             CompositionLocalProvider(LocalConfiguration provides configuration, LocalContext provides context,
                 LocalResources provides context.resources, LocalDensity provides Density(density.density, 2f)) { MaterialTheme {
                 Box(Modifier.fillMaxWidth().height(360.dp)) {
-                    ConversationScreen(ConversationState(), emptyList(), ConversationPreparation.ERROR, false, false, {}, {},
+                    ConversationScreen(ConversationState(), emptyList(), emptyList(), ConversationPreparation.ERROR, false, false, {}, {},
                         provider = TencentTranslationEngine.descriptor,
                         pair = LanguagePair(LanguageCatalog.CHINESE, LanguageCatalog.ENGLISH),
                         conversationCoverage = LanguageCatalog.entries.map { it.id }.toSet(),
@@ -435,7 +439,7 @@ class ConversationScreenTest {
         val pair = LanguagePair(LanguageCatalog.RUSSIAN, LanguageCatalog.ENGLISH)
         val selections = mutableListOf<LanguagePair>()
         compose.setContent { MaterialTheme {
-            ConversationScreen(ConversationState(), emptyList(), ConversationPreparation.IDLE, false, false, {}, {},
+            ConversationScreen(ConversationState(), emptyList(), emptyList(), ConversationPreparation.IDLE, false, false, {}, {},
                 pair = pair, conversationCoverage = setOf(LanguageCatalog.RUSSIAN, LanguageCatalog.ENGLISH),
                 systemOutput = true, outputReadiness = SpeechOutputReadiness.MISSING_LOCAL_VOICE,
                 onPairSelected = selections::add)
@@ -481,7 +485,7 @@ class ConversationScreenTest {
         val state = mutableStateOf(ConversationState())
         var actions = 0
         compose.setContent { MaterialTheme {
-            ConversationScreen(state.value, readyModels(), preparation.value, ready.value, false, {}, { actions++ },
+            ConversationScreen(state.value, readyModels(), emptyList(), preparation.value, ready.value, false, {}, { actions++ },
                 languageSelectionEnabled = editable.value, languageChanging = changing.value,
                 languageChangeError = error.value)
         } }
@@ -545,7 +549,7 @@ class ConversationScreenTest {
             CompositionLocalProvider(LocalDensity provides Density(density.density, if (compact) 2f else 1f)) {
                 MaterialTheme {
                     Box(if (compact) Modifier.fillMaxWidth().height(260.dp) else Modifier.fillMaxWidth()) {
-                        ConversationScreen(ConversationState(), readyModels(), preparation.value, ready.value, false,
+                        ConversationScreen(ConversationState(), readyModels(), emptyList(), preparation.value, ready.value, false,
                             { prepares++ }, { actions++ }, provider = TencentTranslationEngine.descriptor,
                             ownerAvailable = owner.value, translationPreparation = detail.value,
                             systemRecognition = true, recognitionReadiness = if (speechReady.value)
@@ -622,29 +626,24 @@ class ConversationScreenTest {
         var actions = 0
         val context = InstrumentationRegistry.getInstrumentation().targetContext
         compose.setContent { MaterialTheme {
-            ConversationScreen(ConversationState(), readyModels(), preparation.value, false, false,
+            ConversationScreen(ConversationState(), readyModels(), emptyList(), preparation.value, false, false,
                 { prepares++ }, { actions++ }, provider = TencentTranslationEngine.descriptor,
                 translationPreparation = detail.value)
         } }
         for ((phase, label) in listOf(TranslationPreparationPhase.VERIFYING to R.string.translation_verifying,
             TranslationPreparationPhase.LOADING to R.string.translation_loading,
-            TranslationPreparationPhase.DOWNLOADING to R.string.status_downloading)) {
-            for (knownBytes in listOf(false, true)) {
-                compose.runOnIdle { detail.value = TranslationPreparationState(phase,
-                    downloadedBytes = if (knownBytes) 25L else null, totalBytes = if (knownBytes) 100L else null) }
-                compose.onNodeWithTag(ConversationTestTags.PREPARATION).assertExists()
-                compose.onNode(hasText(context.getString(label)) and
-                    hasAnyAncestor(hasTestTag(ConversationTestTags.PREPARATION)))
-                    .performScrollTo().assertIsDisplayed()
-                compose.onNode(SemanticsMatcher.keyIsDefined(SemanticsProperties.ProgressBarRangeInfo)).assertExists()
-                if (phase == TranslationPreparationPhase.DOWNLOADING && knownBytes) {
-                    compose.onNodeWithText(context.getString(R.string.translation_download_bytes, 25L, 100L))
-                        .performScrollTo().assertIsDisplayed()
-                }
-                compose.onNodeWithTag(ConversationTestTags.PREPARE).performScrollTo().assertIsNotEnabled().performClick()
-                compose.onNodeWithTag(ConversationTestTags.SESSION_ACTION).assertIsNotEnabled().performClick()
-                compose.runOnIdle { assertEquals(0, prepares); assertEquals(0, actions) }
-            }
+            TranslationPreparationPhase.DOWNLOADING to R.string.translation_downloading)) {
+            compose.runOnIdle { detail.value = TranslationPreparationState(phase,
+                downloadedBytes = 25L, totalBytes = 100L) }
+            compose.onNodeWithTag(ConversationTestTags.PREPARATION).assertExists()
+            compose.onNode(hasText(context.getString(label)) and
+                hasAnyAncestor(hasTestTag(ConversationTestTags.PREPARATION)))
+                .performScrollTo().assertIsDisplayed()
+            assertStageRange(TranslationPreparationTestTags.PROGRESS,
+                if (phase == TranslationPreparationPhase.DOWNLOADING) 0.25f else null)
+            compose.onNodeWithTag(ConversationTestTags.PREPARE).performScrollTo().assertIsNotEnabled().performClick()
+            compose.onNodeWithTag(ConversationTestTags.SESSION_ACTION).assertIsNotEnabled().performClick()
+            compose.runOnIdle { assertEquals(0, prepares); assertEquals(0, actions) }
         }
         compose.runOnIdle {
             detail.value = TranslationPreparationState(TranslationPreparationPhase.FAILED,
@@ -689,7 +688,7 @@ class ConversationScreenTest {
     private fun checkUnknownReadinessGeometry(systemRecognition: Boolean, preferenceChanging: Boolean) {
         val pending = mutableStateOf(true)
         compose.setContent { MaterialTheme {
-            ConversationScreen(ConversationState(), readyModels(),
+            ConversationScreen(ConversationState(), readyModels(), emptyList(),
                 if (pending.value) ConversationPreparation.CHECKING else ConversationPreparation.IDLE,
                 !pending.value, false, {}, {}, provider = TencentTranslationEngine.descriptor,
                 ownerAvailable = !pending.value, systemOutput = true, systemRecognition = systemRecognition,
@@ -711,7 +710,7 @@ class ConversationScreenTest {
     @Test fun completedTranslationMetadataDoesNotInventNewPreparation() {
         val phase = mutableStateOf(io.github.ngoroth.offlinetranslator.core.TranslationPreparationPhase.LOADING)
         compose.setContent { MaterialTheme {
-            ConversationScreen(ConversationState(), readyModels(), ConversationPreparation.IDLE, true, false, {}, {},
+            ConversationScreen(ConversationState(), readyModels(), emptyList(), ConversationPreparation.IDLE, true, false, {}, {},
                 provider = TencentTranslationEngine.descriptor, translationPreparation =
                     io.github.ngoroth.offlinetranslator.core.TranslationPreparationState(phase.value))
         } }
@@ -725,34 +724,169 @@ class ConversationScreenTest {
         }
     }
 
-    @Test fun preparationProgressExcludesOtherLanguagesAndDoesNotInventAndroidSizes() {
-        val models = mutableStateOf(listOf(
-            SpeechModelStatus("selected", "Selected", "https://example.test", "test", 100, SpeechModelInstallState.DOWNLOADING,
-                downloadedBytes = 25, role = SpeechModelRole.ASR, languages = setOf(LanguageCatalog.ENGLISH)),
-            SpeechModelStatus("shared", "Shared", "https://example.test", "test", 100, SpeechModelInstallState.READY,
-                role = SpeechModelRole.VAD),
-            SpeechModelStatus("unselected", "Unselected", "https://example.test", "test", 1_000, SpeechModelInstallState.DOWNLOADING,
-                downloadedBytes = 1_000, role = SpeechModelRole.ASR, languages = setOf(LanguageCatalog.FRENCH)),
-            SpeechModelStatus("voice", "Voice", "https://example.test", "test", 1_000, SpeechModelInstallState.READY,
-                role = SpeechModelRole.TTS, languages = setOf(LanguageCatalog.ENGLISH)),
-        ))
+    @Test fun speechProgressUsesSelectedPackagesAndHandsOffWithoutAnOverallPercent() {
+        val installed = SpeechModelStatus("shared-package", "Shared", "https://example.test", "test",
+            100, SpeechModelInstallState.READY)
+        val transfer = SpeechModelStatus("selected-package", "Selected", "https://example.test", "test",
+            100, SpeechModelInstallState.DOWNLOADING, downloadedBytes = 25)
+        val packages = mutableStateOf(listOf(installed, transfer))
+        val preparation = mutableStateOf(ConversationPreparation.INSTALLING)
+        val ready = mutableStateOf(false)
+        val detail = mutableStateOf(TranslationPreparationState(
+            TranslationPreparationPhase.DOWNLOADING, downloadedBytes = 100, totalBytes = 100))
+        var prepares = 0
+        val context = InstrumentationRegistry.getInstrumentation().targetContext
         compose.setContent { MaterialTheme {
-            ConversationScreen(ConversationState(), models.value, ConversationPreparation.INSTALLING, false, false, {}, {},
-                systemRecognition = true, recognitionReadiness = SpeechRecognitionReadiness.DOWNLOADING,
-                speechOutputEnabled = false)
+            ConversationScreen(ConversationState(), readyModels(), packages.value, preparation.value, ready.value, false, {
+                prepares++
+                packages.value = listOf(installed, transfer.copy(downloadedBytes = 0))
+                preparation.value = ConversationPreparation.INSTALLING
+            }, {}, translationPreparation = detail.value)
         } }
-        compose.onNodeWithTag(ConversationTestTags.PREPARATION_PROGRESS).performScrollTo()
-            .assertIsDisplayed().assertTextContains("62%", substring = true)
-        compose.onNodeWithTag(ConversationTestTags.PREPARE).performScrollTo().assertIsNotEnabled()
+        assertStageRange(ConversationTestTags.PREPARATION_PROGRESS, 0.625f)
+        compose.onNodeWithTag(ConversationTestTags.PREPARATION_PROGRESS)
+            .assertContentDescriptionEquals(context.getString(R.string.speech_downloading))
+        compose.onNodeWithText(context.getString(R.string.preparation_download_percent, 62)).performScrollTo().assertIsDisplayed()
+        compose.onNodeWithTag(TranslationPreparationTestTags.PROGRESS).assertDoesNotExist()
         compose.onNodeWithTag(ConversationTestTags.SESSION_ACTION).assertIsNotEnabled()
-        compose.runOnIdle { models.value = emptyList() }
+        compose.runOnIdle { packages.value = listOf(installed, transfer.copy(downloadedBytes = 100)) }
+        assertStageRange(ConversationTestTags.PREPARATION_PROGRESS, 1f)
+        compose.onNodeWithTag(ConversationTestTags.SESSION_ACTION).assertIsNotEnabled()
+        compose.runOnIdle { packages.value = listOf(installed,
+            transfer.copy(state = SpeechModelInstallState.VERIFYING, downloadedBytes = 100)) }
+        assertStageRange(ConversationTestTags.PREPARATION_PROGRESS, null)
+        compose.onNodeWithTag(ConversationTestTags.PREPARATION_PROGRESS)
+            .assertContentDescriptionEquals(context.getString(R.string.speech_verifying))
+        assertNoProgressCounters()
+        compose.runOnIdle {
+            packages.value = listOf(installed, transfer.copy(state = SpeechModelInstallState.ERROR))
+            preparation.value = ConversationPreparation.ERROR
+        }
         compose.onNodeWithTag(ConversationTestTags.PREPARATION_PROGRESS).assertDoesNotExist()
-        compose.onNodeWithTag(ConversationTestTags.RECOGNITION_READINESS).performScrollTo().assertIsDisplayed()
+        compose.onNodeWithTag(ConversationTestTags.PREPARE).performScrollTo().assertIsEnabled().performClick()
+        compose.runOnIdle { assertEquals(1, prepares) }
+        assertStageRange(ConversationTestTags.PREPARATION_PROGRESS, 0.5f)
         compose.onNodeWithTag(ConversationTestTags.SESSION_ACTION).assertIsNotEnabled()
-        compose.onNodeWithTag(TranslatorHelpTestTags.ACTION).performScrollTo().performClick()
-        compose.onNodeWithTag(TranslatorHelpTestTags.DIALOG).assertIsDisplayed()
-        compose.onNodeWithTag(TranslatorHelpTestTags.CLOSE).performClick()
+        compose.runOnIdle {
+            preparation.value = ConversationPreparation.TRANSLATION
+            detail.value = TranslationPreparationState(
+                TranslationPreparationPhase.DOWNLOADING, downloadedBytes = 50, totalBytes = 100)
+        }
+        compose.onNodeWithTag(ConversationTestTags.PREPARATION_PROGRESS).assertDoesNotExist()
+        assertStageRange(TranslationPreparationTestTags.PROGRESS, 0.5f)
+        compose.onNodeWithTag(TranslationPreparationTestTags.PROGRESS)
+            .assertContentDescriptionEquals(context.getString(R.string.translation_downloading))
+        for (phase in listOf(TranslationPreparationPhase.VERIFYING, TranslationPreparationPhase.LOADING)) {
+            compose.runOnIdle { detail.value = TranslationPreparationState(phase, downloadedBytes = 100, totalBytes = 100) }
+            assertStageRange(TranslationPreparationTestTags.PROGRESS, null)
+            assertNoProgressCounters()
+            compose.onNodeWithTag(ConversationTestTags.SESSION_ACTION).assertIsNotEnabled()
+        }
+        compose.runOnIdle { preparation.value = ConversationPreparation.IDLE; ready.value = true }
+        compose.onNodeWithTag(ConversationTestTags.PREPARATION_PROGRESS).assertDoesNotExist()
+        compose.onNodeWithTag(TranslationPreparationTestTags.PROGRESS).assertDoesNotExist()
+        compose.onNodeWithTag(ConversationTestTags.SESSION_ACTION).assertIsEnabled()
+    }
+
+    @Test fun unknownSpeechCountsAndSystemDownloadsNeverShowNativeCompletion() {
+        val transfer = SpeechModelStatus("package", "Selected", "https://example.test", "test",
+            100, SpeechModelInstallState.DOWNLOADING, downloadedBytes = 25)
+        val packages = mutableStateOf(listOf(transfer.copy(sizeBytes = 0)))
+        val preparation = mutableStateOf(ConversationPreparation.INSTALLING)
+        val system = mutableStateOf(false)
+        val readiness = mutableStateOf(SpeechRecognitionReadiness.DOWNLOADING)
+        var checks = 0
+        compose.setContent { MaterialTheme {
+            ConversationScreen(ConversationState(), readyModels(), packages.value, preparation.value, false, false, {}, {},
+                systemRecognition = system.value, recognitionReadiness = readiness.value, onRecheck = { checks++ })
+        } }
+        for (statuses in listOf(listOf(transfer.copy(sizeBytes = 0)),
+            listOf(transfer.copy(downloadedBytes = -1)), emptyList())) {
+            compose.runOnIdle { packages.value = statuses }
+            assertStageRange(ConversationTestTags.PREPARATION_PROGRESS, null)
+            assertNoProgressCounters()
+        }
+        compose.runOnIdle {
+            system.value = true
+            packages.value = listOf(transfer.copy(state = SpeechModelInstallState.READY, downloadedBytes = 100))
+        }
+        assertStageRange(ConversationTestTags.PREPARATION_PROGRESS, null)
+        assertNoProgressCounters()
+        compose.onNodeWithTag(ConversationTestTags.PREPARE).performScrollTo().assertIsNotEnabled()
+        for (external in listOf(SpeechRecognitionReadiness.DOWNLOADING, SpeechRecognitionReadiness.SCHEDULED,
+            SpeechRecognitionReadiness.DOWNLOAD_FAILED)) {
+            compose.runOnIdle { preparation.value = ConversationPreparation.ERROR; readiness.value = external }
+            compose.onNodeWithTag(ConversationTestTags.PREPARATION_PROGRESS).assertDoesNotExist()
+            compose.onNodeWithTag(ConversationTestTags.RECOGNITION_READINESS).performScrollTo().assertIsDisplayed()
+            compose.onNodeWithTag(ConversationTestTags.RECHECK_RECOGNITION).performScrollTo().assertIsEnabled().performClick()
+            compose.onNodeWithTag(ConversationTestTags.SESSION_ACTION).assertIsNotEnabled()
+        }
+        compose.runOnIdle { assertEquals(3, checks) }
+    }
+
+    @Test fun portraitFontTwoSpeechDownloadAndRetryRemainReachable() {
+        checkSpeechDownloadLayout(wide = false)
+    }
+
+    @Test fun shortWideFontTwoSpeechDownloadAndRetryRemainReachable() {
+        checkSpeechDownloadLayout(wide = true)
+    }
+
+    private fun checkSpeechDownloadLayout(wide: Boolean) {
+        val transfer = SpeechModelStatus("package", "Selected", "https://example.test", "test",
+            100, SpeechModelInstallState.DOWNLOADING)
+        val packages = mutableStateOf(listOf(transfer))
+        val preparation = mutableStateOf(ConversationPreparation.INSTALLING)
+        var prepares = 0
+        compose.setContent {
+            val density = LocalDensity.current
+            CompositionLocalProvider(LocalDensity provides Density(density.density, 2f)) { MaterialTheme {
+                Box(Modifier.width(if (wide) 600.dp else 320.dp).height(if (wide) 260.dp else 480.dp)) {
+                    ConversationScreen(ConversationState(), readyModels(), packages.value, preparation.value, false, false, {
+                        prepares++
+                        preparation.value = ConversationPreparation.INSTALLING
+                        packages.value = listOf(transfer)
+                    }, {}, provider = TencentTranslationEngine.descriptor)
+                }
+            } }
+        }
+        val action = compose.onNodeWithTag(ConversationTestTags.SESSION_ACTION).assertIsDisplayed()
+            .assertIsNotEnabled().assertHeightIsAtLeast(48.dp).fetchSemanticsNode().boundsInRoot
+        val speaker = compose.onNodeWithTag(ConversationTestTags.SPEECH_OUTPUT).assertIsDisplayed()
+            .assertHeightIsAtLeast(48.dp).assertWidthIsAtLeast(48.dp).fetchSemanticsNode().boundsInRoot
+        assertTrue("Speaker and session action must not overlap", speaker.right <= action.left + 1f)
+        for (percent in listOf(0, 1, 50, 99, 100)) {
+            compose.runOnIdle { packages.value = listOf(transfer.copy(downloadedBytes = percent.toLong())) }
+            assertStageRange(ConversationTestTags.PREPARATION_PROGRESS, percent / 100f)
+            compose.onNodeWithTag(ConversationTestTags.PREPARE).performScrollTo().assertIsNotEnabled()
+            compose.onNodeWithTag(ConversationTestTags.SESSION_ACTION).assertIsNotEnabled()
+            assertBoundsUnchanged(action, compose.onNodeWithTag(ConversationTestTags.SESSION_ACTION)
+                .assertIsDisplayed().fetchSemanticsNode().boundsInRoot)
+        }
+        compose.runOnIdle {
+            preparation.value = ConversationPreparation.ERROR
+            packages.value = listOf(transfer.copy(state = SpeechModelInstallState.ERROR))
+        }
+        compose.onNodeWithTag(ConversationTestTags.PREPARATION_PROGRESS).assertDoesNotExist()
+        compose.onNodeWithTag(ConversationTestTags.PREPARE).performScrollTo().assertIsDisplayed()
+            .assertHeightIsAtLeast(48.dp).assertIsEnabled().performClick()
+        compose.runOnIdle { assertEquals(1, prepares) }
+        assertStageRange(ConversationTestTags.PREPARATION_PROGRESS, 0f)
         compose.onNodeWithTag(ConversationTestTags.SESSION_ACTION).assertIsNotEnabled()
+    }
+
+    private fun assertStageRange(tag: String, progress: Float?) {
+        compose.onNodeWithTag(tag).performScrollTo().assertIsDisplayed()
+            .assert(SemanticsMatcher.expectValue(SemanticsProperties.ProgressBarRangeInfo,
+                progress?.let { ProgressBarRangeInfo(it, 0f..1f) } ?: ProgressBarRangeInfo.Indeterminate))
+    }
+
+    private fun assertNoProgressCounters() {
+        compose.onNode(SemanticsMatcher("percentage or byte counter") { node ->
+            node.config.getOrNull(SemanticsProperties.Text)?.any {
+                Regex("\\d+\\s*%|\\d+\\s*/\\s*\\d+").containsMatchIn(it.text)
+            } == true
+        }).assertDoesNotExist()
     }
 
     @Test fun stopRemainsAvailableWhenActiveSessionCannotStartAnotherOne() {
@@ -761,7 +895,7 @@ class ConversationScreenTest {
         var stops = 0
         var toggles = 0
         compose.setContent { MaterialTheme {
-            ConversationScreen(state.value, readyModels(), ConversationPreparation.TRANSLATION, false, false, {},
+            ConversationScreen(state.value, readyModels(), emptyList(), ConversationPreparation.TRANSLATION, false, false, {},
                 { stops++; state.value = ConversationState() }, speechOutputEnabled = output.value,
                 speechOutputChanging = true, onToggleSpeechOutput = { toggles++; output.value = false })
         } }
@@ -829,7 +963,7 @@ class ConversationScreenTest {
             CompositionLocalProvider(LocalDensity provides Density(density.density, fontScale = 2f)) {
                 Box(Modifier.fillMaxWidth().height(260.dp)) {
                     MaterialTheme {
-                        ConversationScreen(state.value, readyModels(), ConversationPreparation.ERROR, false, true, {}, {},
+                        ConversationScreen(state.value, readyModels(), emptyList(), ConversationPreparation.ERROR, false, true, {}, {},
                             provider = TencentTranslationEngine.descriptor, speechOutputEnabled = speechOutputEnabled.value,
                             onToggleSpeechOutput = { speechOutputEnabled.value = !speechOutputEnabled.value })
                     }
@@ -893,7 +1027,7 @@ class ConversationScreenTest {
                 MaterialTheme {
                     Box(Modifier.fillMaxWidth().height(260.dp)) {
                         ConversationScreen(
-                            state.value, emptyList(), ConversationPreparation.IDLE, false, false, {},
+                            state.value, emptyList(), emptyList(), ConversationPreparation.IDLE, false, false, {},
                             { sessionActions++ }, pair = pair.value, provider = TencentTranslationEngine.descriptor,
                             configurationProblem = ConfigurationProblem.UNSUPPORTED_VOICE,
                             conversationCoverage = setOf(LanguageCatalog.RUSSIAN, LanguageCatalog.ENGLISH),
@@ -954,7 +1088,7 @@ class ConversationScreenTest {
         compose.setContent {
             CompositionLocalProvider(LocalUriHandler provides uriHandler) {
                 MaterialTheme {
-                    ConversationScreen(state.value, readyModels(), ConversationPreparation.IDLE, true, false, {}, {},
+                    ConversationScreen(state.value, readyModels(), emptyList(), ConversationPreparation.IDLE, true, false, {}, {},
                         provider = TencentTranslationEngine.descriptor)
                 }
             }
@@ -1050,7 +1184,7 @@ class ConversationScreenTest {
         var installs = 0
         var rechecks = 0
         compose.setContent { MaterialTheme {
-            ConversationScreen(ConversationState(), emptyList(), ConversationPreparation.IDLE, false, false, {}, {},
+            ConversationScreen(ConversationState(), emptyList(), emptyList(), ConversationPreparation.IDLE, false, false, {}, {},
                 systemOutput = true, outputReadiness = SpeechOutputReadiness.MISSING_LOCAL_VOICE,
                 canInstallVoiceData = true, installError = true, onInstallVoiceData = { installs++ }, onRecheck = { rechecks++ })
         } }
@@ -1066,7 +1200,7 @@ class ConversationScreenTest {
         val state = mutableStateOf(ConversationState())
         var actions = 0
         compose.setContent { MaterialTheme {
-            ConversationScreen(state.value, readyModels(), ConversationPreparation.IDLE, true, false, {}, { actions++ },
+            ConversationScreen(state.value, readyModels(), emptyList(), ConversationPreparation.IDLE, true, false, {}, { actions++ },
                 configurationProblem = ConfigurationProblem.UNKNOWN_MODEL)
         } }
         compose.onNodeWithTag(ConversationTestTags.SESSION_ACTION).assertIsNotEnabled()
@@ -1082,7 +1216,7 @@ class ConversationScreenTest {
         var stops = 0
         val attribution = TencentTranslationEngine.descriptor.attribution
         compose.setContent { MaterialTheme {
-            ConversationScreen(state.value, emptyList(),
+            ConversationScreen(state.value, emptyList(), emptyList(),
                 if (blocked.value) ConversationPreparation.TRANSLATION else ConversationPreparation.IDLE,
                 !blocked.value, false, {}, { stops++ }, provider = TencentTranslationEngine.descriptor,
                 configurationProblem = if (blocked.value) ConfigurationProblem.UNKNOWN_MODEL else null,
@@ -1166,6 +1300,7 @@ class ConversationScreenTest {
             ConversationScreen(
                 state = state,
                 models = readyModels(),
+                downloadPackages = emptyList(),
                 preparation = preparation,
                 ready = ready,
                 permissionDenied = permissionDenied,

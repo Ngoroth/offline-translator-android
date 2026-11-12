@@ -16,6 +16,7 @@ import io.github.ngoroth.offlinetranslator.speechmodels.SpeechModelStore
 import io.github.ngoroth.offlinetranslator.speech.AndroidRecognitionDataInstaller
 import kotlinx.coroutines.*
 import kotlin.coroutines.coroutineContext
+import io.github.ngoroth.offlinetranslator.ui.ScreenAwake
 
 
 @Composable
@@ -25,6 +26,7 @@ fun ConversationRoute(
     onLanguageTransitionChanged: (Boolean) -> Unit = {},
     onOpenText: () -> Unit = {},
     onOpenAdvancedSettings: () -> Unit = {},
+    screenAwake: ScreenAwake? = null,
 ) {
     val context = LocalContext.current
     val runtime = remember(context.applicationContext) { AppRuntime.get(context.applicationContext) }
@@ -88,7 +90,7 @@ fun ConversationRoute(
                 guardedCreation = true
                 viewModel = ConversationViewModel(owner, runtime.owners,
                     saveSpeechOutput = { enabled, fresh -> runtime.saveSpeechOutput(owner, enabled, fresh) },
-                    speechOutputProblem = { runtime.speechOutputProblem(owner.config) })
+                    speechOutputProblem = { runtime.speechOutputProblem(owner.config) }, screenAwake = screenAwake)
                 if (languageError == ConversationLanguageChangeError.OPEN) languageError = null
             } else {
                 val currentSettings = runtime.settings.state.value.settings ?: return@LaunchedEffect
@@ -192,6 +194,7 @@ fun ConversationRoute(
     val shown = currentVm?.takeIf { runtime.matches(settings, it.config) && it.hasCurrentOwner }
     val state = shown?.state?.collectAsStateWithLifecycle()?.value ?: ConversationState()
     val statuses = shown?.modelStatuses?.collectAsStateWithLifecycle()?.value ?: emptyList()
+    val downloadPackages = shown?.downloadPackages?.collectAsStateWithLifecycle()?.value ?: emptyList()
     val preparation = shown?.preparation?.collectAsStateWithLifecycle()?.value ?: ConversationPreparation.CHECKING
     val ready = shown?.ready?.collectAsStateWithLifecycle()?.value ?: false
     val permissionDenied = shown?.permissionDenied?.collectAsStateWithLifecycle()?.value ?: false
@@ -209,7 +212,7 @@ fun ConversationRoute(
             runtime.conversationProblems(settings.copy(speechRecognitionBackend = SpeechRecognitionBackend.WHISPER)).isEmpty()
     }
     ConversationScreen(
-        state = state, models = statuses, preparation = preparation,
+        state = state, models = statuses, downloadPackages = downloadPackages, preparation = preparation,
         ready = ready && installRequest == null && !changing && !teardownFailed, permissionDenied = permissionDenied,
         ownerAvailable = shown != null,
         translationPreparation = translationPreparation, preparationFailure = preparationFailure,

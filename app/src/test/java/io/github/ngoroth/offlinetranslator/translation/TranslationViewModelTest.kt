@@ -13,6 +13,7 @@ import io.github.ngoroth.offlinetranslator.core.TranslationPreparationPhase
 import io.github.ngoroth.offlinetranslator.core.TextRuntimeConfig
 import io.github.ngoroth.offlinetranslator.runtime.RuntimeOwnerController
 import io.github.ngoroth.offlinetranslator.runtime.TextRuntimeOwner
+import io.github.ngoroth.offlinetranslator.ui.ScreenAwake
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.Job
@@ -36,6 +37,78 @@ import org.junit.Test
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class TranslationViewModelTest {
+    @Test fun screenDemandCoversRealLocalPreparationAndCancellationRevokesBeforeNativeReturn() = runTest {
+        val dispatcher = StandardTestDispatcher(testScheduler)
+        Dispatchers.setMain(dispatcher)
+        val engine = FakeEngine(ModelAvailability.READY).apply {
+            localGate = CompletableDeferred()
+            nonCancellableLocal = true
+        }
+        val fixture = createFixture(engine, dispatcher)
+        try {
+            runCurrent()
+            assertTrue(fixture.screen.keepScreenOn)
+            fixture.model.leaveForeground()
+            assertFalse(fixture.screen.keepScreenOn)
+            engine.localGate?.complete(ModelAvailability.READY)
+            runCurrent()
+            assertFalse(fixture.screen.keepScreenOn)
+        } finally {
+            engine.localGate?.complete(ModelAvailability.READY)
+            fixture.model.disposeAndJoin()
+            fixture.observationJob.cancelAndJoin()
+            Dispatchers.resetMain()
+        }
+    }
+
+    @Test fun preparationFailureReleasesDemandWithoutClearingIndependentWork() = runTest {
+        val dispatcher = StandardTestDispatcher(testScheduler)
+        Dispatchers.setMain(dispatcher)
+        val engine = FakeEngine(ModelAvailability.MISSING).apply { preparationGate = CompletableDeferred() }
+        val fixture = createFixture(engine, dispatcher)
+        try {
+            runCurrent()
+            val other = fixture.screen.owner().acquire()
+            fixture.model.prepare()
+            runCurrent()
+            other.close()
+            assertTrue(fixture.screen.keepScreenOn)
+            engine.preparationGate?.completeExceptionally(java.io.IOException("Download failed"))
+            runCurrent()
+            assertFalse(fixture.screen.keepScreenOn)
+            assertFalse(fixture.model.state.value.operationInProgress)
+        } finally {
+            engine.preparationGate?.complete(ModelAvailability.MISSING)
+            fixture.model.disposeAndJoin()
+            fixture.observationJob.cancelAndJoin()
+            Dispatchers.resetMain()
+        }
+    }
+
+    @Test fun inferenceDemandEndsOnDisposalAndCannotBeRevivedByStaleOwner() = runTest {
+        val dispatcher = StandardTestDispatcher(testScheduler)
+        Dispatchers.setMain(dispatcher)
+        val engine = FakeEngine(ModelAvailability.READY, suspendTranslation = true)
+        val fixture = createFixture(engine, dispatcher, initialInput = "source")
+        try {
+            runCurrent()
+            assertFalse(fixture.screen.keepScreenOn)
+            fixture.model.translate()
+            runCurrent()
+            assertTrue(fixture.screen.keepScreenOn)
+            fixture.model.dispose()
+            assertFalse(fixture.screen.keepScreenOn)
+            engine.completeSuspendedTranslation("late result")
+            runCurrent()
+            fixture.model.translate()
+            assertFalse(fixture.screen.keepScreenOn)
+        } finally {
+            fixture.model.disposeAndJoin()
+            fixture.observationJob.cancelAndJoin()
+            Dispatchers.resetMain()
+        }
+    }
+
     @Test fun trimDuringInitialLocalPreparationSettlesMissingAndAllowsRecovery() = runTest {
         val dispatcher = StandardTestDispatcher(testScheduler)
         Dispatchers.setMain(dispatcher)
@@ -847,6 +920,7 @@ class TranslationViewModelTest {
         val observationJob: Job,
         val owner: TextRuntimeOwner,
         val model: TranslationViewModel,
+        val screen: ScreenAwake,
     )
 
     private suspend fun createFixture(
@@ -860,12 +934,14 @@ class TranslationViewModelTest {
         val controller = RuntimeOwnerController(scope)
         val config = TextRuntimeConfig(initialPair, "test")
         val owner = controller.replace { TextRuntimeOwner(config, engine) }
+        val screen = ScreenAwake {}.apply { setStarted(true) }
         val model = TranslationViewModel(
             owner = owner,
             owners = controller,
             initialInput = initialInput,
+            screenAwake = screen,
         )
-        return Fixture(controller, observationJob, owner, model)
+        return Fixture(controller, observationJob, owner, model, screen)
     }
 }
 

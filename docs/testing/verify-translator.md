@@ -8,6 +8,142 @@ Run the existing [host commands in CONTRIBUTING](../../CONTRIBUTING.md#baseline-
 
 Host checks do not require a device or speech-model downloads. They do not prove JNI inference, installed system speech resources, translation quality, real audio, content-log privacy or phone performance.
 
+## Optimized release verification
+
+Release source configuration is not proof of optimized JNI behavior. Keep release
+verification separate from the debug instrumentation below. Use one integration
+and device owner after all source changes settle; reuse verified prepared native
+distributions without editing recipes, payloads or receipts.
+
+### Build, sign and retain exact artifacts
+
+With JDK 17, SDK Build Tools 36.0.0 and the established external signing inputs,
+run from the repository root in PowerShell 7:
+
+```powershell
+.\gradlew.bat :app:analyzeReleaseR8Config :app:bundleRelease --console=plain
+```
+
+Inspect the effective R8 configuration and analyzer output, not just task exit:
+code/resource shrinking, optimization and obfuscation must be enabled; debug
+remains unminified. There must be no global `-dontobfuscate`, `-dontrepackage`,
+`-dontshrink` or `-dontoptimize`, or app/dependency-wide blanket keeps. Check the precise Sherpa fields,
+descriptor classes, native-created result constructors and boxed streaming
+callback against `app/src/release/keepRules/release.keep`. Android's native-method
+defaults and Tencent's existing two-class consumer keeps remain applicable.
+
+Use a persistent, artifact-specific `$EvidenceDir` outside the checkout and
+disposable build directories. `$Keystore`, `$PasswordFile`, `$KeyAlias` and
+`$Bundletool` below are caller-supplied external paths/alias, not checked-in
+configuration. Never echo password contents or put passwords in command arguments.
+For an unsigned `bundleRelease` output, sign with JDK `jarsigner`:
+
+```powershell
+Copy-Item app/build/outputs/mapping/release "$EvidenceDir/aab-r8" -Recurse
+& "$env:JAVA_HOME/bin/jarsigner" -keystore $Keystore `
+  -storepass:file $PasswordFile -keypass:file $PasswordFile `
+  -signedjar "$EvidenceDir/offline-translator-release.aab" `
+  app/build/outputs/bundle/release/app-release.aab $KeyAlias
+if ($LASTEXITCODE -ne 0) { throw 'AAB signing failed.' }
+& "$env:JAVA_HOME/bin/jarsigner" -verify -verbose -certs `
+  "$EvidenceDir/offline-translator-release.aab"
+if ($LASTEXITCODE -ne 0) { throw 'AAB signature verification failed.' }
+& "$env:JAVA_HOME/bin/java" -jar $Bundletool validate `
+  --bundle="$EvidenceDir/offline-translator-release.aab"
+if ($LASTEXITCODE -ne 0) { throw 'AAB validation failed.' }
+
+pwsh -NoProfile -File tools/android/build-release.ps1 `
+  -Keystore $Keystore -PasswordFile $PasswordFile -KeyAlias $KeyAlias
+if ($LASTEXITCODE -ne 0) { throw 'Release APK build/signing failed.' }
+Copy-Item app/build/outputs/mapping/release "$EvidenceDir/apk-r8" -Recurse
+```
+
+The existing helper builds/lints, aligns and signs **an APK only**, then verifies
+its signature and 16 KiB ZIP alignment. It does not sign the AAB. Retain its exact
+signed APK and checksum in `$EvidenceDir` before another build overwrites them.
+Record the signer certificate identity for both artifacts and compare with the
+established release identity. Self-signed-certificate trust warnings are distinct
+from signature integrity; retain and explain them rather than suppressing them.
+Validate the AAB manifest and signed APK application ID/version/ABIs, plus native
+ELF LOAD alignment. Current source remains `io.github.ngoroth.offlinetranslator`,
+0.1.7 / versionCode 8; local verification does not authorize a version increment.
+
+Retain full command output and emitted R8 analyzer reports, `mapping.txt`,
+`configuration.txt`, `usage.txt` and `seeds.txt` when emitted. Preserve each
+invocation's mapping before a subsequent APK/AAB build; matching version names
+alone do not bind a mapping to an artifact. Record SHA-256 for signed artifacts
+and evidence, source/build identity including uncommitted changes, native AAR and
+receipt identities, tools and model identities. Missing outputs stay explicitly
+missing, not reconstructed from a different build.
+
+Retrace a representative renamed/transformed frame with the exact artifact's
+mapping using the matching R8 retrace tool. Select a known original symbol/line
+and its actual mapped name; retain input, command/tool version and output, and
+check the recovered symbol/line against source. Label synthetic frames as such,
+not application crashes. Keep private signing inputs and machine-local paths
+out of public evidence; review/redact before sharing.
+
+### Measure DEX, not APK/model size
+
+For each retained signed APK/AAB, sum the ZIP entries' **uncompressed** DEX lengths,
+including all bundle modules. This PowerShell example requires `$SignedApk` and
+`$SignedAab` to point at the retained artifacts:
+
+```powershell
+foreach ($artifact in @($SignedApk, $SignedAab)) {
+  $zip = [System.IO.Compression.ZipFile]::OpenRead($artifact)
+  try {
+    $dex = @($zip.Entries | Where-Object {
+      $_.FullName -match '^(?:[^/]+/dex/)?classes(?:[0-9]+)?\.dex$'
+    })
+    if ($dex.Count -eq 0) { throw "No DEX entries in $artifact" }
+    $dex | Select-Object FullName, Length |
+      Export-Csv "$artifact.dex.csv" -NoTypeInformation
+    [pscustomobject]@{
+      Artifact = [System.IO.Path]::GetFileName($artifact)
+      Sha256 = (Get-FileHash -Algorithm SHA256 $artifact).Hash
+      DexBytes = ($dex | Measure-Object Length -Sum).Sum
+    }
+  } finally {
+    $zip.Dispose()
+  }
+}
+```
+
+Retain the entry inventory and totals with the artifact identity. Do not substitute
+compressed archive size, native library/model size, debug output or an older
+release's DEX. Report measured bytes and local analyzer percentages separately.
+
+### Execute the signed optimized release
+
+Install the exact signed release on the explicitly authorized device, preserving
+app data and prepared packs. A signing conflict is a blocker, not permission to
+uninstall. Debug instrumentation or successful bundle validation cannot prove
+release JNI behavior.
+
+Explicitly prepare pinned Tencent, Whisper, VAD and RU/EN voices before disabling
+networking and verifying connectivity absence. On the actual release UI, exercise
+offline Text and multi-turn Conversation in both RU/EN directions, Stop/restart
+and an actual process force-stop/reopen. Exercise genuine local System output
+and Piper separately: Piper covers the boxed native callback. Use fixed invented
+text/audio, assess retained meaning and non-silent output, and record exact
+artifact/model/device/service/network identities. Missing voices/models remain
+BLOCKED; preserve failures without mock inference or substituted fixtures.
+
+### Separate Play distribution gate
+
+From February 2027, Play's requirement for apps with DEX **greater than 10 MB**
+is at least 25% each for shrinking, optimization and obfuscation. Standard
+release R8 processing is enabled, but the flags alone do not prove thresholds.
+Report any measured shortfall; do not drop features, add blanket keeps or
+disable processing to manufacture a successful result.
+
+Local DEX measurements, analyzer scores, signature checks and runtime checks do
+not establish Console acceptance. Upload, an unused publishable versionCode and
+review of the exact submitted bundle's Console-reported DEX size/percentages need
+separate authorization and access. Until performed, report that gate as
+**unexecuted**, not PASS, and leave the release-optimization backlog open.
+
 ## Device prerequisites
 
 - Use one verification owner and run instrumentation sequentially. Do not run a competing UI-automation session while instrumentation owns the device.
@@ -352,7 +488,7 @@ overall six-direction2000ms goal.
 
 ## Tencent-specific preparation and native checks
 
-Run explicit Tencent native preparation before the host gate; see [CONTRIBUTING](../../CONTRIBUTING.md). No host/CI gate downloads the 1,133,080,448-byte model. In the actual app, confirm the shared Tencent selection in Text and Conversation: fresh startup durably selects the sole provider automatically, and Reset also selects it. No legacy ML Kit selection migration is provided; fresh installation or reinstallation is acceptable, subject to shared-device preservation. Press Prepare over validated Wi-Fi and record missing/downloading byte progress/verifying/loading/ready. Check available private storage before preparation; the model requires its full declared bytes plus installation headroom. Reopen and observe automatic local initialization of verified installed bytes. Readiness must never adopt corrupt bytes or enable Conversation before the selected recognition/output stages are ready. Missing/corrupt/storage/load/memory/limit/Unicode/Wi-Fi/timeout outcomes must stay localized without provider fallback.
+Run explicit Tencent native preparation before the host gate; see [CONTRIBUTING](../../CONTRIBUTING.md). No host/CI gate downloads the 1,133,080,448-byte model. In the actual app, confirm the shared Tencent selection in Text and Conversation: fresh startup durably selects the sole provider automatically, and Reset also selects it. No legacy ML Kit selection migration is provided; fresh installation or reinstallation is acceptable, subject to shared-device preservation. Press Prepare over validated Wi-Fi and record missing/downloading/verifying/loading/ready. Inspect separately labelled Speech and Translation download stages with consistent percentages and an uninterrupted bar, not raw byte counters or a fabricated overall percentage. Unknown totals/counts and system-managed downloads remain indeterminate; verification/loading do not imply readiness even after 100% transfer. Check available private storage before preparation; the model requires its full declared bytes plus installation headroom. Reopen and observe automatic local initialization of verified installed bytes. Readiness must never adopt corrupt bytes or enable Conversation before the selected recognition/output stages are ready. Missing/corrupt/storage/load/memory/limit/Unicode/Wi-Fi/timeout outcomes must stay localized without provider fallback.
 
 After real UI preparation, verify no active networks and restart the app. The new app instrumentation selectors are:
 
@@ -452,6 +588,34 @@ Dutch source integration adds `nl` to the 17-language catalog and maps system re
 ## UI, lifecycle and evidence
 
 Inspect the actual rendered Conversation, Text, Settings and preparation/error states. Cover language/pair changes, Start/Stop, background/re-entry, late completion, portrait/landscape, larger fonts, long content and reachable controls. Source inspection or semantic assertions alone do not establish visible layout or hit-area behavior.
+
+### Active-screen and download-stage checks
+
+The Activity-owned `ScreenAwake` holder is the only window-flag writer.
+Modes use a generic `owner(isCurrent)` and independent `acquire()` demands;
+closing a demand is idempotent. `Owner.clear()` revokes current demands and
+`Owner.close()` ends that owner. Activity START/STOP/destruction controls the
+actual flag; stale owners cannot revive it. Verify overlap and a synthetic
+additional owner through that same API, without a mode-specific Activity branch.
+
+Under exclusive device ownership, preserve and temporarily shorten the display
+timeout. Observe actual awake/expired display behavior during model preparation,
+local initialization, Text inference, speech warm-up and an entire Conversation,
+including waiting, processing and playback. Cover overlapping demands, dialogs,
+Stop, error/cancellation, route disposal, background/return and explicit locking.
+Idle, READY resources alone, save-only work, stale download metadata and sticky
+teardown failure must not hold the display awake. A flag assertion is not timeout
+proof. Restore the original timeout/settings and record the actual outcome.
+
+Render both routes at 0/near-0/50/near-100/100% transfer, Speech-to-Translation
+handoff, verification/loading, unknown counts, failure and explicit retry.
+Inspect the uninterrupted bar and reachable actions in portrait, landscape and
+font scale 2; semantics alone do not prove appearance. Selected speech progress
+uses distinct `downloadPackages` status rows, counts each selected package once
+and includes installed dependencies at full archived size. Include selected
+recognition/VAD and only required output packages, exclude unrelated packages,
+and keep unknown/system-managed downloads indeterminate. Completed transfer must
+not bypass verification/loading or enable use before actual readiness.
 
 For retained complete instrumentation output, use the PowerShell 7 [device runner](../../tools/android/run-device-gate.ps1) after installing the APKs:
 

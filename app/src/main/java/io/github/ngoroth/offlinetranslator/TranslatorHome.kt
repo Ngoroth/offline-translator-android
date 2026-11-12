@@ -28,11 +28,13 @@ import io.github.ngoroth.offlinetranslator.settings.SettingsViewModel
 import io.github.ngoroth.offlinetranslator.settings.TranslationSetupGate
 import io.github.ngoroth.offlinetranslator.translation.TranslationRoute
 import io.github.ngoroth.offlinetranslator.speech.AndroidRecognitionServices
+import io.github.ngoroth.offlinetranslator.ui.ScreenAwake
 
 @Composable
 fun TranslatorHome(
     captureFactory: (SpeechModelStore, ConversationSessionConfig) -> SpeechCaptureEngine =
         AppRuntime.get(LocalContext.current).conversationCaptureFactory,
+    screenAwake: ScreenAwake? = null,
 ) {
     val context = LocalContext.current
     val runtime = remember(context) { AppRuntime.get(context) }
@@ -79,6 +81,7 @@ fun TranslatorHome(
         conversationContent = {
             ConversationRoute(
                 captureFactory, onLanguageTransitionChanged = { languageChanging = it }, onOpenText = { conversation = false },
+                screenAwake = screenAwake,
                 onOpenAdvancedSettings = {
                     interfaceLanguageError = false
                     advancedSettingsOpen = true
@@ -88,7 +91,8 @@ fun TranslatorHome(
             )
         },
         textContent = { homeControls ->
-            TranslationRoute(homeControls = homeControls, onLanguageTransitionChanged = { languageChanging = it })
+            TranslationRoute(homeControls = homeControls, onLanguageTransitionChanged = { languageChanging = it },
+                screenAwake = screenAwake)
         },
     )
 

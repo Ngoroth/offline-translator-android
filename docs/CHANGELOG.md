@@ -4,6 +4,24 @@ Notable capability, behavior and developer-facing compatibility changes. Entries
 
 ## Unreleased
 
+### Concise Help and current-provider README
+
+- Shortened Help in all interface languages to mode instructions, explicit Wi-Fi/model preparation and memory requirements; removed cache/warm-up internals and experimental/translation-check/phone-qualification caveats while preserving privacy and legal actions.
+- Removed retired-provider naming from README while retaining current settings compatibility and diagnostic-log/privacy cautions.
+
+### Active-screen ownership and download stages — 2026-11-12
+
+- Added Activity-owned screen-awake demands for actual foreground preparation/work and the complete active Conversation session. Independent demands cannot clear each other; backgrounding/destruction clears the window flag. Idle resources, save-only work and global busy state are not screen-awake demand.
+- Exposed distinct selected speech-package statuses, including selected recognition/VAD and conditional output resources, without changing logical model metadata or readiness policy. Speech and Translation use separate consistent percentage/indicator stages; unknown counts and system-managed downloads remain indeterminate, and 100% transfer is not READY.
+
+### Release optimization — 2026-11-12
+
+- Configured standard AGP 9.4 release code/resource shrinking, optimization and obfuscation with default repackaging. Debug remains unminified.
+- Added exact pinned Sherpa JNI-read field/descriptor keeps, native-created result constructors and the boxed Piper streaming callback. Platform native-method defaults and Tencent's existing narrow consumer keeps remain in use; no whole-SDK/app blanket keep or global optimization disable was added.
+- Kept version 0.1.7 / versionCode 8 and existing external signing ownership unchanged. Documented separate APK/AAB signing, exact-artifact mapping/retrace retention and raw DEX measurement.
+- An earlier local candidate without obfuscation measured 2,831,196 uncompressed DEX bytes in its signed APK/AAB and passed an exact-mapping synthetic-frame retrace. This historical measurement does not qualify the final obfuscated build.
+- Actual rendered, timeout and signed-release runtime evidence is recorded separately. No Play upload or Console acceptance is claimed.
+
 ### System-bar icon contrast
 
 - Keep system-bar icons dark to match the app's fixed light theme, including when Android uses a dark system theme. Previously the default edge-to-edge appearance could make the clock, network and battery icons white on the app's light background.

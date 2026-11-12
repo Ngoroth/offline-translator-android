@@ -1047,6 +1047,7 @@ class RuntimeOwnerTest {
         var installations = 0
         var closes = 0
         override val models = MutableStateFlow<List<SpeechModelStatus>>(emptyList())
+        override val downloadPackages = MutableStateFlow<List<SpeechModelStatus>>(emptyList())
         override suspend fun install(speechOutputRequired: Boolean) { installations++; ready = true }
         override suspend fun isConversationReady(speechOutputRequired: Boolean) = ready
         override fun close() { closes++ }

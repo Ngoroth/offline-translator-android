@@ -4,6 +4,7 @@ import android.graphics.Color
 import android.content.res.Configuration
 import android.os.Bundle
 import android.view.ViewTreeObserver
+import android.view.WindowManager
 import androidx.activity.ComponentActivity
 import androidx.activity.SystemBarStyle
 import androidx.activity.compose.setContent
@@ -18,11 +19,16 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import io.github.ngoroth.offlinetranslator.core.LanguageCatalog
 import io.github.ngoroth.offlinetranslator.ui.InterfaceLanguage
+import io.github.ngoroth.offlinetranslator.ui.ScreenAwake
 
 class MainActivity : ComponentActivity() {
     private var initialLocaleReady by mutableStateOf(false)
     private var localeConfigurationReady = false
     private val localeDrawGate = ViewTreeObserver.OnPreDrawListener { localeConfigurationReady }
+    val screenAwake = ScreenAwake { keep ->
+        if (keep) window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+        else window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         InterfaceLanguage.ensureDefault(this)
@@ -35,7 +41,7 @@ class MainActivity : ComponentActivity() {
             MaterialTheme(colorScheme = lightColorScheme()) {
                 if (initialLocaleReady) {
                     // This branch latches once: subsequent locale changes never unmount route state.
-                    TranslatorHome()
+                    TranslatorHome(screenAwake = screenAwake)
                 } else {
                     Box(Modifier.fillMaxSize())
                 }
@@ -47,10 +53,12 @@ class MainActivity : ComponentActivity() {
         InterfaceLanguage.ensureDefault(this)
         updateLocaleReadiness()
         super.onStart()
+        screenAwake.setStarted(true)
         io.github.ngoroth.offlinetranslator.runtime.AppRuntime.get(this).enterForeground()
     }
 
     override fun onStop() {
+        screenAwake.setStarted(false)
         io.github.ngoroth.offlinetranslator.runtime.AppRuntime.get(this).leaveForeground()
         super.onStop()
     }
@@ -73,6 +81,7 @@ class MainActivity : ComponentActivity() {
     }
 
     override fun onDestroy() {
+        screenAwake.close()
         window.decorView.viewTreeObserver.removeOnPreDrawListener(localeDrawGate)
         super.onDestroy()
     }

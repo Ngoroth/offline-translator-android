@@ -8,35 +8,74 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import io.github.ngoroth.offlinetranslator.R
 import io.github.ngoroth.offlinetranslator.core.*
 
+object TranslationPreparationTestTags {
+    const val PROGRESS = "translation_preparation_progress"
+}
+
 /** Shared provider-neutral preparation rendering for both routes. */
 @Composable
 fun TranslationPreparation(state: TranslationPreparationState) {
-    Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        state.lastFailure?.let { Text(stringResource(translationFailureLabel(it)), color = MaterialTheme.colorScheme.error) }
-            ?: Text(stringResource(when (state.phase) {
-                TranslationPreparationPhase.CHECKING -> R.string.status_checking
-                TranslationPreparationPhase.MISSING -> R.string.model_missing_explanation
-                TranslationPreparationPhase.DOWNLOADING -> R.string.status_downloading
-                TranslationPreparationPhase.VERIFYING -> R.string.translation_verifying
-                TranslationPreparationPhase.LOADING -> R.string.translation_loading
-                TranslationPreparationPhase.READY -> R.string.conversation_resource_ready
-                TranslationPreparationPhase.FAILED -> R.string.error_preparation_failed
-            }))
-        if (state.phase in setOf(TranslationPreparationPhase.CHECKING, TranslationPreparationPhase.VERIFYING,
-                TranslationPreparationPhase.LOADING) ||
-            (state.phase == TranslationPreparationPhase.DOWNLOADING && state.totalBytes == null)) {
-            LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+    val label = stringResource(when (state.phase) {
+        TranslationPreparationPhase.CHECKING -> R.string.status_checking
+        TranslationPreparationPhase.MISSING -> R.string.model_missing_explanation
+        TranslationPreparationPhase.DOWNLOADING -> R.string.translation_downloading
+        TranslationPreparationPhase.VERIFYING -> R.string.translation_verifying
+        TranslationPreparationPhase.LOADING -> R.string.translation_loading
+        TranslationPreparationPhase.READY -> R.string.conversation_resource_ready
+        TranslationPreparationPhase.FAILED -> R.string.error_preparation_failed
+    })
+    state.lastFailure?.let {
+        Text(stringResource(translationFailureLabel(it)), color = MaterialTheme.colorScheme.error)
+    } ?: when (state.phase) {
+        TranslationPreparationPhase.CHECKING, TranslationPreparationPhase.DOWNLOADING,
+        TranslationPreparationPhase.VERIFYING, TranslationPreparationPhase.LOADING -> {
+            val downloading = state.phase == TranslationPreparationPhase.DOWNLOADING
+            PreparationProgress(
+                label = label,
+                downloadedBytes = if (downloading) state.downloadedBytes?.toDouble() else null,
+                totalBytes = if (downloading) state.totalBytes?.toDouble() else null,
+                modifier = Modifier.testTag(TranslationPreparationTestTags.PROGRESS),
+            )
         }
-        val downloaded = state.downloadedBytes
-        val total = state.totalBytes
-        if (state.phase == TranslationPreparationPhase.DOWNLOADING && downloaded != null && total != null) {
-            LinearProgressIndicator(progress = { (downloaded.toDouble() / total).toFloat() }, modifier = Modifier.fillMaxWidth())
-            Text(stringResource(R.string.translation_download_bytes, downloaded, total))
+        else -> Text(label)
+    }
+}
+
+/** Stage-local progress; a completed transfer does not imply prepared resources. */
+@Composable
+internal fun PreparationProgress(
+    label: String,
+    downloadedBytes: Double? = null,
+    totalBytes: Double? = null,
+    modifier: Modifier = Modifier,
+) {
+    val total = totalBytes
+    val downloaded = downloadedBytes
+    val bounded = if (total != null && total > 0 && downloaded != null && downloaded >= 0)
+        downloaded.coerceIn(0.0, total) else null
+    Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Text(label)
+        if (bounded != null && total != null) {
+            Text(stringResource(R.string.preparation_download_percent, (bounded * 100 / total).toInt()))
+            LinearProgressIndicator(
+                progress = { (bounded / total).toFloat() },
+                modifier = modifier.fillMaxWidth().semantics { contentDescription = label },
+                gapSize = 0.dp,
+                drawStopIndicator = {},
+            )
+        } else {
+            LinearProgressIndicator(
+                modifier = modifier.fillMaxWidth().semantics { contentDescription = label },
+                gapSize = 0.dp,
+            )
         }
     }
 }

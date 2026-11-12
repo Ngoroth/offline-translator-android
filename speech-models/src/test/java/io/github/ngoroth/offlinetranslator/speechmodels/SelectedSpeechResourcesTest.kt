@@ -8,6 +8,9 @@ import io.github.ngoroth.offlinetranslator.core.SpeechModelInstallState
 import io.github.ngoroth.offlinetranslator.core.SpeechModelRole
 import io.github.ngoroth.offlinetranslator.core.SpeechOutputBackend
 import io.github.ngoroth.offlinetranslator.core.SpeechRecognitionBackend
+import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeout
@@ -26,6 +29,101 @@ import java.util.concurrent.CopyOnWriteArrayList
 
 class SelectedSpeechResourcesTest {
     @get:Rule val temporary = TemporaryFolder()
+
+    @Test fun selectedPackageTransferCountsStayTruthfulUntilVerificationPublishesReady() = runBlocking<Unit> {
+        val fixture = fixture(largePackageBytes = 131_072)
+        val release = CompletableDeferred<Unit>()
+        TestHttpsServer { exchange ->
+            val bytes = fixture.bytes.getValue(exchange.requestURI.path.removePrefix("/"))
+            exchange.sendResponseHeaders(200, bytes.size.toLong())
+            exchange.responseBody.use { output ->
+                output.write(bytes, 0, bytes.size / 2)
+                output.flush()
+                runBlocking { release.await() }
+                output.write(bytes, bytes.size / 2, bytes.size - bytes.size / 2)
+            }
+        }.use { https ->
+            val store = store(fixture.catalog, SpeechModelDownloader(https::openConnection))
+            val config = AppSettings(speechOutputBackend = SpeechOutputBackend.SYSTEM_OFFLINE).conversationConfig()
+            val resources = SelectedSpeechResources.forConversation(store, config, setOf("multilingual"))
+            val installing = async(Dispatchers.IO) { store.install(setOf("multilingual")) }
+            try {
+                val row = withTimeout(5000) { resources.downloadPackages.first { rows ->
+                    rows.any { it.id == "multilingual" && it.state == SpeechModelInstallState.DOWNLOADING &&
+                        it.downloadedBytes > 0 }
+                } }.single { it.id == "multilingual" }
+                assertEquals(131_072L, row.sizeBytes)
+                assertTrue(row.downloadedBytes in 1..65_536L)
+                assertEquals(SpeechModelInstallState.DOWNLOADING, row.state)
+                assertFalse(resources.downloadPackages.value.any { it.id == "unused-voice" })
+                release.complete(Unit)
+                installing.await()
+                val ready = withTimeout(5000) { resources.downloadPackages.first { rows ->
+                    rows.any { it.id == "multilingual" && it.state == SpeechModelInstallState.READY }
+                } }.single { it.id == "multilingual" }
+                assertEquals(131_072L, ready.sizeBytes)
+                assertEquals(0L, ready.downloadedBytes)
+            } finally {
+                release.complete(Unit)
+                installing.cancel()
+                resources.close()
+                store.close()
+            }
+        }
+    }
+
+    @Test fun downloadPackagesKeepCompositeDependenciesDistinctAndIncludeInstalledSharedResources() = runBlocking<Unit> {
+        val fixture = fixture(composite = true)
+        TestHttpsServer { exchange ->
+            val bytes = fixture.bytes.getValue(exchange.requestURI.path.removePrefix("/"))
+            exchange.sendResponseHeaders(200, bytes.size.toLong())
+            exchange.responseBody.use { it.write(bytes) }
+        }.use { https ->
+            val store = store(fixture.catalog, SpeechModelDownloader(https::openConnection))
+            val config = AppSettings(speechOutputBackend = SpeechOutputBackend.PIPER).conversationConfig()
+            val resources = SelectedSpeechResources.forConversation(store, config, setOf("multilingual"))
+            try {
+                store.install(setOf(VAD))
+                val base = withTimeout(5000) { resources.downloadPackages.first { rows ->
+                    rows.any { it.id == VAD && it.state == SpeechModelInstallState.READY }
+                } }
+                assertEquals(setOf(VAD, "asr-en", "multilingual"), base.map { it.id }.toSet())
+                assertEquals(3, base.size)
+                assertEquals(SpeechModelInstallState.MISSING, base.single { it.id == "multilingual" }.state)
+                // READY publication resets transfer counters; consumers must use its full archived size.
+                assertEquals(0L, base.single { it.id == VAD }.downloadedBytes)
+                assertEquals(fixture.bytes.getValue(VAD).size.toLong(), base.single { it.id == VAD }.sizeBytes)
+                resources.install(speechOutputRequired = true)
+                val withOutput = withTimeout(5000) { resources.downloadPackages.first { rows ->
+                    rows.any { it.id == "tts-en-piper-lessac-medium" && it.state == SpeechModelInstallState.READY }
+                } }
+                val expected = setOf(VAD, "asr-en", "multilingual") + config.ttsModelIds.values
+                assertEquals(expected, withOutput.map { it.id }.toSet())
+                assertEquals(expected.size, withOutput.size)
+                assertFalse(withOutput.any { it.id == "unused-voice" || it.id == "asr-ru" })
+                resources.isConversationReady(speechOutputRequired = false)
+                val silent = withTimeout(5000) { resources.downloadPackages.first { rows ->
+                    rows.none { it.id in config.ttsModelIds.values }
+                } }
+                assertEquals(setOf(VAD, "asr-en", "multilingual"), silent.map { it.id }.toSet())
+                // Logical model metadata stays separate from package inventory.
+                assertEquals(setOf(VAD, "multilingual"), resources.models.first { it.size == 2 }.map { it.id }.toSet())
+            } finally { resources.close(); store.close() }
+        }
+    }
+
+    @Test fun systemRecognitionAndSystemOutputDoNotInventDownloadPackages() = runBlocking<Unit> {
+        val fixture = fixture()
+        val store = store(fixture.catalog, SpeechModelDownloader { error("checking must not download") })
+        val config = AppSettings(speechRecognitionBackend = SpeechRecognitionBackend.SYSTEM_OFFLINE,
+            speechOutputBackend = SpeechOutputBackend.SYSTEM_OFFLINE).conversationConfig()
+        val resources = SelectedSpeechResources.forConversation(store, config, emptySet())
+        try {
+            assertFalse(resources.isConversationReady(speechOutputRequired = true))
+            assertEquals(listOf(VAD), resources.downloadPackages.value.map { it.id })
+            assertEquals(SpeechModelInstallState.MISSING, resources.downloadPackages.value.single().state)
+        } finally { resources.close(); store.close() }
+    }
 
     @Test fun silentUnsupportedPiperPairPreparesOnlyBaseResourcesWithoutResolvingVoices() = runBlocking<Unit> {
         val fixture = fixture()
@@ -171,7 +269,7 @@ class SelectedSpeechResourcesTest {
         })
     }
 
-    private fun fixture(): Fixture {
+    private fun fixture(composite: Boolean = false, largePackageBytes: Int = 0): Fixture {
         val specifications = listOf(
             Triple(VAD, "VAD", emptyList()),
             Triple("asr-en", "ASR", listOf("en")),
@@ -184,7 +282,10 @@ class SelectedSpeechResourcesTest {
         )
         val packages = JSONArray()
         val models = JSONArray()
-        val payloads = specifications.associate { it.first to it.first.toByteArray() }
+        val payloads = specifications.associate { (id) ->
+            id to if (id == "multilingual" && largePackageBytes > 0) ByteArray(largePackageBytes) { 7 }
+                else id.toByteArray()
+        }
         for ((id, role, languages) in specifications) {
             val bytes = payloads.getValue(id)
             val hash = MessageDigest.getInstance("SHA-256").digest(bytes).joinToString("") { "%02x".format(it.toInt() and 255) }
@@ -193,16 +294,24 @@ class SelectedSpeechResourcesTest {
                 .put("format", "raw").put("archiveBytes", bytes.size).put("archiveSha256", hash)
                 .put("maxUnpackedBytes", bytes.size).put("maxEntries", 1)
                 .put("files", JSONArray().put(JSONObject().put("path", "weights.bin").put("bytes", bytes.size).put("sha256", hash))))
+            val adapter = JSONObject().put("family", if (composite && id == "multilingual") "composite" else "fixture")
+                .put("model", JSONObject().put("packageId", id).put("path", "weights.bin"))
+            if (composite && id == "multilingual") {
+                adapter.put("sharedVad", JSONObject().put("packageId", VAD).put("path", "weights.bin"))
+                adapter.put("sharedAsr", JSONObject().put("packageId", "asr-en").put("path", "weights.bin"))
+            }
             models.put(JSONObject().put("id", id).put("displayName", id).put("role", role)
-                .put("languages", JSONArray(languages)).put("sampleRateHz", 16000)
-                .put("adapter", JSONObject().put("family", "fixture")
-                    .put("model", JSONObject().put("packageId", id).put("path", "weights.bin"))))
+                .put("languages", JSONArray(languages)).put("sampleRateHz", 16000).put("adapter", adapter))
         }
         val document = JSONObject().put("schemaVersion", 2).put("runtime", "fixture-runtime").put("packages", packages).put("models", models)
         val catalog = SpeechModelCatalog.parse(document.toString().byteInputStream(), "fixture-runtime") { reader ->
-            reader.fields("family", "model")
-            require(reader.text("family") == "fixture")
-            FixtureAdapter(reader.ref("model"))
+            reader.fields("family", "model", "sharedVad", "sharedAsr")
+            val model = reader.ref("model")
+            if (reader.text("family") == "composite") {
+                reader.ref("sharedVad")
+                reader.ref("sharedAsr")
+            } else require(reader.text("family") == "fixture")
+            FixtureAdapter(model)
         }
         return Fixture(catalog, payloads)
     }
