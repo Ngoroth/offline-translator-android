@@ -2,6 +2,8 @@
 
 Date: 2026-11-15. Scope: [approved implementation plan, revision 3](../plans/2026-11-14-2248-mozilla-translation-engine.md), against base `3d028a8e3e2da237cfa161b57746f760c62ce30a`.
 
+> **Evidence availability — 2026-11-16:** Local cleanup removed the integration's raw evidence, screenshots, cached release artifacts and helper scripts from `.cache/translator-evaluation/`. References to retained cache files below describe their status at the time of verification, not current availability. The recorded results, hashes, failures and acceptance limitations remain unchanged, but the deleted files can no longer be inspected or reanalyzed. The separate `engine-mozilla/.native-evidence/` directory was not removed; its build receipts do not replace the deleted runtime evidence.
+
 ## Result and acceptance boundary
 
 Mozilla is implemented as a second explicitly selectable Translation engine for Text and Conversation. Tencent remains registered first and fully available. Defaults, Reset, completed setup, persisted settings format, recognition/output choices and the 17-language catalog are unchanged. No automatic fallback, provider dispatcher, Whisper translation-to-English task, publication, version bump, commit or push was performed.
@@ -122,7 +124,7 @@ The exact installed, locally signed R8 variant was exercised through its real UI
 2. RU→ZH, frozen `ru-zh-01`: “Можно оплатить наличными?” → “我能用现金支付吗?” through the prepared English pivot. The displayed source remains Russian.
 3. Offline Conversation with the existing Whisper/System-offline-output choices: real AudioRecord/VAD accepted paced virtual-microphone PCM from the frozen official Russian WAV, Whisper produced Russian original text, and Mozilla displayed “A team is coming to you now. Go ahead.” for “Сейчас в тебе приедет бригада. Давай.” The original recognized text was retained, the turn reached Translation ready, and Stop returned to the stopped screen. This is not a claim that the ASR wording is a human reference transcription.
 
-Screenshots, UI hierarchies, exact WAV/input identities, source admission, installed APK hash and device restoration are bound in `.cache/translator-evaluation/mozilla-integration/integration-evidence-final-v1.json` and `release-runtime-v1/`.
+Screenshots, UI hierarchies, exact WAV/input identities, source admission, installed APK hash and device restoration were bound in `.cache/translator-evaluation/mozilla-integration/integration-evidence-final-v1.json` and `release-runtime-v1/`; those cached files were removed in the cleanup noted above.
 
 The initial optional concurrent blocking input/output-control attempt failed at emulator transport and the emulator stopped answering ADB. Those failed receipts and the pre-correction helper are retained. The user terminated that emulator and explicitly authorized launching the same AVD again. It was restarted without wipe or loading the stalled snapshot. The corrected release smoke starts actual capture first and uses paced real-time input without concurrent output recording. Real-time delivery may overwrite data while capture is paused, so no complete-wave admission claim is made. Output PCM recording/acoustic or independent spoken-word certification was not established. The separate debug Piper non-silent public-playback evidence is not mislabeled as release PCM evidence.
 
@@ -141,7 +143,7 @@ After verification, the original **Tencent / Whisper / System offline speech, En
 
 Use [verify-translator.md](verify-translator.md#mozilla-prepared-resource-qualification) for explicit opt-in module/app preparation, offline qualification, warm/first-use and Conversation selectors. Ordinary tests do not implicitly download models or start inference.
 
-Local evidence root: `.cache/translator-evaluation/mozilla-integration/`:
+Former local evidence root: `.cache/translator-evaluation/mozilla-integration/`. The cache entries below were removed; the separate native-evidence directory listed last was not:
 
 - `module-runtime-v3/`, `module-consumer-v2/`: current-AAR 13/4 JNI/lifecycle receipts and retained consumer trace.
 - `app-outputs-v1/`, `tiny-pivot-v1/`, `conversation-offline-v2/`: final output/route/speech execution receipts and append-only raw rows.

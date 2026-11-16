@@ -1,6 +1,6 @@
 # Google Play Store Listing — en-US
 
-Draft for the Tencent-based release. This document is not publication authorization. Tencent is the sole registered translation provider; ML Kit has been removed from current source/build wiring. Historical media do not establish the dependency inventory or qualification of a newly assembled release APK.
+Draft for the current Mozilla/Tencent application. This document is not publication authorization. Both translation providers are explicitly selectable; ML Kit has been removed from current source/build wiring. Historical media do not establish the dependency inventory or qualification of a newly assembled release APK.
 
 ## App name
 
@@ -15,7 +15,7 @@ Open-source offline voice and text translation, processed on your device
 Understand another language without relying on a cloud translator. Offline Translator is an open-source Android app for text translation and turn-based conversations on one phone.
 
 OFFLINE AND ON YOUR DEVICE
-Prepare your language resources online, then use the app without an internet connection. Speech recognition, translation and optional speech output use local models and prepared offline voices. No cloud translation service is needed.
+Choose Mozilla or Tencent during first setup. Prepare your language resources online, then use the app without an internet connection. Speech recognition, translation and optional speech output use local models and prepared offline voices. No cloud translation service is needed.
 
 CONVERSATION WITHOUT CONSTANT BUTTON PRESSES
 Choose two languages and tap Start once. Then take turns speaking: the app recognizes speech, selects the translation direction between your chosen languages and translates each utterance automatically. There is no need to press a button before every phrase. Read translations on screen or enable spoken playback.

@@ -1,5 +1,7 @@
 # Four-way translation comparison on the Android emulator
 
+> **Evidence availability — 2026-11-16:** Local cleanup removed the experiment's raw evidence, models and helper scripts from `.cache/translator-evaluation/`. References to retained files below describe their status at the time of the experiment, not current availability. The recorded results, failures and limitations remain unchanged. Commands below are historical invocations, not runnable reproduction instructions for this checkout; the deleted raw data can no longer be inspected or reanalyzed.
+
 ## Decision
 
 **Mozilla is the only demonstrated large speed improvement, not a demonstrated equally dependable replacement.** It remains the performance lead to qualify further. Index had fewer model-assisted meaning flags on this small set, but no consistent speed advantage and a concrete allergen substitution. MADLAD is larger, generally slower, and not an acceleration choice.
@@ -108,9 +110,9 @@ These counts are **screening flags, not accuracy estimates or a statistically es
 
 The known Mozilla room-date reversal (`en-ru-08`, `не раньше 6 декабря`) and yuan-to-dollar regression (`zh-ru-04`) also remain in this exact-pack run. They are reused regression evidence, not fresh generalization tests. Current Tencent likewise has consequential errors; it is a baseline, not a certified oracle.
 
-## Evidence files and reproducible commands
+## Historical evidence files and commands
 
-Completed raw run and analysis: `.cache/translator-evaluation/four-way/runs/fourway-20261115-main-v1/`. `analysis.json` retains120 direction/cohort summaries, all individual cold observations,135 memory records and132 paired source comparisons. `expected-missing.jsonl` and `evidence-errors.json` preserve the absent Index cold cohort. No results were backfilled from calibration.
+The completed raw run and analysis were stored at `.cache/translator-evaluation/four-way/runs/fourway-20261115-main-v1/`. `analysis.json` contained120 direction/cohort summaries, all individual cold observations,135 memory records and132 paired source comparisons. `expected-missing.jsonl` and `evidence-errors.json` recorded the absent Index cold cohort. These files were removed in the cleanup noted above. No results were backfilled from calibration.
 
 `quality/{ruen,chinese,other}-judgments.jsonl` retain blind judgments. `blind-label-key.json` binds opaque labels; `quality-judgments-unblinded.jsonl` retains the joined176 outputs and source-specific evidence. `quality-summary.json` contains exact case/variant coverage and unknowns. The data revision archive preserves the initial host checklist and its source-governed bicycle correction; all58 native source identities/texts remain unchanged.
 
@@ -172,6 +174,6 @@ Preparation failures remain retained and are not counted as model mistranslation
 
 ## Evidence and interpretation limits
 
-Local evidence root: `.cache/translator-evaluation/four-way/`. It contains frozen source/runtime/model inventories, data revisions, `preflight/index-r4`, `preflight/madlad-r3`, candidate decoder proofs and `runs/fourway-20261115-calibration-v1`. Source text/IDs were not changed by the host-only bicycle-checklist correction. All removed device files were individually verified disposable executable/model copies with preserved matching host artifacts; raw evidence was retained.
+Former local evidence root: `.cache/translator-evaluation/four-way/`. It contained frozen source/runtime/model inventories, data revisions, `preflight/index-r4`, `preflight/madlad-r3`, candidate decoder proofs and `runs/fourway-20261115-calibration-v1`. Source text/IDs were not changed by the host-only bicycle-checklist correction. At experiment completion, all removed device files were individually verified disposable executable/model copies with preserved matching host artifacts; raw evidence was retained then, before the later host cleanup noted above.
 
 This ten-direction screen cannot qualify the full 17-language product, all composed routes or future ASR/local-TTS coverage. Mozilla has seven current-language English-hub legs available only as unqualified tiny packs: VI→EN and EN↔ID/TR/HI. They are catalog-covered, not proven by the measured base-pack configuration. No language reduction, automatic fallback, default change or provider integration is authorized by these experiments.

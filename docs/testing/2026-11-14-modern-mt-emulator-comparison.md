@@ -1,6 +1,8 @@
 # Mozilla, LMT and NLLB: Android emulator comparison
 
-## Scope and reproducible evidence
+> **Evidence availability — 2026-11-16:** Local cleanup removed the experiment's raw evidence, preparation assets and helper scripts from `.cache/translator-evaluation/`. References to retained files below describe their status at the time of the experiment, not current availability. The recorded results, failures and limitations remain unchanged, but the deleted files can no longer be inspected or used to recompute these results from this checkout.
+
+## Scope and historical evidence
 
 Measured on 2026-11-14, 20:10:46–20:26:16 UTC. This is an **engine-only x86_64 Android emulator comparison**, not an app/ASR/TTS, ARM-phone or Firefox benchmark. No production engine was added or selected. No application install, commit or push was performed for this experiment.
 
@@ -8,7 +10,7 @@ The emulator has four logical CPUs, 16-KiB pages and the Android build recorded 
 
 Sources: [Mozilla inference](https://github.com/mozilla/translations/tree/main/inference), [LMT-60-0.6B](https://huggingface.co/NiuTrans/LMT-60-0.6B), [NLLB-200 distilled 600M](https://huggingface.co/facebook/nllb-200-distilled-600M). Mozilla model packs are MPL-2.0, LMT is Apache-2.0, and NLLB weights are CC-BY-NC-4.0; this report does not change their obligations. The LMT quantization is third-party, and its exact original conversion revision is undisclosed.
 
-Local raw evidence is retained under [the run directory](../../.cache/translator-evaluation/modern-mt/runs/emulator-20261114-main/). It is an ignored local cache, not versioned benchmark data. Important files are `metadata.json` (all commands, model file inventories and device identity), `all-rows.jsonl`, each block's input/output/exit/transport/memory files, `analysis.json`, `execution-receipt.json`, and `quality/`. Preparation/source/patch/license inventories are retained in the sibling experiment directories `mozilla/` and `lmt/`; NLLB reuses the unchanged earlier prepared assets. [Independent focused audit](../../.cache/translator-evaluation/modern-mt/measurement-review.md) is separate from the earlier experiment's workflow review.
+Local raw evidence was stored at `.cache/translator-evaluation/modern-mt/runs/emulator-20261114-main/`, an ignored local cache rather than versioned benchmark data. It included `metadata.json` (all commands, model file inventories and device identity), `all-rows.jsonl`, each block's input/output/exit/transport/memory files, `analysis.json`, `execution-receipt.json`, and `quality/`. Preparation/source/patch/license inventories were stored in the sibling experiment directories `mozilla/` and `lmt/`; NLLB reused the unchanged earlier prepared assets. The independent focused audit was stored separately in `.cache/translator-evaluation/modern-mt/measurement-review.md`. These files were removed in the cleanup noted above.
 
 The preserved [tourist corpus](../../test-data/corpus/translation/v1/) has 56 unique source cases in ten directions. Each case was measured three times in counterbalanced model order: 12 unique sources per RU→EN/EN→RU direction and four per other direction, yielding 36 or 12 timing observations. Each directed-pair process first attempts its disjoint excluded warm-up. There are also five fresh-process first-call observations per model. OS storage caches were not dropped. Meaning expectations stay on the host and never enter model prompts.
 

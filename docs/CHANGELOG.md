@@ -4,6 +4,12 @@ Notable capability, behavior and developer-facing compatibility changes. Entries
 
 ## Unreleased
 
+### Documentation and local evidence availability — 2026-11-16
+
+- Updated the product vision and store-listing draft for explicit Mozilla/Tencent selection without changing release qualification or publication requirements.
+- Marked the deleted local comparison/integration evidence and historical commands as unavailable; preserved the published results, hashes, failures and limitations.
+- Replaced the broken historical Tencent review link with an explicit availability limitation rather than implying current qualification.
+
 ### Mozilla translation provider
 
 - Added Mozilla as an additional selectable engine for Text and Conversation, retaining Tencent, existing saved choices, Reset defaults and the explicit first-run multi-provider chooser.
