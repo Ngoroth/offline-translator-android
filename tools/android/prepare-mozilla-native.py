@@ -189,7 +189,7 @@ def download(spec: dict, cache: Path) -> Path:
 
 def tool(spec: dict, cache: Path, installed: Path | None) -> Path:
     # Reuse only a fully attested existing extracted tree; never mutate it.
-    base = installed if installed else cache / "tools"
+    base = (installed if installed else cache / "tools").resolve()
     target = base / spec["directory"]
     stamp = base / (spec["directory"] + ".sha256")
     if target.exists():

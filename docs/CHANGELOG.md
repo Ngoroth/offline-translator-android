@@ -4,6 +4,11 @@ Notable capability, behavior and developer-facing compatibility changes. Entries
 
 ## Unreleased
 
+### Mozilla native toolchain path resolution — 2026-11-16
+
+- Resolve reused native tool directories to absolute paths before passing NDK and Ninja locations to CMake, fixing out-of-tree configuration with the relative `--installed-tools` path used by CI.
+- Added a real CMake configuration regression check; extracted-tool integrity verification remains unchanged.
+
 ### Documentation and local evidence availability — 2026-11-16
 
 - Updated the product vision and store-listing draft for explicit Mozilla/Tencent selection without changing release qualification or publication requirements.

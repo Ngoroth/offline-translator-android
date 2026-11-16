@@ -1,11 +1,13 @@
 """Consumer-facing offline rejection cases; no compiler, network, model or device."""
 from __future__ import annotations
 
+from contextlib import chdir
 import importlib.util
 import io
 from pathlib import Path
 import shutil
 import struct
+import subprocess
 import tempfile
 import unittest
 import zipfile
@@ -145,6 +147,33 @@ class MozillaNativePreparationTest(unittest.TestCase):
         with self.assertWarns(UserWarning):
             self.publish(extra=("classes.jar", b"duplicate"))
         self.reject("Duplicate AAR")
+
+
+class InstalledToolPathTest(unittest.TestCase):
+    @unittest.skipUnless(shutil.which("cmake"), "CMake is required for toolchain path integration")
+    def test_relative_installed_toolchain_configures_out_of_tree(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary, chdir(temporary):
+            root = Path.cwd()
+            target = root / "installed/ndk"
+            target.mkdir(parents=True)
+            toolchain = target / "build/cmake/android.toolchain.cmake"
+            toolchain.parent.mkdir(parents=True)
+            toolchain.write_text("set(INSTALLED_TOOLCHAIN_LOADED TRUE)\n")
+            (target.parent / "ndk.sha256").write_text(preparation.tree_digest(target))
+            source = root / "source"
+            source.mkdir()
+            (source / "CMakeLists.txt").write_text(
+                "cmake_minimum_required(VERSION 3.20)\n"
+                "project(PathRegression NONE)\n"
+                "if(NOT INSTALLED_TOOLCHAIN_LOADED)\n"
+                '  message(FATAL_ERROR "Installed toolchain was not loaded")\n'
+                "endif()\n")
+            installed = preparation.tool({"directory": "ndk"}, root / "cache", Path("installed"))
+            result = subprocess.run(
+                ["cmake", "-S", str(source), "-B", str(root / "cache/build"),
+                 f"-DCMAKE_TOOLCHAIN_FILE={installed}/build/cmake/android.toolchain.cmake"],
+                capture_output=True, text=True)
+            self.assertEqual(0, result.returncode, result.stdout + result.stderr)
 
 
 if __name__ == "__main__":
