@@ -220,7 +220,7 @@ private fun StatusPanel(state: TranslationUiState, confirmedMissing: Boolean) {
         Text(stringResource(io.github.ngoroth.offlinetranslator.ui.translationFailureLabel(state.failure)), color = MaterialTheme.colorScheme.error)
     } else state.error?.let { Text(errorMessage(it), color = MaterialTheme.colorScheme.error) }
     if (confirmedMissing) {
-        Text(stringResource(if (state.provider?.id == "tencent") R.string.model_prepare_hint else R.string.model_missing_explanation))
+        Text(stringResource(R.string.model_prepare_hint))
     }
 }
 

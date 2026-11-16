@@ -1,0 +1,303 @@
+{
+  "schemaVersion": 1,
+  "id": "translation-mozilla-tourist-v1",
+  "version": 1,
+  "encoding": "UTF-8",
+  "lineEndings": "LF",
+  "finalNewline": true,
+  "license": "Apache-2.0 (repository license)",
+  "provenance": {
+    "authoredOn": "2026-11-15",
+    "authorship": "Synthetic source turns, short warm-ups and English essential propositions authored with AI assistance; no human/native-speaker certification.",
+    "observationBoundary": "Frozen before this author observed candidate outputs; no candidate output was read for this slice.",
+    "sourceMethod": "Individually composed tourist scenarios per direction; prior v1 read for conventions and exact-source separation, not copied. No real conversations, reference target translations, model outputs, goldens or audio.",
+    "scope": "Approved Mozilla integration qualification DATA slice only; no inference, build, device operation or download.",
+    "plan": "docs/plans/2026-11-14-2248-mozilla-translation-engine.md",
+    "planRevision": 2,
+    "requirements": "Task 6 and Appendix A",
+    "appendixACanonicalJsonSha256": "19149ee0b638856628987f2450146d6236fc563e25544bfea98959c0ec8688be"
+  },
+  "counts": {
+    "measured": 96,
+    "hostExpectations": 96,
+    "warmup": 32,
+    "directions": 32,
+    "sourceLanguages": 17,
+    "baseMemoryDirections": 25,
+    "tinyDirections": 7
+  },
+  "categories": [
+    "request",
+    "negation",
+    "price-time"
+  ],
+  "sourceLanguages": [
+    "en",
+    "vi",
+    "es",
+    "id",
+    "it",
+    "zh",
+    "ko",
+    "de",
+    "pl",
+    "pt",
+    "ru",
+    "th",
+    "tr",
+    "fr",
+    "hi",
+    "ja",
+    "nl"
+  ],
+  "languageNotes": {
+    "zh": "Simplified Chinese; upstream zh-Hans",
+    "pt": "No mandated regional dialect for meaning assessment",
+    "ar": "Not in current 17-language catalog; no Arabic fresh cases"
+  },
+  "inputContract": {
+    "fields": [
+      "id",
+      "source",
+      "target",
+      "text"
+    ],
+    "maximumUtf16Units": 200,
+    "context": "stateless current utterance only",
+    "expectations": "host-only; never prompts or decoding prefixes"
+  },
+  "directions": {
+    "en-vi": {
+      "measured": 3,
+      "warmup": 1,
+      "architecture": "base-memory"
+    },
+    "vi-en": {
+      "measured": 3,
+      "warmup": 1,
+      "architecture": "tiny"
+    },
+    "en-es": {
+      "measured": 3,
+      "warmup": 1,
+      "architecture": "base-memory"
+    },
+    "es-en": {
+      "measured": 3,
+      "warmup": 1,
+      "architecture": "base-memory"
+    },
+    "en-id": {
+      "measured": 3,
+      "warmup": 1,
+      "architecture": "tiny"
+    },
+    "id-en": {
+      "measured": 3,
+      "warmup": 1,
+      "architecture": "tiny"
+    },
+    "en-it": {
+      "measured": 3,
+      "warmup": 1,
+      "architecture": "base-memory"
+    },
+    "it-en": {
+      "measured": 3,
+      "warmup": 1,
+      "architecture": "base-memory"
+    },
+    "en-zh": {
+      "measured": 3,
+      "warmup": 1,
+      "architecture": "base-memory"
+    },
+    "zh-en": {
+      "measured": 3,
+      "warmup": 1,
+      "architecture": "base-memory"
+    },
+    "en-ko": {
+      "measured": 3,
+      "warmup": 1,
+      "architecture": "base-memory"
+    },
+    "ko-en": {
+      "measured": 3,
+      "warmup": 1,
+      "architecture": "base-memory"
+    },
+    "en-de": {
+      "measured": 3,
+      "warmup": 1,
+      "architecture": "base-memory"
+    },
+    "de-en": {
+      "measured": 3,
+      "warmup": 1,
+      "architecture": "base-memory"
+    },
+    "en-pl": {
+      "measured": 3,
+      "warmup": 1,
+      "architecture": "base-memory"
+    },
+    "pl-en": {
+      "measured": 3,
+      "warmup": 1,
+      "architecture": "base-memory"
+    },
+    "en-pt": {
+      "measured": 3,
+      "warmup": 1,
+      "architecture": "base-memory"
+    },
+    "pt-en": {
+      "measured": 3,
+      "warmup": 1,
+      "architecture": "base-memory"
+    },
+    "en-ru": {
+      "measured": 3,
+      "warmup": 1,
+      "architecture": "base-memory"
+    },
+    "ru-en": {
+      "measured": 3,
+      "warmup": 1,
+      "architecture": "base-memory"
+    },
+    "en-th": {
+      "measured": 3,
+      "warmup": 1,
+      "architecture": "base-memory"
+    },
+    "th-en": {
+      "measured": 3,
+      "warmup": 1,
+      "architecture": "base-memory"
+    },
+    "en-tr": {
+      "measured": 3,
+      "warmup": 1,
+      "architecture": "tiny"
+    },
+    "tr-en": {
+      "measured": 3,
+      "warmup": 1,
+      "architecture": "tiny"
+    },
+    "en-fr": {
+      "measured": 3,
+      "warmup": 1,
+      "architecture": "base-memory"
+    },
+    "fr-en": {
+      "measured": 3,
+      "warmup": 1,
+      "architecture": "base-memory"
+    },
+    "en-hi": {
+      "measured": 3,
+      "warmup": 1,
+      "architecture": "tiny"
+    },
+    "hi-en": {
+      "measured": 3,
+      "warmup": 1,
+      "architecture": "tiny"
+    },
+    "en-ja": {
+      "measured": 3,
+      "warmup": 1,
+      "architecture": "base-memory"
+    },
+    "ja-en": {
+      "measured": 3,
+      "warmup": 1,
+      "architecture": "base-memory"
+    },
+    "en-nl": {
+      "measured": 3,
+      "warmup": 1,
+      "architecture": "base-memory"
+    },
+    "nl-en": {
+      "measured": 3,
+      "warmup": 1,
+      "architecture": "base-memory"
+    }
+  },
+  "warmupPolicy": {
+    "optional": true,
+    "count": 32,
+    "rationale": "Minimal one short warm-up per direction for protocols requiring warmed inference.",
+    "excludedFromMeasuredCases": true,
+    "idsAndExactSourceTextsDisjoint": true
+  },
+  "regressionBoundary": {
+    "corpus": "translation-tourist-v1",
+    "path": "../v1",
+    "inCatalogMeasuredRows": 48,
+    "outOfCatalogArabicRows": 8,
+    "comparativeSpeedRowsRuEnRuZh": 32,
+    "freshDenominator": 96,
+    "preserveOriginalBytesAndIds": true,
+    "payloadSha256": {
+      "cases.jsonl": "bb060ef99b129f2ebb791656ad1286c0a0de8232ebdd334f729b21d1ace8a135",
+      "meaning-expectations.jsonl": "3afd1eeafcae083b22d440b102105788e4acb57a07f7438d6f8a009d0d666477",
+      "warmup.jsonl": "5edb88309e80dc382729f093a73f5d9d7467e038ae5b6cba531e6fa25fae3c01"
+    }
+  },
+  "files": [
+    {
+      "path": "cases.jsonl",
+      "rows": 96,
+      "bytes": 11226,
+      "sha256": "f5d0ffe50ae442d653e24fe7a74fcae70d2d4c6f854a737f045ec8f05dac3760",
+      "role": "measured source inputs"
+    },
+    {
+      "path": "meaning-expectations.jsonl",
+      "rows": 96,
+      "bytes": 23294,
+      "sha256": "eb367e82765ab3544d9d7979ae9e75d1af60ecdb6e5094ceaca86d02ac1c64db",
+      "role": "host-only source-governed English propositions; never engine input"
+    },
+    {
+      "path": "warmup.jsonl",
+      "rows": 32,
+      "bytes": 3498,
+      "sha256": "92411837c2a46a31ed5b1224316ea089e470b96cfb5ab90bc59ab909842ee124",
+      "role": "optional unmeasured direction warm-ups; excluded from all measured denominators"
+    },
+    {
+      "path": "README.md",
+      "rows": 103,
+      "bytes": 6046,
+      "sha256": "a5fc7063799f2e3dec3a5cb9096a2d2c09acb34f2ebac004bd6cff9a9cf2c3ff",
+      "role": "fixture contract, provenance and verification command"
+    },
+    {
+      "path": "validate.py",
+      "rows": 179,
+      "bytes": 9052,
+      "sha256": "c8595cf86050dbc0aece5ede7f79beeb0e57327f7c0a1b0f50148b906d4b58bf",
+      "role": "deterministic read-only inventory/schema/coverage validator"
+    }
+  ],
+  "verification": {
+    "command": "python -B test-data/corpus/translation/mozilla-v1/validate.py",
+    "mode": "read-only; standard library; stdout supplies exact inventories and manifest hash",
+    "lineEndingProtection": "test-data/.gitattributes: * -text (already covers this directory)"
+  },
+  "limitations": [
+    "Source-governed model-assisted guidance, not human/native-speaker certification or a parallel translation oracle.",
+    "Case uncertainty records identified ambiguity; an empty list is not a guarantee of unambiguous or correct authorship.",
+    "Questions do not assert prices, times or permission; do not invent absent meaning or force passes.",
+    "Schema and exact-string disjointness checks do not verify linguistic correctness, semantic independence or training-data novelty.",
+    "Only three measured cases per direct leg; no claim of reliable all-language dialogue, safety, or all 272 ordered pairs.",
+    "No candidate output observed, no model/device/build/download run, and no audio supplied.",
+    "Once evaluated, later reuse is regression rather than unseen holdout."
+  ]
+}

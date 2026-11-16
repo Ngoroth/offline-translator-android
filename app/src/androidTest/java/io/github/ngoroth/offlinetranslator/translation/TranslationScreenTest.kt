@@ -21,6 +21,7 @@ import androidx.compose.ui.test.performClick
 import io.github.ngoroth.offlinetranslator.core.LanguageCatalog
 import io.github.ngoroth.offlinetranslator.core.LanguagePair
 import io.github.ngoroth.offlinetranslator.tencent.TencentTranslationEngine
+import io.github.ngoroth.offlinetranslator.mozilla.MozillaTranslationEngine
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -218,7 +219,7 @@ class TranslationScreenTest {
 
     @Test fun actualPreparationPhasesAndTypedFailureRemainVisibleAndRetryable() {
         val state = mutableStateOf(TranslationUiState(input = "hello", modelStatus = ModelUiStatus.CHECKING,
-            isPreparing = true))
+            isPreparing = true, provider = MozillaTranslationEngine.descriptor))
         var retries = 0
         var prepares = 0
         val context = InstrumentationRegistry.getInstrumentation().targetContext
@@ -244,7 +245,7 @@ class TranslationScreenTest {
         compose.onNodeWithTag(TranslationTestTags.RETRY).assertIsEnabled().performClick()
         compose.runOnIdle {
             assertEquals(1, retries)
-            state.value = TranslationUiState(modelStatus = ModelUiStatus.MISSING, provider = TencentTranslationEngine.descriptor)
+            state.value = TranslationUiState(modelStatus = ModelUiStatus.MISSING, provider = MozillaTranslationEngine.descriptor)
         }
         compose.onNodeWithText(context.getString(R.string.model_prepare_hint)).performScrollTo().assertIsDisplayed()
         compose.onNodeWithTag(TranslationTestTags.PREPARE).assertIsEnabled().performClick()

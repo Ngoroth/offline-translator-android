@@ -7,6 +7,8 @@ import io.github.ngoroth.offlinetranslator.core.TranslationCapability
 import io.github.ngoroth.offlinetranslator.core.TranslationEngine
 import io.github.ngoroth.offlinetranslator.core.TranslationProviderDescriptor
 import io.github.ngoroth.offlinetranslator.core.requireSupported
+import io.github.ngoroth.offlinetranslator.mozilla.MozillaTranslationEngine
+import io.github.ngoroth.offlinetranslator.mozilla.MozillaTranslationPreparation
 import io.github.ngoroth.offlinetranslator.tencent.TencentArtifactPreparation
 import io.github.ngoroth.offlinetranslator.tencent.TencentTranslationEngine
 
@@ -25,11 +27,21 @@ class TranslationEngineRegistry internal constructor(registrations: List<Registr
     }
 
     internal constructor(factory: (Set<LanguagePair>) -> TranslationEngine) : this(
-        listOf(Registration(TencentTranslationEngine.descriptor, { TencentTranslationEngine.capability(it) }, factory)),
+        listOf(
+            Registration(TencentTranslationEngine.descriptor, { TencentTranslationEngine.capability(it) }, factory),
+            Registration(MozillaTranslationEngine.descriptor, { MozillaTranslationEngine.capability(it) }, factory),
+        ),
     )
 
-    constructor(artifacts: TencentArtifactPreparation) : this(
-        { pairs -> TencentTranslationEngine(pairs, artifacts) },
+    constructor(artifacts: TencentArtifactPreparation, preparation: MozillaTranslationPreparation) : this(
+        listOf(
+            Registration(TencentTranslationEngine.descriptor, { TencentTranslationEngine.capability(it) }) { pairs ->
+                TencentTranslationEngine(pairs, artifacts)
+            },
+            Registration(MozillaTranslationEngine.descriptor, { MozillaTranslationEngine.capability(it) }) { pairs ->
+                MozillaTranslationEngine(pairs, preparation)
+            },
+        ),
     )
 
     val descriptors: List<TranslationProviderDescriptor> = this.registrations.map { it.descriptor }

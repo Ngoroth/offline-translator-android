@@ -1,0 +1,70 @@
+diff --git a/inference/marian-fork/src/CMakeLists.txt b/inference/marian-fork/src/CMakeLists.txt
+--- a/inference/marian-fork/src/CMakeLists.txt
++++ b/inference/marian-fork/src/CMakeLists.txt
+@@ -135,32 +135,7 @@
+-# Generate git_revision.h to reflect current git revision information
+-# [https://stackoverflow.com/questions/1435953/how-can-i-pass-git-sha1-to-compiler-as-definition-using-cmake]
+-# Git updates .git/logs/HEAD file whenever you pull or commit something.
+-
+-# If Marian is checked out as a submodule in another repository,
+-# ${CMAKE_CURRENT_SOURCE_DIR}/../.git is not a directory but a file
+-# that specifies the relative path from ${CMAKE_CURRENT_SOURCE_DIR}/..
+-# to ./git/modules/<MARIAN_ROOT_DIR> in the root of the check_out of
+-# the project that contains Marian as a submodule.
+-#
+-# We set MARIAN_GIT_DIR to the appropriate path, depending on whether
+-# ${CMAKE_CURRENT_SOURCE_DIR}/../.git is a directory or file.
+-set(MARIAN_GIT_DIR ${CMAKE_CURRENT_SOURCE_DIR}/../../../.git)
+-if(NOT IS_DIRECTORY ${MARIAN_GIT_DIR}) # i.e., it's a submodule
+-  file(READ ${MARIAN_GIT_DIR} MARIAN_GIT_DIR)
+-  string(REGEX REPLACE "gitdir: (.*)\n" "\\1" MARIAN_GIT_DIR ${MARIAN_GIT_DIR})
+-  if(NOT IS_ABSOLUTE ${MARIAN_GIT_DIR})
+-    get_filename_component(MARIAN_GIT_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../${MARIAN_GIT_DIR}" ABSOLUTE)
+-  endif()
+-endif(NOT IS_DIRECTORY ${MARIAN_GIT_DIR})
+-
+-add_custom_command(OUTPUT ${CMAKE_CURRENT_SOURCE_DIR}/common/git_revision.h
+-  WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+-  COMMAND git log -1 --pretty=format:\#define\ GIT_REVISION\ \"\%h\ \%ai\" > ${CMAKE_CURRENT_SOURCE_DIR}/common/git_revision.h
+-  DEPENDS ${MARIAN_GIT_DIR}/logs/HEAD
+-  VERBATIM
+-)
+-add_custom_target(marian_version DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/common/git_revision.h)
+-add_dependencies(marian marian_version) # marian must depend on it so that it gets created first
++# Exported sources have no .git; the attested recipe provides the exact revision.
++file(MAKE_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/common")
++file(WRITE "${CMAKE_CURRENT_BINARY_DIR}/common/git_revision.h"
++  "#define GIT_REVISION \"${MOZILLA_SOURCE_REVISION}\"\n")
++target_include_directories(marian PRIVATE "${CMAKE_CURRENT_BINARY_DIR}")
+ # make sure all local dependencies are installed first before this is built
+ add_dependencies(marian 3rd_party_installs)
+diff --git a/inference/cmake/GetVersionFromFile.cmake b/inference/cmake/GetVersionFromFile.cmake
+--- a/inference/cmake/GetVersionFromFile.cmake
++++ b/inference/cmake/GetVersionFromFile.cmake
+@@ -21,12 +21,8 @@
+-# Get current commit SHA from git
+-execute_process(COMMAND ${GIT_EXECUTABLE} rev-parse --short HEAD
+-  WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+-  OUTPUT_VARIABLE PROJECT_VERSION_GIT_SHA
+-  OUTPUT_STRIP_TRAILING_WHITESPACE)
++# Explicit pinned export identity, independent of the build machine's checkout.
++set(PROJECT_VERSION_GIT_SHA "${MOZILLA_SOURCE_REVISION}")
+ 
+ # Get partial versions into a list
+ string(REGEX MATCHALL "-.*$|[0-9]+" PROJECT_PARTIAL_VERSION_LIST
+   ${PROJECT_VERSION_STRING})
+diff --git a/inference/marian-fork/cmake/GetVersionFromFile.cmake b/inference/marian-fork/cmake/GetVersionFromFile.cmake
+--- a/inference/marian-fork/cmake/GetVersionFromFile.cmake
++++ b/inference/marian-fork/cmake/GetVersionFromFile.cmake
+@@ -21,12 +21,8 @@
+-# Get current commit SHA from git
+-execute_process(COMMAND ${GIT_EXECUTABLE} rev-parse --short HEAD
+-  WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+-  OUTPUT_VARIABLE PROJECT_VERSION_GIT_SHA
+-  OUTPUT_STRIP_TRAILING_WHITESPACE)
++# Explicit pinned export identity, independent of the build machine's checkout.
++set(PROJECT_VERSION_GIT_SHA "${MOZILLA_SOURCE_REVISION}")
+ 
+ # Get partial versions into a list
+ string(REGEX MATCHALL "-.*$|[0-9]+" PROJECT_PARTIAL_VERSION_LIST
+   ${PROJECT_VERSION_STRING})

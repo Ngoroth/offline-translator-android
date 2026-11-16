@@ -30,7 +30,7 @@ remains unminified. There must be no global `-dontobfuscate`, `-dontrepackage`,
 `-dontshrink` or `-dontoptimize`, or app/dependency-wide blanket keeps. Check the precise Sherpa fields,
 descriptor classes, native-created result constructors and boxed streaming
 callback against `app/src/release/keepRules/release.keep`. Android's native-method
-defaults and Tencent's existing two-class consumer keeps remain applicable.
+defaults and the narrow Tencent and Mozilla JNI consumer keeps remain applicable.
 
 Use a persistent, artifact-specific `$EvidenceDir` outside the checkout and
 disposable build directories. `$Keystore`, `$PasswordFile`, `$KeyAlias` and
@@ -173,15 +173,17 @@ $adb = Join-Path $env:ANDROID_HOME 'platform-tools/adb'
 ### Fresh translation setup, settings and Reset
 
 Use an explicitly authorized fresh current settings state or test-isolated settings,
-without clearing shared app data/model packs. Tencent is the sole compiled provider:
-verify no one-option chooser or tap is required. Before either route mounts, the
-provider and setup completion must commit durably together. Observe route entry,
-the saved Tencent selection and persistence across actual force-stop/reopen.
-Startup must not download models, start capture or request microphone permission.
-Missing model readiness is separate from registered provider availability.
-Exercise multiple descriptors (including an unfamiliar synthetic ID), zero providers,
-load/save failure, busy/teardown gates, recomposition and explicit retry through
-isolated behavioral tests. Failure cannot expose routes or loop automatic saves.
+without clearing shared app data/model packs. Tencent and Mozilla are permanent
+compiled choices: a fresh setup requires an explicit selection, with neither
+provider selected automatically. Before either route mounts, the selected provider
+and setup completion must commit durably together. Verify both saved choices across
+actual force-stop/reopen, without repeating the startup question. Startup must not
+download models, start capture or request microphone permission. Missing model
+readiness is separate from registered provider availability. Exercise unavailable
+saved provider recovery, zero providers, load/save failure, busy/teardown gates,
+recomposition and explicit retry through isolated behavioral tests. Failure cannot
+expose routes or loop saves. Existing completed settings, defaults and Reset remain
+unchanged; do not migrate Tencent users to Mozilla.
 
 The default, model-independent startup gate is deliberately method-scoped for
 `RuntimeSettingsNativeTest`; **do not select its whole class**:
@@ -194,12 +196,34 @@ pwsh -NoProfile -File tools/android/run-device-gate.ps1 `
 ```
 
 Inspect actual rendered startup and Settings/Help as well as completed instrumentation
-results. Confirm descriptor-provided Tencent attribution/terms on both routes using
-only relevant focused attribution cases, not model-dependent full UI suites. Record
+results. Confirm the selected provider's attribution/terms and help on both routes:
+Mozilla must not display Tencent's 1.13 GB or RAM hint. Use only relevant focused
+attribution cases, not model-dependent full UI suites. Record
 the installed APK SHA-256 and correlate screenshots to that artifact. Source search
 alone does not prove SDK removal: retain `:app:dependencies --configuration
 debugRuntimeClasspath` output and inspect the assembled APK DEX inventory for
 `com.google.mlkit` and the retired app ML Kit package.
+
+For Mozilla's separately built library instrumentation APK, inspect its manifest
+and `pm list instrumentation` output first. Install the matching module test APK
+and verify the exact installed component; a missing or mismatched runner is a
+failure, not permission to substitute the app runner. Explicitly prepare pinned
+fixtures before offline JNI checks. Invoke the module independently:
+
+```powershell
+pwsh -NoProfile -File tools/android/run-device-gate.ps1 `
+  -Adb $adb -Device emulator-5554 `
+  -Runner 'io.github.ngoroth.offlinetranslator.mozilla.test/androidx.test.runner.AndroidJUnitRunner' `
+  -CaseList 'io.github.ngoroth.offlinetranslator.mozilla.MozillaNativeRuntimeTest' `
+  -EvidenceDir "$env:TEMP/mozilla-native-$([Guid]::NewGuid().ToString('N'))"
+```
+
+`-Runner` is optional and syntax-validated; its default remains the existing app
+component. Run app scenarios separately with that default or its explicit
+component and a distinct fresh evidence directory. Each receipt records the
+selected runner, actual positive test count and fail-closed transport/completion
+result. An app-only receipt cannot prove module tests. Keep resource preparation,
+steady inference and actual optimized-release execution evidence separate.
 
 Settings initially shows only the shared translation choice, interface language
 and voice speed. Expand Advanced for Whisper/System recognition, conditional
@@ -268,11 +292,76 @@ offline methods. Missing models must not become a mock-backed pass.
 | `RuntimeSettingsRouteTest` | Requires prepared Tencent even for genuine Text composition. Conversation cases additionally need selected Whisper/VAD/Piper or genuine installed System speech resources; no model downloads occur in the route checks. |
 | `SharedLanguagePairNativeTest` | Full-class execution requires Tencent, selected Whisper/VAD, RU/EN Piper voices, genuine System voices for the exercised languages, and bundled official/fixed fixtures. Choose individual methods for narrower evidence; do not treat the full class as a startup-only check. |
 | `InterfaceLanguageNativeTest` | Requires verified installed Tencent weights for real Text output through MainActivity. Its locale checks do not download models or require microphone capture. |
+| `SharedTranslationEngineNativeTest` | Set `runSharedTranslationEngineNative=true` and keep the selected Tencent or Mozilla provider and pair unchanged. Prepare its bidirectional resource union first, disconnect every network, and run with no Activity using AppRuntime. This translator-only suite checks Text/Conversation reuse, reverse-direction guards, background/trim reload and revoked leases; it never prepares speech or starts capture. Pull `files/shared-translation-reuse-proof/result.json` after each provider run into separate evidence; it records the selected engine ID. |
 
 Use the full package under `io.github.ngoroth.offlinetranslator` when selecting
 methods. Preserve each suite's explicit opt-in arguments, original fixtures and
 semantic/latency assertions; report skip, failure or missing prerequisites honestly
 rather than claiming preparation, compilation or skipped methods as execution.
+
+### Mozilla prepared-resource qualification
+
+Keep the module and application runners separate. Prepare the module's eight
+real-resource fixtures explicitly before its offline checks:
+
+```powershell
+$moduleRunner = 'io.github.ngoroth.offlinetranslator.mozilla.test/androidx.test.runner.AndroidJUnitRunner'
+& $adb -s emulator-5554 shell am instrument -w -r `
+  -e class 'io.github.ngoroth.offlinetranslator.mozilla.MozillaFixturePreparationTest#prepareQualificationFixtures' `
+  -e allowModelDownload true $moduleRunner
+```
+
+Alongside `MozillaNativeRuntimeTest`, run
+`io.github.ngoroth.offlinetranslator.mozilla.MozillaTranslationEngineConsumerTest`
+with the module runner. Its accepted-native cancellation, independent
+`awaitIdle`/`closeAndJoin` boundaries and failed-first-pivot-hop trace are separate
+from application UI tests. Retain the files under the module target's private
+`files/mozilla-native-consumer-evidence/` directory; a compiled test is not proof
+that these scenarios executed.
+
+The app's `MozillaTranslationQualificationTest` requires
+`-e runMozillaQualification true`, an explicit `-e phase`, and a fresh
+`-e runId` matching `[A-Za-z0-9][A-Za-z0-9_-]{0,63}`. Use the app runner and select
+one method per invocation. `run-device-gate.ps1` does not forward arbitrary
+instrumentation arguments; use a direct `am instrument -w -r` invocation with
+these arguments and retain equivalent fail-closed completion evidence.
+
+| Method | Phase and additional arguments | Bounded evidence |
+| --- | --- | --- |
+| `prepareSelectedResources` | `prepare`; `allowModelDownload=true`; `prepPhase=mozilla`, `tencent` or `both` | Explicit preparation only; Mozilla covers 16 bidirectional English pairs. |
+| `qualifyPreparedOutputs` | `outputs`; offline, no download flag | 96 fresh inputs on all 32 hub legs plus 48 unchanged in-catalog v1 regressions; 40 excluded warm-ups. The eight Arabic v1 rows remain explicitly out of catalog. |
+| `qualifyPreparedTinyPivot` | `tiny-pivot`; offline | Separate HI→ID and ID→HI probes using four tiny hub components; not additional fresh-corpus rows. |
+| `comparePreparedWarmProviders` | `compare-warm`; offline | The same 32 v1 RU↔EN/RU↔ZH sources, three passes and two providers; alternating directions in one retained owner, separate warm-ups and counterbalanced provider order. |
+| `observeProcessFirstUse` | `compare-first`; `freshProcess=true`; `provider=mozilla` or `tencent`; `comparisonPair=ru-en` or `ru-zh`; `observation=1`, `2` or `3` | Twelve separate invocations. Force-stop and prove the target PID absent before each; retain new PID/process-start evidence. A new owner alone is not a fresh process. |
+
+Pull each unique run's private `files/mozilla-qualification/<runId>/raw.jsonl`
+with byte-preserving output capture. Keep every failed or missing case; do not
+retry, overwrite, or compare only surviving directions. Timings are complete API
+calls, not token-TTFT. Tencent's preparation includes its existing hidden warm-up.
+PSS/RSS/native-heap boundary samples are not true memory peaks.
+
+`MozillaConversationQualificationTest` has its own opt-in:
+`runMozillaConversationQualification=true`. Run `prepareSelectedSpeechResources`
+with `phase=prepare-speech`, a fresh run ID and `allowModelDownload=true` to install
+selected Whisper/VAD/Piper resources, not Mozilla translation packs. Then run
+`preparedOfflineConversationBothDirectionsWithAndWithoutOutput` with
+`phase=conversation-offline`, another fresh run ID and no download flag.
+Prepare Mozilla RU↔EN beforehand and disconnect every network. Its four fixed
+WAV invocations use two real runtime owners, output disabled then enabled.
+Real VAD can emit multiple utterances per WAV; retain and validate every admitted
+segment rather than pinning a one-file/one-utterance count. Record half-duplex
+capture pauses and actually delivered PCM separately from full WAV identity.
+Evidence is under `files/mozilla-conversation-qualification/<runId>/raw.jsonl`.
+This proves the exercised Whisper/Mozilla/Piper path, not other languages' speech
+readiness, physical microphone acoustics, human-certified meaning, or the complete
+two-second goal.
+
+For every direct invocation require the exact selected positive JUnit count,
+final `INSTRUMENTATION_CODE: -1`, zero transport exit and no failure or skip
+markers. Preserve raw output and verify its summary denominators independently.
+The application qualification methods opt out without their explicit flag;
+missing resources after opting in must fail, not become skipped success.
+
 
 ### Optional Conversation speech output and actual capture status
 

@@ -1,0 +1,7 @@
+{
+  global:
+    JNI_OnLoad;
+    Java_io_github_ngoroth_offlinetranslator_mozilla_MozillaNativeRuntime_*;
+    Java_io_github_ngoroth_offlinetranslator_mozilla_MozillaNativeRuntimeTest_*;
+  local: *;
+};

@@ -98,6 +98,8 @@
     <string name="settings_load_error">No se han podido cargar los ajustes. Reinténtalo antes de hacer cambios.</string>
     <string name="settings_save_error">No se han podido guardar los ajustes. Se ha conservado tu borrador. Reinténtalo.</string>
     <string name="settings_translation_engine">Traducción · texto y conversación</string>
+    <string name="settings_translation_speed_priority">Prioridad a la velocidad</string>
+    <string name="settings_translation_quality_priority">Prioridad a la calidad</string>
     <string name="translation_setup_title">Elige tu traductor</string>
     <string name="translation_setup_explanation">Una elección para texto y conversación. Puedes cambiarla en Ajustes. Elegir no descarga modelos ni usa el micrófono.</string>
     <string name="translation_setup_unavailable">No hay ningún proveedor de traducción disponible.</string>
@@ -185,11 +187,13 @@
     <string name="translation_runtime_error">No se pudo cargar el motor local. Vuelve a prepararlo; si persiste, reinicia la aplicación.</string>
     <string name="translation_memory_error">Memoria insuficiente para la traducción local. Cierra otras aplicaciones y vuelve a preparar, o acorta el texto.</string>
     <string name="translation_limit_error">Se superó el límite de contexto o salida. Acorta el texto original; no se guardó ninguna traducción parcial.</string>
-    <string name="translation_encoding_error">El original contiene Unicode no válido. Corrige el texto y reintenta.</string>
+    <string name="translation_encoding_error">Unicode no válido en el original o la traducción. Edita el original o reintenta; no se guardó ninguna traducción parcial.</string>
     <string name="translation_timeout">La preparación tardó demasiado. Comprueba su estado y reintenta.</string>
     <string name="model_prepare_hint">Prepara los modelos.</string>
     <string name="tencent_model_download_hint">1,13 GB · descarga por Wi‑Fi</string>
     <string name="tencent_model_explanation">Prepara el modelo de traducción de 1,13 GB por Wi‑Fi para usarlo sin conexión. Puede necesitar varios GB de RAM.</string>
+    <string name="mozilla_model_download_hint">Modelos de los idiomas elegidos · descarga por Wi-Fi</string>
+    <string name="mozilla_model_explanation">Prepara por Wi-Fi los modelos de ambos sentidos de los idiomas elegidos. Los pares sin inglés se traducen a través del inglés. Cambiar de proveedor conserva los modelos descargados y no modifica las palabras reconocidas.</string>
     <string name="settings_recognition_service">Servicio de reconocimiento de voz</string>
     <string name="recognition_service_on_device">Servicio local de Android</string>
     <string name="conversation_recognition_incompatible_service">El servicio de reconocimiento seleccionado no se ha verificado para conversaciones sin conexión. Elige un servicio compatible en los ajustes avanzados.</string>

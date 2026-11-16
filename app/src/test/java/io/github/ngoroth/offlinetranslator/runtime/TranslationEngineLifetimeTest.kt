@@ -1,6 +1,8 @@
 package io.github.ngoroth.offlinetranslator.runtime
 
 import io.github.ngoroth.offlinetranslator.core.*
+import io.github.ngoroth.offlinetranslator.mozilla.MozillaTranslationEngine
+import io.github.ngoroth.offlinetranslator.tencent.TencentTranslationEngine
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.test.runTest
@@ -196,16 +198,15 @@ class TranslationEngineLifetimeTest {
     @Test fun providerPairChangesInvalidateImmediatelyButSwapRetains() = runTest {
         val engines = mutableListOf<Provider>()
         val create: (Set<LanguagePair>) -> TranslationEngine = { Provider().also(engines::add) }
-        val descriptor = io.github.ngoroth.offlinetranslator.tencent.TencentTranslationEngine.descriptor
         val registry = TranslationEngineRegistry(listOf(
-            TranslationEngineRegistry.Registration(descriptor.copy(id = "isolated-provider"), { TranslationCapability.Direct }, create),
-            TranslationEngineRegistry.Registration(descriptor, { TranslationCapability.Direct }, create),
+            TranslationEngineRegistry.Registration(MozillaTranslationEngine.descriptor, { MozillaTranslationEngine.capability(it) }, create),
+            TranslationEngineRegistry.Registration(TencentTranslationEngine.descriptor, { TencentTranslationEngine.capability(it) }, create),
         ))
         val lifetime = TranslationEngineLifetime(backgroundScope, registry)
-        val first = lifetime.lease("isolated-provider", setOf(pair))
+        val first = lifetime.lease("mozilla", setOf(pair))
         first.prepareLocal()
         first.closeAndJoin()
-        lifetime.invalidateSelection("isolated-provider", pair.reverse())
+        lifetime.invalidateSelection("mozilla", pair.reverse())
         assertEquals(0, engines.single().closes)
         lifetime.invalidateSelection("tencent", pair)
         assertEquals(1, engines.single().closes)
@@ -221,6 +222,52 @@ class TranslationEngineLifetimeTest {
         lifetime.closeAndJoin()
         assertEquals(3, engines.size)
         assertTrue(engines.all { it.closes == 1 })
+    }
+
+    @Test fun providerSwitchDrainsAcceptedWorkAndMozillaFailureNeverFallsBackToTencent() = runTest {
+        val tencent = Provider().apply {
+            blockTranslation = true
+            sdkFinished = CompletableDeferred()
+        }
+        val mozilla = Provider()
+        var tencentCreations = 0
+        var mozillaCreations = 0
+        val registry = TranslationEngineRegistry(listOf(
+            TranslationEngineRegistry.Registration(TencentTranslationEngine.descriptor, { TencentTranslationEngine.capability(it) }) {
+                tencentCreations++
+                tencent
+            },
+            TranslationEngineRegistry.Registration(MozillaTranslationEngine.descriptor, { MozillaTranslationEngine.capability(it) }) {
+                assertEquals(1, tencent.closes)
+                mozillaCreations++
+                mozilla
+            },
+        ))
+        val lifetime = TranslationEngineLifetime(backgroundScope, registry)
+        val old = lifetime.lease("tencent", setOf(pair))
+        old.prepareLocal()
+        val accepted = async { old.translate(pair, "original request") }
+        tencent.entered.await()
+        val switch = async { lifetime.invalidateSelection("mozilla", pair) }
+        testScheduler.runCurrent()
+        assertTrue(accepted.isCancelled)
+        assertFalse(switch.isCompleted)
+        assertEquals(0, tencent.closes)
+        assertEquals(0, mozillaCreations)
+        tencent.sdkFinished.complete(Unit)
+        switch.await()
+        val next = lifetime.lease("mozilla", setOf(pair))
+        next.prepareLocal()
+        val failure = TranslationFailure.RuntimeLoad()
+        mozilla.translationError = failure
+        assertSame(failure, runCatching { next.translate(pair, "kept source") }.exceptionOrNull())
+        assertEquals(TranslationPreparationPhase.FAILED, next.preparation.value.phase)
+        assertEquals(1, tencentCreations)
+        assertEquals(1, mozillaCreations)
+        assertEquals(1, mozilla.closes)
+        old.closeAndJoin()
+        next.closeAndJoin()
+        lifetime.closeAndJoin()
     }
 
     @Test fun failedDrainStillAttemptsCloseAndPreservesFirstFailureIdentity() = runTest {

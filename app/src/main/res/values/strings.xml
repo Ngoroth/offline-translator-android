@@ -98,6 +98,8 @@
     <string name="settings_load_error">Settings could not be loaded. Retry before making changes.</string>
     <string name="settings_save_error">Settings could not be saved. Your draft was kept. Retry.</string>
     <string name="settings_translation_engine">Translation · Text and Conversation</string>
+    <string name="settings_translation_speed_priority">Speed priority</string>
+    <string name="settings_translation_quality_priority">Quality priority</string>
     <string name="translation_setup_title">Choose your translator</string>
     <string name="translation_setup_explanation">One choice for Text and Conversation. You can change it in Settings. Choosing does not download models or use the microphone.</string>
     <string name="translation_setup_unavailable">No translation provider is available.</string>
@@ -185,11 +187,13 @@
     <string name="translation_runtime_error">The local translation engine could not load. Prepare again; restart the app if it persists.</string>
     <string name="translation_memory_error">Not enough memory for local translation. Close other apps and prepare again, or choose a shorter text.</string>
     <string name="translation_limit_error">The text exceeds the local translation context or output limit. Shorten the source; no partial translation was kept.</string>
-    <string name="translation_encoding_error">The source contains invalid Unicode. Correct the text and retry.</string>
+    <string name="translation_encoding_error">Invalid Unicode in the source or translation. Edit the source or retry; no partial translation was kept.</string>
     <string name="translation_timeout">Translation preparation took too long. Check the preparation state and retry.</string>
     <string name="model_prepare_hint">Prepare the models.</string>
     <string name="tencent_model_download_hint">1.13 GB · Wi-Fi download</string>
     <string name="tencent_model_explanation">Prepare the 1.13 GB translation model over Wi-Fi for offline use. Several GB of RAM may be needed.</string>
+    <string name="mozilla_model_download_hint">Models for selected languages · Wi-Fi download</string>
+    <string name="mozilla_model_explanation">Prepare models for both directions of your selected languages over Wi-Fi. Pairs without English translate through English. Switching providers keeps downloaded models; recognized words stay unchanged.</string>
     <string name="settings_recognition_service">Recognition service</string>
     <string name="recognition_service_on_device">Android on-device service</string>
     <string name="conversation_recognition_incompatible_service">The selected recognition service is not qualified for offline conversation. Choose a compatible service in advanced settings.</string>

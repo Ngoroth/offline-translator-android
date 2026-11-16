@@ -17,17 +17,19 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class TranslationEngineRegistryTest {
-    @Test fun tencentSelectionRejectsUnknownCatalogLanguageBeforeConstruction() {
-        val tencent = RecordingFactory()
-        val registry = TranslationEngineRegistry(tencent::create)
-        val engine = registry.create("tencent", setOf(ruEn, ruEn.reverse()))
-        try {
-            assertEquals(listOf(setOf(ruEn, ruEn.reverse())), tencent.selections)
-            assertProblem(ConfigurationProblem.UNSUPPORTED_PAIR, runCatching {
-                registry.create("tencent", setOf(LanguagePair(LanguageCatalog.ENGLISH, LanguageId("zz"))))
-            }.exceptionOrNull())
-            assertEquals(1, tencent.selections.size)
-        } finally { engine.close() }
+    @Test fun registeredProvidersRejectUnknownCatalogLanguageBeforeConstruction() {
+        for (engineId in listOf("tencent", "mozilla")) {
+            val factory = RecordingFactory()
+            val registry = TranslationEngineRegistry(factory::create)
+            val engine = registry.create(engineId, setOf(ruEn, ruEn.reverse()))
+            try {
+                assertEquals(listOf(setOf(ruEn, ruEn.reverse())), factory.selections)
+                assertProblem(ConfigurationProblem.UNSUPPORTED_PAIR, runCatching {
+                    registry.create(engineId, setOf(LanguagePair(LanguageCatalog.ENGLISH, LanguageId("zz"))))
+                }.exceptionOrNull())
+                assertEquals(1, factory.selections.size)
+            } finally { engine.close() }
+        }
     }
 
     @Test fun unknownEngineRetainsDistinctReasonWithoutCreatingAnyOwner() {
@@ -70,27 +72,30 @@ class TranslationEngineRegistryTest {
         assertTrue(factory.translatedPairs.isEmpty())
     }
 
-    @Test fun factoryReceivesOnlyImmutableSelectedPairSnapshot() = runTest {
+    @Test fun pivotFactoryReceivesOnlyImmutableSelectedPairSnapshotWithoutIntermediatePairs() = runTest {
         val factory = RecordingFactory()
         val registry = TranslationEngineRegistry(factory::create)
-        val selected = linkedSetOf(enDe)
-        val engine = registry.create("tencent", selected)
+        val pivot = LanguagePair(LanguageCatalog.RUSSIAN, LanguageCatalog.CHINESE)
+        val selected = linkedSetOf(pivot)
+        val engine = registry.create("mozilla", selected)
         selected.clear()
         selected += ruEn
 
-        assertEquals(listOf(setOf(enDe)), factory.selections)
+        assertEquals(listOf(setOf(pivot)), factory.selections)
         assertEquals(0, factory.preparations)
         assertTrue(factory.translatedPairs.isEmpty())
         engine.closeAndJoin()
     }
 
     @Test fun conversationFactoryReceivesOnlyTheTwoSelectedDirections() {
-        val factory = RecordingFactory()
-        val registry = TranslationEngineRegistry(factory::create)
-        registry.create("tencent", setOf(ruEn, ruEn.reverse())).close()
-        assertEquals(listOf(setOf(ruEn, ruEn.reverse())), factory.selections)
-        assertEquals(0, factory.preparations)
-        assertTrue(factory.translatedPairs.isEmpty())
+        for (engineId in listOf("tencent", "mozilla")) {
+            val factory = RecordingFactory()
+            val registry = TranslationEngineRegistry(factory::create)
+            registry.create(engineId, setOf(ruEn, ruEn.reverse())).close()
+            assertEquals(listOf(setOf(ruEn, ruEn.reverse())), factory.selections)
+            assertEquals(0, factory.preparations)
+            assertTrue(factory.translatedPairs.isEmpty())
+        }
     }
 
     @Test fun emptyOrUnboundedSelectionCannotReachFactory() {
@@ -111,7 +116,7 @@ class TranslationEngineRegistryTest {
 private val ruEn = LanguagePair(LanguageCatalog.RUSSIAN, LanguageCatalog.ENGLISH)
 private val enDe = LanguagePair(LanguageCatalog.ENGLISH, LanguageCatalog.GERMAN)
 
-/** Controlled factory boundary; ordinary capability evidence remains the shipping Tencent provider's. */
+/** Controlled factory boundary; capability evidence remains the shipping providers'. */
 private class RecordingFactory {
     val selections = mutableListOf<Set<LanguagePair>>()
     val translatedPairs = mutableListOf<LanguagePair>()

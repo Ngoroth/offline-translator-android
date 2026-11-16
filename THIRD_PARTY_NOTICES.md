@@ -32,7 +32,7 @@ Corresponding Source and compatible combined-work terms; see
 
 ## Tencent local translation
 
-The sole registered Tencent translation provider embeds CPU **llama.cpp** at commit
+The registered Tencent translation provider embeds CPU **llama.cpp** at commit
 [`d8d92973c8c21bb4dd5d592f0fec26fe2cd1e654`](https://github.com/ggml-org/llama.cpp/tree/d8d92973c8c21bb4dd5d592f0fec26fe2cd1e654)
 under MIT. It is explicitly built into a verified local JNI AAR, not downloaded
 as executable application content. Exact source/toolchain/ABI and license
@@ -50,6 +50,23 @@ SHA-256 is `a1d52d448f81c584a47c583e19dfab2d3851c7c84431b07baee093c1113ed114`.
 No NOTICE file was present in the captured pinned upstream inventory. Weights
 are not bundled in Git, the JNI AAR or the APK. Tencent and Hy-MT2 names remain
 their owners’ marks; attribution is not endorsement or quality certification.
+
+## Mozilla local translation
+
+The optional Mozilla provider uses maintained Mozilla Translations inference
+at `8eada038fd45bbf6fa58a412b22f80c79887fabc`, with source-supplied Marian,
+SentencePiece, intgemm/Ruy and the verified native dependency closure.
+It is prepared as a two-ABI JNI AAR, not downloaded as executable content.
+Exact source, patches, toolchain, notices and corresponding-source preparation
+are described in [Mozilla provenance](engine-mozilla/THIRD_PARTY.md).
+
+Mozilla translation weights, vocabularies and shortlists are separately
+downloaded under the upstream MPL-2.0 distribution terms, using the pinned
+provider catalog. They are not included in Git, the native AAR or the APK.
+Source-language splitter prefix files retain their LGPL-2.1 terms as data;
+they are not compiled into the native library. Preserve their source and
+notices along with the actual native dependency licenses. Original project
+licensing does not relicense these materials; Mozilla branding is not endorsement.
 
 ## Libraries resolved at build time
 

@@ -68,7 +68,7 @@ class AppSettingsRepositoryTest {
 
     @Test
     fun explicitFirstChoicePersistsEngineAndCompletionTogetherAcrossRestart() = runBlocking {
-        for (engineId in listOf("tencent", "isolated-provider")) {
+        for (engineId in listOf("tencent", "mozilla", "isolated-provider")) {
             val file = File(temp.root, "$engineId-settings.json")
             val first = AppSettingsRepository(file)
             val selected: AppSettings
@@ -214,7 +214,7 @@ class AppSettingsRepositoryTest {
     fun failedPartialWritePreservesCommittedSettingsAndBytesUntilExplicitSuccessfulSave() = runBlocking {
         val file = File(temp.root, "settings.json")
         val initial = AppSettingsTestFixtures.freshInstall.copy(vadMinSilenceMs = 1100, ttsSpeedPercent = 115)
-        val changed = initial.copy(translationEngineId = "tencent", translationSetupComplete = true)
+        val changed = initial.copy(translationEngineId = "mozilla", translationSetupComplete = true)
         val shouldFail = AtomicBoolean(false)
         val delegate = AppSettingsSerializer()
         val faultingSerializer = object : Serializer<AppSettings> {

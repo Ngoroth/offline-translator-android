@@ -1,0 +1,104 @@
+diff --git a/inference/src/translator/byte_array_util.cpp b/inference/src/translator/byte_array_util.cpp
+--- a/inference/src/translator/byte_array_util.cpp
++++ b/inference/src/translator/byte_array_util.cpp
+@@ -1,4 +1,6 @@
+ #include "byte_array_util.h"
++#include "mozilla_contract.h"
++#include <cstring>
+ 
+ #include <cstdlib>
+ #include <memory>
+@@ -34,66 +36,45 @@
+ bool validateBinaryModel(const AlignedMemory& model, uint64_t fileSize) {
+-  const void* current = model.begin();
+-  uint64_t memoryNeeded =
+-      sizeof(uint64_t) * 2;  // We keep track of how much memory we would need if we have a complete file
+-  uint64_t numHeaders;
+-  if (fileSize >= memoryNeeded) {  // We have enough filesize to fetch the headers.
+-    uint64_t binaryFileVersion = *get<uint64_t>(current);
+-    numHeaders = *get<uint64_t>(current);  // number of item headers that follow
+-  } else {
+-    return false;
+-  }
+-  memoryNeeded += numHeaders * sizeof(Header);
+-  const Header* headers;
+-  if (fileSize >= memoryNeeded) {
+-    headers = get<Header>(current, numHeaders);  // read that many headers
+-  } else {
+-    return false;
+-  }
+-
+-  // Calculate how many bytes we are going to for reading just the names and the shape
+-  for (uint64_t i = 0; i < numHeaders; i++) {
+-    memoryNeeded += headers[i].nameLength + headers[i].shapeLength * sizeof(int);
+-    // Advance the pointers.
+-    get<char>(current, headers[i].nameLength);
+-    get<int>(current, headers[i].shapeLength);
+-  }
+-
+-  // Before we start reading the data, there is a small padding to ensure alignment
+-  // Read that in, before calculating the actual tensor memory requirements.
+-  uint64_t aligned_offset;
+-  if (fileSize >= memoryNeeded) {
+-    aligned_offset = *get<uint64_t>(current);  // Offset to align memory to 256 size
+-    memoryNeeded += aligned_offset + sizeof(uint64_t);
+-  } else {
+-    return false;
+-  }
+-
+-  // Finally the tensor size:
+-  for (uint64_t i = 0; i < numHeaders; i++) {
+-    memoryNeeded += headers[i].dataLength;
+-  }
+-
+-  // If this final check passes, the file is at least big enough to contain the model
+-  if (fileSize >= memoryNeeded) {
+-    return true;
+-  } else {
+-    return false;
+-  }
++  if(fileSize > model.size() || fileSize < 16 || !model.begin()) return false;
++  const auto* bytes = reinterpret_cast<const unsigned char*>(model.begin());
++  uint64_t position = 0;
++  auto take = [&](uint64_t count) {
++    if(count > fileSize - position) return false;
++    position += count;
++    return true;
++  };
++  auto number = [&](uint64_t& value) {
++    if(!take(8)) return false;
++    std::memcpy(&value, bytes + position - 8, 8);
++    return true;
++  };
++  uint64_t version, count;
++  if(!number(version) || version != 1 || !number(count) || count == 0 ||
++     count > (fileSize - position) / sizeof(Header)) return false;
++  const uint64_t headers = position;
++  if(!take(count * sizeof(Header))) return false;
++  for(uint64_t i = 0; i < count; ++i) {
++    Header header;
++    std::memcpy(&header, bytes + headers + i * sizeof(Header), sizeof(Header));
++    if(header.nameLength == 0 || !take(header.nameLength) || bytes[position - 1] != 0) return false;
++  }
++  for(uint64_t i = 0; i < count; ++i) {
++    Header header;
++    std::memcpy(&header, bytes + headers + i * sizeof(Header), sizeof(Header));
++    if(header.shapeLength > (fileSize - position) / sizeof(int) ||
++       !take(header.shapeLength * sizeof(int))) return false;
++  }
++  uint64_t padding;
++  if(!number(padding) || !take(padding)) return false;
++  for(uint64_t i = 0; i < count; ++i) {
++    Header header;
++    std::memcpy(&header, bytes + headers + i * sizeof(Header), sizeof(Header));
++    if(!take(header.dataLength)) return false;
++  }
++  return position <= fileSize;
+ }
+@@ -107,7 +88,7 @@
+   AlignedMemory alignedMemory(fileSize, alignment);
+   in.read(reinterpret_cast<char*>(alignedMemory.begin()), fileSize);
+-  ABORT_IF(alignedMemory.size() != fileSize, "Error reading file {}", path);
++  if(!in || static_cast<uint64_t>(in.gcount()) != fileSize) throw mozilla::Failure("artifact_corrupt");
+   return alignedMemory;
+ }

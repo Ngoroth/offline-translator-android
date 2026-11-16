@@ -37,7 +37,8 @@ class AppRuntime private constructor(context: Context) {
     val speechModels = SpeechModelStore(this.context, SherpaSpeechModelCatalog.fromAssets(this.context))
     val catalog: SpeechModelCatalog get() = speechModels.catalog
     private val tencentArtifacts = io.github.ngoroth.offlinetranslator.tencent.TencentArtifactPreparation(this.context)
-    val registry = TranslationEngineRegistry(tencentArtifacts)
+    private val mozillaPreparation = io.github.ngoroth.offlinetranslator.mozilla.MozillaTranslationPreparation(this.context)
+    val registry = TranslationEngineRegistry(tencentArtifacts, mozillaPreparation)
     private val translationLifetime = TranslationEngineLifetime(scope, registry)
     internal val owners = RuntimeOwnerController(scope)
 

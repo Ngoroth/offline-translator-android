@@ -4,6 +4,15 @@ Notable capability, behavior and developer-facing compatibility changes. Entries
 
 ## Unreleased
 
+### Mozilla translation provider
+
+- Added Mozilla as an additional selectable engine for Text and Conversation, retaining Tencent, existing saved choices, Reset defaults and the explicit first-run multi-provider chooser.
+- Added pinned selected-pair model/vocabulary/shortlist preparation over Wi-Fi with integrity checks, offline reuse, direct English routes and provider-internal English pivots for the current 17-language catalog.
+- Added native blocking-owner integration, independent two-ABI preparation/verification, strict completion/encoding bounds and awaited resource release; Whisper remains in transcription mode.
+- Added versioned multilingual qualification inputs and opt-in module/application checks. Build, runtime, speed and meaning qualification must be reported for the exact artifacts; these development entries do not certify a release.
+- Kept Conversation language controls reachable in compact-height windows by scrolling capture status with the workspace while leaving Stop, speech output and attribution fixed.
+- Labelled translation choices by speed/quality priority with the provider name as a secondary line in Settings and first-run setup across all interface languages; defaults, attribution and stored selections are unchanged.
+
 ### Concise Help and current-provider README
 
 - Shortened Help in all interface languages to mode instructions, explicit Wi-Fi/model preparation and memory requirements; removed cache/warm-up internals and experimental/translation-check/phone-qualification caveats while preserving privacy and legal actions.

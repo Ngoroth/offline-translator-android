@@ -85,12 +85,12 @@ class SettingsViewModelTest {
             runCurrent()
             vm.beginEditing()
             vm.updateDraft(vm.state.value.draft.copy(speechRecognitionBackend = SpeechRecognitionBackend.SYSTEM_OFFLINE,
-                speechOutputBackend = SpeechOutputBackend.PIPER, ttsSpeedPercent = 110))
+                speechOutputBackend = SpeechOutputBackend.PIPER, ttsSpeedPercent = 110, translationEngineId = "mozilla"))
             vm.updateDraft(vm.state.value.draft.copy(speechRecognitionService = "missing.provider/.RecognitionService"))
             repo.save(repo.current().copy(languagePair = frenchSpanish))
             runCurrent()
             val draft = AppSettings(languagePair = frenchSpanish, speechRecognitionBackend = SpeechRecognitionBackend.SYSTEM_OFFLINE,
-                speechOutputBackend = SpeechOutputBackend.PIPER, ttsSpeedPercent = 110)
+                speechOutputBackend = SpeechOutputBackend.PIPER, ttsSpeedPercent = 110, translationEngineId = "mozilla")
                 .copy(speechRecognitionService = "missing.provider/.RecognitionService")
             assertEquals(draft, vm.state.value.draft)
             vm.cancelDraft()
@@ -221,7 +221,7 @@ class SettingsViewModelTest {
         val selected = AppSettings(languagePair = LanguagePair(LanguageCatalog.DUTCH, LanguageCatalog.ENGLISH),
             speechRecognitionBackend = SpeechRecognitionBackend.SYSTEM_OFFLINE,
             speechOutputBackend = SpeechOutputBackend.PIPER,
-            translationEngineId = "tencent", translationSetupComplete = true,
+            translationEngineId = "mozilla", translationSetupComplete = true,
             speechRecognitionService = "installed.provider/.RecognitionService",
             vadMinSilenceMs = 1200, ttsSpeedPercent = 115)
         val vm = SettingsViewModel(repo, MutableStateFlow(true), { emptyList() },
@@ -372,7 +372,7 @@ class SettingsViewModelTest {
         val dispatcher = StandardTestDispatcher(testScheduler)
         Dispatchers.setMain(dispatcher)
         try {
-            for (engineId in listOf("tencent", "isolated-provider")) {
+            for (engineId in listOf("tencent", "mozilla", "isolated-provider")) {
                 val file = File(temp.root, "setup-$engineId.json")
                 val repo = AppSettingsRepository(file, dispatcher)
                 val gate = CompletableDeferred<Unit>()

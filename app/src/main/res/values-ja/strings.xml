@@ -98,6 +98,8 @@
     <string name="settings_load_error">設定を読み込めませんでした。変更する前に再試行してください。</string>
     <string name="settings_save_error">設定を保存できませんでした。編集中の内容は保持されています。再試行してください。</string>
     <string name="settings_translation_engine">翻訳 · テキストと会話</string>
+    <string name="settings_translation_speed_priority">速度優先</string>
+    <string name="settings_translation_quality_priority">品質優先</string>
     <string name="translation_setup_title">翻訳機能を選択</string>
     <string name="translation_setup_explanation">テキストと会話に共通の選択です。設定で変更できます。選択してもモデルのダウンロードやマイクの使用は行いません。</string>
     <string name="translation_setup_unavailable">利用可能な翻訳プロバイダーがありません。</string>
@@ -185,11 +187,13 @@
     <string name="translation_runtime_error">ローカル翻訳エンジンを読み込めません。再準備し、続く場合はアプリを再起動してください。</string>
     <string name="translation_memory_error">ローカル翻訳のメモリが不足しています。他のアプリを閉じて再準備するか、テキストを短くしてください。</string>
     <string name="translation_limit_error">コンテキストまたは出力の上限を超えました。原文を短くしてください。不完全な翻訳は保存していません。</string>
-    <string name="translation_encoding_error">原文に無効なUnicodeが含まれています。テキストを修正して再試行してください。</string>
+    <string name="translation_encoding_error">原文または翻訳に無効なUnicodeが含まれています。原文を修正するか再試行してください。不完全な翻訳は保存していません。</string>
     <string name="translation_timeout">翻訳の準備に時間がかかりすぎています。準備状況を確認して再試行してください。</string>
     <string name="model_prepare_hint">モデルを準備してください。</string>
     <string name="tencent_model_download_hint">1.13 GB・Wi‑Fiでダウンロード</string>
     <string name="tencent_model_explanation">オフラインで使うには、Wi‑Fi経由で1.13 GBの翻訳モデルを準備してください。数GBのRAMが必要になる場合があります。</string>
+    <string name="mozilla_model_download_hint">選択した言語のモデル・Wi-Fiでダウンロード</string>
+    <string name="mozilla_model_explanation">選択した言語の双方向モデルをWi-Fiで準備してください。英語を含まない言語ペアは英語を経由して翻訳します。プロバイダーを変更してもダウンロード済みモデルは保持され、認識した原文は変わりません。</string>
     <string name="settings_recognition_service">音声認識サービス</string>
     <string name="recognition_service_on_device">Android のオンデバイスサービス</string>
     <string name="conversation_recognition_incompatible_service">選択した認識サービスは、オフライン会話での動作が確認されていません。詳細設定で互換性のあるサービスを選択してください。</string>

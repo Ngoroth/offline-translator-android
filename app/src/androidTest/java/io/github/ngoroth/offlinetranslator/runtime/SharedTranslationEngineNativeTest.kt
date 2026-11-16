@@ -16,8 +16,8 @@ import java.util.concurrent.atomic.AtomicInteger
 
 /**
  * Opt in with runSharedTranslationEngineNative=true, with no Activity using AppRuntime.
- * Keep the stored Tencent language pair and valid Conversation configuration; stage the
- * actual Tencent weights beforehand and disconnect every network. No settings writes,
+ * Keep the stored language pair, selected provider and valid Conversation configuration;
+ * prepare its actual translation models beforehand and disconnect every network. No settings writes,
  * downloads, speech preparation, microphone access, or installation occur here.
  */
 class SharedTranslationEngineNativeTest {
@@ -26,7 +26,7 @@ class SharedTranslationEngineNativeTest {
     @Test
     fun installedOfflineTranslatorSurvivesRouteSwitchesAndReloadsOnlyAfterEviction() = runBlocking {
         assumeTrue(
-            "Opt in via runSharedTranslationEngineNative=true after installing Tencent locally",
+            "Opt in via runSharedTranslationEngineNative=true after preparing the selected provider locally",
             InstrumentationRegistry.getArguments().getString("runSharedTranslationEngineNative") == "true",
         )
         assertOffline()
@@ -45,6 +45,7 @@ class SharedTranslationEngineNativeTest {
                 .put("loading", loading.get()).put("downloading", downloading.get()))
             check(proofFile.parentFile!!.isDirectory || proofFile.parentFile!!.mkdirs())
             proofFile.writeText(JSONObject().put("stages", stages)
+                .put("engineId", original?.translationEngineId ?: JSONObject.NULL)
                 .put("completed", stage == "completed").toString())
         }
         try {
@@ -53,7 +54,8 @@ class SharedTranslationEngineNativeTest {
                 try {
                 val selected = runtime.settings.current()
                 original = selected
-                assertEquals("Stored configuration must already select Tencent", "tencent", selected.translationEngineId)
+                assertTrue("Stored configuration must select a compiled provider",
+                    selected.translationEngineId in setOf("tencent", "mozilla"))
                 runtime.enterForeground()
                 val pair = selected.languagePair
                 val conversationConfig = selected.conversationConfig()
@@ -104,7 +106,7 @@ class SharedTranslationEngineNativeTest {
                 observe(last.translation)
                 assertEquals(ModelAvailability.READY, runtime.useText(last) { it.prepareLocal() })
                 assertNativeText(requireNotNull(runtime.useText(last) { it.translate(pair, "123") }))
-                // The shared native model covers both directions, but a Text lease must not.
+                // The retained provider covers both directions, but a Text lease must not.
                 assertPairRejected(last.translation, pair.reverse())
                 assertCounts(loading, downloading, 1)
                 recordProgress("lastText")
@@ -174,7 +176,7 @@ class SharedTranslationEngineNativeTest {
     }
 
     private fun assertCounts(loading: AtomicInteger, downloading: AtomicInteger, expectedLoads: Int) {
-        assertEquals("Actual Tencent initialization transitions", expectedLoads, loading.get())
+        assertEquals("Actual selected-provider initialization transitions", expectedLoads, loading.get())
         assertEquals("Local preparation must never download", 0, downloading.get())
     }
 

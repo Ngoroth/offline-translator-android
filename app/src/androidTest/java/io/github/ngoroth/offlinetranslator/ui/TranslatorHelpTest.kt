@@ -31,6 +31,7 @@ import io.github.ngoroth.offlinetranslator.conversation.ConversationTestTags
 import io.github.ngoroth.offlinetranslator.core.ConversationState
 import io.github.ngoroth.offlinetranslator.core.TranslationProviderDescriptor
 import io.github.ngoroth.offlinetranslator.tencent.TencentTranslationEngine
+import io.github.ngoroth.offlinetranslator.mozilla.MozillaTranslationEngine
 import io.github.ngoroth.offlinetranslator.translation.ModelUiStatus
 import io.github.ngoroth.offlinetranslator.translation.TranslationScreen
 import io.github.ngoroth.offlinetranslator.translation.TranslationTestTags
@@ -115,9 +116,8 @@ class TranslatorHelpTest {
         compose.onNodeWithTag(TranslatorHelpTestTags.DIALOG).assertDoesNotExist()
         compose.onNodeWithTag(TranslatorHelpTestTags.ACTION).assertIsDisplayed()
     }
-    @Test fun otherProviderTermsUseOnlyItsOwnAttributionAndLegalDestination() {
-        val other = TencentTranslationEngine.descriptor.copy(id = "isolated-descriptor", displayName = "Other translator",
-            provider = "Other", attribution = "Other translator attribution", termsUrl = "https://example.test/terms")
+    @Test fun mozillaHelpAndTermsUseOnlyItsOwnModelExplanationAttributionAndDestination() {
+        val other = MozillaTranslationEngine.descriptor
         val provider = mutableStateOf(other)
         val opened = mutableListOf<String>()
         val context = InstrumentationRegistry.getInstrumentation().targetContext
@@ -125,9 +125,12 @@ class TranslatorHelpTest {
             TranslatorHelp(conversation = true, provider = provider.value, onOpenUri = opened::add)
         } }
         compose.onNodeWithTag(TranslatorHelpTestTags.ACTION).performClick()
+        compose.onNodeWithText(context.getString(R.string.mozilla_model_explanation)).performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText(context.getString(R.string.tencent_model_explanation)).assertDoesNotExist()
         compose.onNodeWithTag(TranslatorHelpTestTags.TERMS_ACTION).performScrollTo().performClick()
-        compose.onNodeWithText(other.attribution).assertIsDisplayed()
+        compose.onNodeWithText(other.attribution).performScrollTo().assertIsDisplayed()
         compose.onNodeWithText(context.getString(R.string.provider_terms)).performScrollTo().performClick()
+        compose.onNodeWithText(TencentTranslationEngine.descriptor.attribution).assertDoesNotExist()
         compose.runOnIdle { assertEquals(listOf(other.termsUrl), opened) }
         compose.runOnIdle { provider.value = other.copy(attribution = " \n") }
         compose.onNodeWithText(other.attribution).assertDoesNotExist()

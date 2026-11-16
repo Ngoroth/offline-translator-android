@@ -98,6 +98,8 @@
     <string name="settings_load_error">De instellingen konden niet worden geladen. Probeer het opnieuw voordat je wijzigingen aanbrengt.</string>
     <string name="settings_save_error">De instellingen konden niet worden opgeslagen. Je wijzigingen zijn behouden. Probeer het opnieuw.</string>
     <string name="settings_translation_engine">Vertaling · tekst en gesprek</string>
+    <string name="settings_translation_speed_priority">Prioriteit voor snelheid</string>
+    <string name="settings_translation_quality_priority">Prioriteit voor kwaliteit</string>
     <string name="translation_setup_title">Kies je vertaler</string>
     <string name="translation_setup_explanation">Eén keuze voor tekst en gesprek, te wijzigen in Instellingen. Kiezen downloadt geen modellen en gebruikt de microfoon niet.</string>
     <string name="translation_setup_unavailable">Er is geen vertaalaanbieder beschikbaar.</string>
@@ -191,10 +193,12 @@
     <string name="translation_storage_error">Het model kon niet worden opgeslagen of gedownload. Controleer de vrije ruimte en wifi en bereid opnieuw voor.</string>
     <string name="translation_memory_error">Onvoldoende geheugen voor lokaal vertalen. Sluit andere apps en bereid opnieuw voor of kies een kortere tekst.</string>
     <string name="translation_limit_error">De tekst overschrijdt de context- of uitvoerlimiet voor lokaal vertalen. Verkort de brontekst; er is geen gedeeltelijke vertaling bewaard.</string>
-    <string name="translation_encoding_error">De brontekst bevat ongeldige Unicode. Corrigeer de tekst en probeer het opnieuw.</string>
+    <string name="translation_encoding_error">Ongeldige Unicode in de bron of vertaling. Pas de bron aan of probeer opnieuw; er is geen gedeeltelijke vertaling bewaard.</string>
     <string name="translation_runtime_error">De lokale vertaalengine kon niet worden geladen. Bereid opnieuw voor; start de app opnieuw als het probleem blijft bestaan.</string>
     <string name="translation_timeout">De voorbereiding van de vertaling duurde te lang. Controleer de voorbereidingsstatus en probeer het opnieuw.</string>
     <string name="model_prepare_hint">Bereid de modellen voor.</string>
     <string name="tencent_model_download_hint">1,13 GB · downloaden via wifi</string>
     <string name="tencent_model_explanation">Bereid het vertaalmodel van 1,13 GB via wifi voor om het offline te gebruiken. Er kan meerdere GB RAM nodig zijn.</string>
+    <string name="mozilla_model_download_hint">Modellen voor gekozen talen · downloaden via wifi</string>
+    <string name="mozilla_model_explanation">Bereid de modellen voor beide richtingen van de gekozen talen via wifi voor. Paren zonder Engels worden via Engels vertaald. Bij een andere aanbieder blijven gedownloade modellen bewaard en herkende woorden ongewijzigd.</string>
 </resources>

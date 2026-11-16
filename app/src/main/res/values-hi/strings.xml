@@ -98,6 +98,8 @@
     <string name="settings_load_error">सेटिंग लोड नहीं हो सकीं। बदलाव करने से पहले फिर कोशिश करें।</string>
     <string name="settings_save_error">सेटिंग सहेजी नहीं जा सकीं। आपका मसौदा सुरक्षित है। फिर से कोशिश करें।</string>
     <string name="settings_translation_engine">अनुवाद · पाठ और बातचीत</string>
+    <string name="settings_translation_speed_priority">गति को प्राथमिकता</string>
+    <string name="settings_translation_quality_priority">गुणवत्ता को प्राथमिकता</string>
     <string name="translation_setup_title">अपना अनुवादक चुनें</string>
     <string name="translation_setup_explanation">पाठ और बातचीत के लिए एक ही विकल्प। इसे सेटिंग में बदल सकते हैं। चुनने से मॉडल डाउनलोड नहीं होते और माइक्रोफ़ोन इस्तेमाल नहीं होता।</string>
     <string name="translation_setup_unavailable">कोई अनुवाद प्रदाता उपलब्ध नहीं है।</string>
@@ -185,11 +187,13 @@
     <string name="translation_runtime_error">स्थानीय अनुवाद इंजन लोड नहीं हुआ। फिर तैयार करें; समस्या रहे तो ऐप फिर शुरू करें।</string>
     <string name="translation_memory_error">स्थानीय अनुवाद के लिए मेमोरी कम है। दूसरे ऐप बंद करके फिर तैयार करें या पाठ छोटा करें।</string>
     <string name="translation_limit_error">संदर्भ या परिणाम की सीमा पार हो गई। मूल पाठ छोटा करें; अधूरा अनुवाद नहीं रखा गया।</string>
-    <string name="translation_encoding_error">मूल पाठ में अमान्य Unicode है। पाठ सुधारकर फिर प्रयास करें।</string>
+    <string name="translation_encoding_error">मूल पाठ या अनुवाद में अमान्य Unicode है। मूल पाठ बदलें या फिर प्रयास करें; अधूरा अनुवाद नहीं रखा गया।</string>
     <string name="translation_timeout">अनुवाद की तैयारी में बहुत समय लगा। तैयारी की स्थिति जाँचकर फिर प्रयास करें।</string>
     <string name="model_prepare_hint">मॉडल तैयार करें।</string>
     <string name="tencent_model_download_hint">1.13 GB · वाई-फ़ाई से डाउनलोड</string>
     <string name="tencent_model_explanation">ऑफ़लाइन उपयोग के लिए 1.13 GB का अनुवाद मॉडल Wi‑Fi से तैयार करें। कई GB RAM की ज़रूरत पड़ सकती है।</string>
+    <string name="mozilla_model_download_hint">चुनी गई भाषाओं के मॉडल · वाई-फ़ाई से डाउनलोड</string>
+    <string name="mozilla_model_explanation">चुनी गई भाषाओं की दोनों दिशाओं के मॉडल वाई-फ़ाई से तैयार करें। अंग्रेज़ी के बिना वाली जोड़ियों का अनुवाद अंग्रेज़ी के माध्यम से होता है। प्रदाता बदलने पर डाउनलोड किए गए मॉडल बने रहते हैं और पहचाने गए शब्द नहीं बदलते।</string>
     <string name="settings_recognition_service">वाक् पहचान सेवा</string>
     <string name="recognition_service_on_device">Android की डिवाइस पर चलने वाली सेवा</string>
     <string name="conversation_recognition_incompatible_service">चुनी गई पहचान सेवा ऑफ़लाइन बातचीत के लिए सत्यापित नहीं है। बेहतर सेटिंग में कोई संगत सेवा चुनें।</string>

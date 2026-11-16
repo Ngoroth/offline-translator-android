@@ -239,11 +239,22 @@ internal fun TranslationEngineChoice(
                     .testTag("${SettingsTestTags.TRANSLATION_ENGINE}_option_$id").padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
                     RadioButton(selected = selected == id, onClick = null, enabled = enabled)
                     Spacer(Modifier.width(12.dp))
-                    Text(provider.displayName, style = MaterialTheme.typography.titleSmall)
+                    Column {
+                        Text(when (id) {
+                            "mozilla" -> stringResource(R.string.settings_translation_speed_priority)
+                            "tencent" -> stringResource(R.string.settings_translation_quality_priority)
+                            else -> provider.displayName
+                        }, style = MaterialTheme.typography.titleSmall)
+                        if (id == "mozilla" || id == "tencent") {
+                            Text(provider.displayName, style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                    }
                 }
             }
         }
         if (selected == "tencent") Text(stringResource(R.string.tencent_model_download_hint), style = MaterialTheme.typography.bodySmall)
+        if (selected == "mozilla") Text(stringResource(R.string.mozilla_model_download_hint), style = MaterialTheme.typography.bodySmall)
     }
 }
 

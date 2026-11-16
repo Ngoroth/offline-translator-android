@@ -98,6 +98,8 @@
     <string name="settings_load_error">Pengaturan tidak dapat dimuat. Coba lagi sebelum membuat perubahan.</string>
     <string name="settings_save_error">Pengaturan tidak dapat disimpan. Draf Anda tetap tersimpan. Coba lagi.</string>
     <string name="settings_translation_engine">Terjemahan · teks dan percakapan</string>
+    <string name="settings_translation_speed_priority">Prioritas kecepatan</string>
+    <string name="settings_translation_quality_priority">Prioritas kualitas</string>
     <string name="translation_setup_title">Pilih penerjemah</string>
     <string name="translation_setup_explanation">Satu pilihan untuk teks dan percakapan, dapat diubah di Pengaturan. Memilih tidak mengunduh model atau menggunakan mikrofon.</string>
     <string name="translation_setup_unavailable">Tidak ada penyedia terjemahan yang tersedia.</string>
@@ -185,11 +187,13 @@
     <string name="translation_runtime_error">Mesin terjemahan lokal tidak dapat dimuat. Siapkan kembali; jika berlanjut, mulai ulang aplikasi.</string>
     <string name="translation_memory_error">Memori tidak cukup untuk terjemahan lokal. Tutup aplikasi lain dan siapkan kembali atau persingkat teks.</string>
     <string name="translation_limit_error">Batas konteks atau keluaran terlampaui. Persingkat teks sumber; terjemahan parsial tidak disimpan.</string>
-    <string name="translation_encoding_error">Sumber mengandung Unicode tidak valid. Perbaiki teks dan coba lagi.</string>
+    <string name="translation_encoding_error">Unicode tidak valid dalam sumber atau terjemahan. Edit sumber atau coba lagi; terjemahan parsial tidak disimpan.</string>
     <string name="translation_timeout">Persiapan terjemahan terlalu lama. Periksa status persiapan dan coba lagi.</string>
     <string name="model_prepare_hint">Siapkan model.</string>
     <string name="tencent_model_download_hint">1,13 GB · unduh lewat Wi‑Fi</string>
     <string name="tencent_model_explanation">Siapkan model terjemahan 1,13 GB melalui Wi‑Fi untuk penggunaan offline. RAM beberapa GB mungkin diperlukan.</string>
+    <string name="mozilla_model_download_hint">Model bahasa pilihan · unduh lewat Wi-Fi</string>
+    <string name="mozilla_model_explanation">Siapkan model untuk kedua arah bahasa pilihan melalui Wi-Fi. Pasangan tanpa bahasa Inggris diterjemahkan melalui bahasa Inggris. Mengganti penyedia mempertahankan model yang diunduh dan tidak mengubah kata yang dikenali.</string>
     <string name="settings_recognition_service">Layanan pengenalan ucapan</string>
     <string name="recognition_service_on_device">Layanan di perangkat Android</string>
     <string name="conversation_recognition_incompatible_service">Layanan pengenalan yang dipilih belum diverifikasi untuk percakapan offline. Pilih layanan yang kompatibel di setelan lanjutan.</string>

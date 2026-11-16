@@ -1,0 +1,16 @@
+diff --git a/inference/marian-fork/src/graph/expression_graph.h b/inference/marian-fork/src/graph/expression_graph.h
+--- a/inference/marian-fork/src/graph/expression_graph.h
++++ b/inference/marian-fork/src/graph/expression_graph.h
+@@ -492,9 +492,11 @@
+     nodesForward_.clear();
+     nodesBackward_.clear();
+ 
+     topNodes_.clear();
+ 
+-    tensors_->clear();
++    // Destruction also clears a graph whose device/workspace setup never
++    // completed, including an exception before setDevice() was reached.
++    if(tensors_) tensors_->clear();
+   }
+ 
+   void setReloaded(bool reloaded) { reloaded_ = reloaded; }

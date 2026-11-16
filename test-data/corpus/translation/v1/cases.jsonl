@@ -1,0 +1,56 @@
+{"id":"ru-en-01","source":"ru","target":"en","text":"Где ближайшая аптека?"}
+{"id":"ru-en-02","source":"ru","target":"en","text":"Мне нужен билет в один конец, не туда и обратно."}
+{"id":"ru-en-03","source":"ru","target":"en","text":"Меня зовут Анна Петрова. Я забронировала номер на две ночи."}
+{"id":"ru-en-04","source":"ru","target":"en","text":"Поезд отправляется в 18:45 с платформы 7 или с платформы 9?"}
+{"id":"ru-en-05","source":"ru","target":"en","text":"У моего сына аллергия на арахис. Пожалуйста, не добавляйте орехи и проверьте соус."}
+{"id":"ru-en-06","source":"ru","target":"en","text":"Это стоит 25 евро за человека или за всю группу из четырёх человек?"}
+{"id":"ru-en-07","source":"ru","target":"en","text":"Нет, я не потерял паспорт. Я оставил его в сейфе отеля."}
+{"id":"ru-en-08","source":"ru","target":"en","text":"Мы приедем 14 ноября, а уедем 17 ноября. Можно оставить багаж после выселения?"}
+{"id":"ru-en-09","source":"ru","target":"en","text":"Водитель сказал, что уже заплатил за парковку, но администратор просит меня заплатить ещё раз. Пожалуйста, уточните это до нашего отъезда."}
+{"id":"ru-en-10","source":"ru","target":"en","text":"Вчера я купила здесь два билета в музей на пятницу, но экскурсию отменили. Я не хочу менять дату; пожалуйста, верните 36 евро на ту же банковскую карту и дайте мне чек."}
+{"id":"ru-en-11","source":"ru","target":"en","text":"Моей маме трудно ходить по лестнице. Нам не нужна инвалидная коляска, но нужен номер на первом этаже или рядом с лифтом. Если такой номер стоит дороже, сначала скажите, сколько нужно доплатить за три ночи."}
+{"id":"ru-en-12","source":"ru","target":"en","text":"Пожалуйста, отвезите нас не в аэропорт, а на центральный вокзал. У нас поезд в 06:20 завтра утром, двое взрослых, один ребёнок и три чемодана. Скажите заранее полную цену, включая багаж, и не выбирайте платную дорогу без нашего согласия."}
+{"id":"en-ru-01","source":"en","target":"ru","text":"Where can I buy drinking water?"}
+{"id":"en-ru-02","source":"en","target":"ru","text":"Please call a taxi, not an ambulance."}
+{"id":"en-ru-03","source":"en","target":"ru","text":"My name is Daniel Kim, and the reservation is for three people."}
+{"id":"en-ru-04","source":"en","target":"ru","text":"Does bus 24 stop here after 22:30?"}
+{"id":"en-ru-05","source":"en","target":"ru","text":"I am allergic to shellfish, but my daughter is not. Can you cook my meal in a clean pan?"}
+{"id":"en-ru-06","source":"en","target":"ru","text":"The menu says 12.50 euros. Does that price include tax and service?"}
+{"id":"en-ru-07","source":"en","target":"ru","text":"I did not order this soup. I ordered vegetable rice without meat."}
+{"id":"en-ru-08","source":"en","target":"ru","text":"We need a room from 3 December to 5 December, not until 6 December."}
+{"id":"en-ru-09","source":"en","target":"ru","text":"The guide gave my ticket to the driver, not to the hotel receptionist. Could you ask the driver to bring it back before the tour starts?"}
+{"id":"en-ru-10","source":"en","target":"ru","text":"Our flight was delayed, so we will arrive after midnight on Saturday. Please keep both rooms for us, and do not cancel the booking. We have already paid for the first night; can you confirm that there will be no extra late-arrival charge?"}
+{"id":"en-ru-11","source":"en","target":"ru","text":"I left a small blue backpack on the train from Madrid this morning. It contains a child's jacket and a notebook, but no money or passport. My seat was 18A in carriage 4; please tell me where to file a lost-property report."}
+{"id":"en-ru-12","source":"en","target":"ru","text":"My father cannot stand for a long time, and we are travelling with a baby. We do not need the fastest route if it has several changes. Please show us a direct bus with seats, tell us whether the stroller is allowed, and write down the stop where we should get off."}
+{"id":"en-es-01","source":"en","target":"es","text":"Is this the entrance to the museum?"}
+{"id":"en-es-02","source":"en","target":"es","text":"Two coffees without sugar, please, and a glass of water for Elena."}
+{"id":"en-es-03","source":"en","target":"es","text":"The last boat leaves at 19:15 on 8 May. Is the return ticket 30 euros per adult?"}
+{"id":"en-es-04","source":"en","target":"es","text":"My husband has a severe milk allergy, not just a preference. Please ask the chef whether this bread contains butter or cheese. If you cannot check the ingredients, do not serve it to him; we can choose something else."}
+{"id":"es-en-01","source":"es","target":"en","text":"¿Dónde está la parada del tranvía?"}
+{"id":"es-en-02","source":"es","target":"en","text":"No quiero hielo. El agua es para mi hijo, no para mí."}
+{"id":"es-en-03","source":"es","target":"en","text":"La reserva está a nombre de Lucía Torres para el 21 de junio a las 13:40. Somos cinco personas."}
+{"id":"es-en-04","source":"es","target":"en","text":"El vendedor me dijo que el precio total era de 48 euros, pero el recibo muestra 58. No he comprado ningún artículo adicional. Por favor, revise la cuenta y devuelva la diferencia a mi tarjeta, no en efectivo."}
+{"id":"en-zh-01","source":"en","target":"zh","text":"Where is the nearest public toilet?"}
+{"id":"en-zh-02","source":"en","target":"zh","text":"Please take us to West Lake, not to the railway station."}
+{"id":"en-zh-03","source":"en","target":"zh","text":"Ms Chen booked two rooms for 16 August. Is breakfast included in the 680 yuan price?"}
+{"id":"en-zh-04","source":"en","target":"zh","text":"My child is allergic to eggs. Please do not put egg in the noodles, and check whether the sauce contains egg as well. We are happy to wait another twenty minutes if you need to prepare a fresh portion in a separate pan."}
+{"id":"zh-en-01","source":"zh","target":"en","text":"这里可以刷卡吗？"}
+{"id":"zh-en-02","source":"zh","target":"en","text":"我不要辣的，请给孩子一碗不放辣椒的面条。"}
+{"id":"zh-en-03","source":"zh","target":"en","text":"王先生订了9月12日上午10:30的两张票，总价是240元，对吗？"}
+{"id":"zh-en-04","source":"zh","target":"en","text":"我把黑色手提包忘在出租车上了，里面有护照和一副眼镜，没有现金。司机在下午3:15把我们送到了和平饭店。请帮我联系司机，不要取消我们今晚的房间。"}
+{"id":"ru-zh-01","source":"ru","target":"zh","text":"Можно оплатить наличными?"}
+{"id":"ru-zh-02","source":"ru","target":"zh","text":"Мне нужен зелёный чай без сахара, а не кофе."}
+{"id":"ru-zh-03","source":"ru","target":"zh","text":"Мы с Ольгой приедем 2 октября в 08:10. Сколько стоит такси для двух человек с багажом?"}
+{"id":"ru-zh-04","source":"ru","target":"zh","text":"Моему отцу нельзя есть рыбу из-за аллергии. Пожалуйста, уточните у повара, есть ли рыба в этом супе, даже если её не видно. Если проверить нельзя, принесите только рис и овощи без соуса; мясо нам не нужно."}
+{"id":"zh-ru-01","source":"zh","target":"ru","text":"去机场的公交车在哪里？"}
+{"id":"zh-ru-02","source":"zh","target":"ru","text":"请给我一张单程票，不要往返票。"}
+{"id":"zh-ru-03","source":"zh","target":"ru","text":"我叫李明，预订了11月6日晚上7点的三人桌。可以晚到15分钟吗？"}
+{"id":"zh-ru-04","source":"zh","target":"ru","text":"前台说我们的房费已经包含早餐，但餐厅服务员又收了我们80元。我们没有点菜单以外的东西。请先核对预订记录，如果是重复收费，请把钱退到原来的银行卡，不要给代金券。"}
+{"id":"en-ar-01","source":"en","target":"ar","text":"Where can I find a pharmacy that is open now?"}
+{"id":"en-ar-02","source":"en","target":"ar","text":"I do not eat meat. Please bring rice with vegetables and no chicken."}
+{"id":"en-ar-03","source":"en","target":"ar","text":"Mr Hassan reserved a taxi for 4 April at 05:30. Is the total price 75 dirhams?"}
+{"id":"en-ar-04","source":"en","target":"ar","text":"My mother lost her medicine, but she has not lost her passport. She needs a pharmacy, not a hospital. Please write the nearest pharmacy's address in Arabic and tell the driver that we must return to the hotel before 21:00."}
+{"id":"ar-en-01","source":"ar","target":"en","text":"أين أقرب محطة مترو؟"}
+{"id":"ar-en-02","source":"ar","target":"en","text":"لا أريد قهوة، أريد شايًا بالنعناع من دون سكر من فضلك."}
+{"id":"ar-en-03","source":"ar","target":"en","text":"حجزت سارة غرفتين لثلاث ليالٍ ابتداءً من 15 يوليو. هل السعر الإجمالي 900 درهم؟"}
+{"id":"ar-en-04","source":"ar","target":"en","text":"ابني لديه حساسية من الفول السوداني، أما ابنتي فليست لديها هذه الحساسية. من فضلك اسأل الطاهي إن كانت الصلصة تحتوي على فول سوداني، ولا تقدم الطعام لابني قبل التأكد. يمكننا الانتظار عشر دقائق، لكن لا نريد تغيير طلب ابنتي."}

@@ -71,7 +71,11 @@ fun TranslatorHelp(
                     verticalArrangement = Arrangement.spacedBy(12.dp),
                 ) {
                     Text(stringResource(if (conversation) R.string.help_conversation else R.string.help_text))
-                    Text(stringResource(if (provider?.id == "tencent") R.string.tencent_model_explanation else R.string.help_preparation))
+                    Text(stringResource(when (provider?.id) {
+                        "tencent" -> R.string.tencent_model_explanation
+                        "mozilla" -> R.string.mozilla_model_explanation
+                        else -> R.string.help_preparation
+                    }))
                     Text(stringResource(R.string.provider_privacy))
                     if (provider != null && (provider.attribution.isNotBlank() || provider.termsUrl.isNotBlank())) {
                         TextButton(

@@ -223,7 +223,7 @@ bytes. Vocabulary coverage is not all-language quality or voice qualification.
 
 The original three-package evaluator remains on the baseline pins in
 `test-data/model-sets/baseline.json`, not the production conversation ASR catalog.
-Its original attributions and `docs/archived/testing/speech-model-selection.md` decisions
+Its original attributions and `docs/workflow/archive/legacy/archived/testing/speech-model-selection.md` decisions
 remain applicable; neither original ASR is accepted for A059P.
 
 - Russian T-one candidate: Apache-2.0 license in the upstream model package,

@@ -44,6 +44,14 @@ jobs:
         shell: bash
         run: python3 tools/android/prepare-tencent-native.py
 
+      - name: Prepare pinned Mozilla JNI runtime
+        shell: bash
+        run: python3 tools/android/prepare-mozilla-native.py --installed-tools engine-tencent/.native-cache/tools
+
+      - name: Test Mozilla native preparation boundaries
+        shell: bash
+        run: python3 tools/android/test_mozilla_native_preparation.py
+
       - name: Prepare verified Sherpa runtime
         shell: bash
         run: bash ./gradlew :engine-sherpa:prepareSherpaArchive --no-daemon --console=plain
@@ -106,6 +114,7 @@ jobs:
           bash ./gradlew
           :core:testDebugUnitTest
           :engine-tencent:testDebugUnitTest
+          :engine-mozilla:testDebugUnitTest
           :engine-sherpa:testDebugUnitTest
           :speech-models:testDebugUnitTest
           :app:testDebugUnitTest
@@ -113,6 +122,7 @@ jobs:
           :app:lintDebug
           :app:assembleDebug
           :app:assembleDebugAndroidTest
+          :engine-mozilla:assembleDebugAndroidTest
           --no-daemon --console=plain
 
       - name: Test build logic
@@ -129,6 +139,7 @@ jobs:
           path: |
             core/build/test-results/testDebugUnitTest/
             engine-tencent/build/test-results/testDebugUnitTest/
+            engine-mozilla/build/test-results/testDebugUnitTest/
             engine-sherpa/build/test-results/testDebugUnitTest/
             speech-models/build/test-results/testDebugUnitTest/
             app/build/test-results/testDebugUnitTest/

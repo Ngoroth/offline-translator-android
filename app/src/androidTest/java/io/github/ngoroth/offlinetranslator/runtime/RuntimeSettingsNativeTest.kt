@@ -146,30 +146,39 @@ class RuntimeSettingsNativeTest {
     }
 
     @Test fun setupCannotStealAnOwnerAndCommitsItsChoiceOnlyOnce() = runBlocking {
-        runtime.settings.save(runtime.settings.current().copy(translationSetupComplete = false))
-        var closed = false
-        val contender = object : RuntimeOwner {
-            override val isBusy = false
-            override val activity = kotlinx.coroutines.flow.MutableStateFlow(false)
-            override fun interrupt() = Unit
-            override suspend fun closeAndJoin(): Result<Unit> { closed = true; return Result.success(Unit) }
+        for (engineId in listOf("tencent", "mozilla")) {
+            runtime.settings.save(runtime.settings.current().copy(translationSetupComplete = false))
+            var closed = false
+            val contender = object : RuntimeOwner {
+                override val isBusy = false
+                override val activity = kotlinx.coroutines.flow.MutableStateFlow(false)
+                override fun interrupt() = Unit
+                override suspend fun closeAndJoin(): Result<Unit> { closed = true; return Result.success(Unit) }
+            }
+            runtime.owners.replace { contender }
+            assertFalse(runtime.completeTranslationSetup(engineId))
+            assertFalse(runtime.settings.current().translationSetupComplete)
+            assertTrue(runtime.owners.isCurrent(contender))
+            assertFalse(closed)
+            runtime.owners.release(contender)
+            assertTrue(runtime.completeTranslationSetup(engineId))
+            val selected = runtime.settings.current()
+            assertTrue(selected.translationSetupComplete)
+            assertEquals(engineId, selected.translationEngineId)
+            val other = if (engineId == "tencent") "mozilla" else "tencent"
+            assertFalse(runtime.completeTranslationSetup(other))
+            assertEquals(selected, runtime.settings.current())
+            assertTrue(runtime.applySettings(selected.copy(translationSetupComplete = false)))
+            assertTrue(runtime.settings.current().translationSetupComplete)
+            assertTrue(runtime.updateLanguagePair(selected.languagePair, selected.languagePair.reverse()))
+            val swapped = selected.copy(languagePair = selected.languagePair.reverse())
+            assertEquals(swapped, runtime.settings.current())
+            runtime.closeAndJoin()
+            runtime = AppRuntime.get(context)
+            assertEquals(swapped, runtime.settings.current())
+            assertFalse(runtime.completeTranslationSetup(other))
+            assertEquals(swapped, runtime.settings.current())
         }
-        runtime.owners.replace { contender }
-        assertFalse(runtime.completeTranslationSetup("tencent"))
-        assertFalse(runtime.settings.current().translationSetupComplete)
-        assertTrue(runtime.owners.isCurrent(contender))
-        assertFalse(closed)
-        runtime.owners.release(contender)
-        assertTrue(runtime.completeTranslationSetup("tencent"))
-        val selected = runtime.settings.current()
-        assertTrue(selected.translationSetupComplete)
-        assertEquals("tencent", selected.translationEngineId)
-        assertFalse(runtime.completeTranslationSetup("tencent"))
-        assertEquals(selected, runtime.settings.current())
-        assertTrue(runtime.applySettings(selected.copy(translationEngineId = "tencent", translationSetupComplete = false)))
-        assertTrue(runtime.settings.current().translationSetupComplete)
-        assertTrue(runtime.updateLanguagePair(selected.languagePair, selected.languagePair.reverse()))
-        assertTrue(runtime.settings.current().translationSetupComplete)
     }
 
     private fun loadOfficialRussianPcm(): ShortArray {

@@ -1,0 +1,20 @@
+diff --git a/inference/marian-fork/src/data/shortlist.cpp b/inference/marian-fork/src/data/shortlist.cpp
+--- a/inference/marian-fork/src/data/shortlist.cpp
++++ b/inference/marian-fork/src/data/shortlist.cpp
+@@ -157,11 +157,14 @@
+ void BinaryShortlistGenerator::contentCheck() {
+   bool failFlag = 0;
+-  // The offset table has to be within the size of shortlists.
+-  for(int i = 0; i < wordToOffsetSize_-1; i++)
+-    failFlag |= wordToOffset_[i] >= shortListsSize_;
++  // Offsets are half-open boundaries, not element indices. An empty trailing
++  // row may begin at the list end, as emitted by import() and used by generate().
++  // Keep every boundary within the list and reject reversed row ranges.
++  for(uint64_t i = 0; i + 1 < wordToOffsetSize_; i++)
++    failFlag |= wordToOffset_[i] > shortListsSize_
++                || wordToOffset_[i] > wordToOffset_[i + 1];
+ 
+   // The last element of wordToOffset_ must equal shortListsSize_
+   failFlag |= wordToOffset_[wordToOffsetSize_-1] != shortListsSize_;
+ 
+   // The vocabulary indices have to be within the vocabulary size.

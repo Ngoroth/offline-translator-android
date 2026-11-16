@@ -25,7 +25,7 @@ dependencyResolutionManagement {
             forRepository {
                 flatDir {
                     name = "verifiedTencentNative"
-                    dirs(rootDir.resolve("engine-tencent/libs"))
+                    dirs(rootDir.resolve("engine-tencent/libs"), rootDir.resolve("engine-mozilla/libs"))
                 }
             }
             filter { includeGroup("io.github.ngoroth.offlinetranslator.native") }
@@ -37,3 +37,4 @@ rootProject.name = "OfflineTranslator"
 include(":app", ":core", ":speech-models", ":engine-sherpa", ":engine-sherpa-model-smoke")
 include(":translator-test-kit")
 include(":engine-tencent")
+include(":engine-mozilla")

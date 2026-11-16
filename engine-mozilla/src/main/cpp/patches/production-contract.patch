@@ -1,0 +1,182 @@
+diff --git a/inference/src/translator/translation_model.h b/inference/src/translator/translation_model.h
+--- a/inference/src/translator/translation_model.h
++++ b/inference/src/translator/translation_model.h
+@@ -114,6 +114,13 @@
+     targetLanguage_ = language;
+   }
+ #endif // defined(WASM)
++  // Complete initialization before the owner advertises readiness.
++  void initializeBackends() {
++    for (size_t index = 0; index < backend_.size(); ++index) {
++      loadBackend(index);
++      backend_[index].initialized = true;
++    }
++  }
+ 
+  private:
+   size_t modelId_;
+diff --git a/inference/src/translator/response.h b/inference/src/translator/response.h
+--- a/inference/src/translator/response.h
++++ b/inference/src/translator/response.h
+@@ -23,6 +23,9 @@
+ /// sentences boundaries, which are required to interpret Quality and
+ /// Alignment (s) at the moment.
+ struct Response {
++  // Evidence from the actual winning hypothesis before detokenization.
++  std::vector<bool> sentenceEos;
++
+   /// SentenceQualityScore  contains the quality data of a given translated sentence.
+   /// It includes the confidence (proxied by log probabilities) of each decoded word
+   /// (higher logprobs imply better-translated words), the ByteRanges of each term,
+diff --git a/inference/src/translator/response_builder.cpp b/inference/src/translator/response_builder.cpp
+--- a/inference/src/translator/response_builder.cpp
++++ b/inference/src/translator/response_builder.cpp
+@@ -1,4 +1,5 @@
+ #include "response_builder.h"
++#include "mozilla_contract.h"
+ 
+ #include "response_options.h"
+ 
+@@ -35,10 +36,14 @@
+ 
+     Result result = onebest[0];  // Expecting only one result;
+     Words words = std::get<0>(result);
++    const bool endedWithEos = !words.empty() && words.back() == vocabs_.target()->getEosId();
++    response.sentenceEos.push_back(endedWithEos);
++    mozilla::requireEos(endedWithEos);
+ 
+     std::string decoded;
+     std::vector<string_view> targetSentenceMappings;
+     vocabs_.target()->decodeWithByteRanges(words, decoded, targetSentenceMappings, /*ignoreEOS=*/false);
++    mozilla::validateUtf8(decoded, "output_limit", false);
+ 
+     switch (responseOptions_.concatStrategy) {
+       case ConcatStrategy::FAITHFUL: {
+@@ -66,6 +71,7 @@
+       default:
+         ABORT("Unknown concat-strategy");
+     }
++    mozilla::validateUtf8(response.target.text, "output_limit", false);
+   }
+ }
+ 
+diff --git a/inference/marian-fork/src/common/logging.cpp b/inference/marian-fork/src/common/logging.cpp
+--- a/inference/marian-fork/src/common/logging.cpp
++++ b/inference/marian-fork/src/common/logging.cpp
+@@ -25,6 +25,9 @@
+                                                    const std::vector<std::string>& files,
+                                                    bool quiet) {
++#ifdef __ANDROID__
++  if(auto existing = spdlog::get(name)) return existing;
++#endif
+   std::vector<spdlog::sink_ptr> sinks;
+ 
+   auto stderr_sink = spdlog::sinks::stderr_sink_mt::instance();
+@@ -105,7 +108,9 @@
+     tzset();
+   }
+ 
++#ifndef __ANDROID__
+   setErrorHandlers();
++#endif
+   return loggers;
+ }
+@@ -123,6 +128,7 @@
+ }
+ 
+ static void setErrorHandlers() {
++#ifndef __ANDROID__
+   // call stack for unhandled exceptions
+   std::set_terminate(unhandledException);
+ #ifdef __unix__
+@@ -135,6 +141,7 @@
+   sa.sa_sigaction = [](int /*signal*/, siginfo_t*, void*) { ABORT("Floating-point exception"); };
+   sigaction(SIGFPE, &sa, NULL);
+ #endif
++#endif
+ }
+ 
+ // modify the log pattern for the "general" logger to include the MPI rank
+diff --git a/inference/src/translator/logging.h b/inference/src/translator/logging.h
+--- a/inference/src/translator/logging.h
++++ b/inference/src/translator/logging.h
+@@ -52,6 +52,7 @@
+   }
+ 
+   ~Logger() {
++#ifndef __ANDROID__
+     // We need to manually destroy the loggers, as marian doesn't do
+     // that but will complain when a new marian::Config tries to
+     // initialise loggers with the same name.
+@@ -60,6 +61,7 @@
+         spdlog::drop(logger->name());
+       }
+     }
++#endif
+   }
+ 
+   // Explicit destructor above is an indicator we should not allow this class to copy-construct.
+diff --git a/inference/marian-fork/src/tensors/cpu/aligned.h b/inference/marian-fork/src/tensors/cpu/aligned.h
+--- a/inference/marian-fork/src/tensors/cpu/aligned.h
++++ b/inference/marian-fork/src/tensors/cpu/aligned.h
+@@ -2,6 +2,9 @@
+ 
+ #include "common/definitions.h"
+ #include <stdlib.h>
++#include <cerrno>
++#include <new>
++#include <system_error>
+ #ifdef _WIN32
+ #include <malloc.h>
+ #endif
+@@ -27,9 +30,11 @@
+   // On macos, aligned_alloc is available only on c++17
+   // Furthermore, it requires that the memory requested is an exact multiple of the alignment, otherwise it fails.
+   // posix_memalign is available both Mac (Since 2016) and Linux and in both gcc and clang
+-  void *result;
++  void *result = nullptr;
+   // Error could be detected by return value or just remaining nullptr.
+-  ABORT_IF(posix_memalign(&result, alignment, size), "Failed to allocate memory on CPU");
++  const int error = posix_memalign(&result, alignment, size);
++  if(error == ENOMEM || (!error && size && !result)) throw std::bad_alloc();
++  if(error) throw std::system_error(error, std::generic_category());
+   return result;
+ }
+ void genericFree(void *ptr) {
+diff --git a/inference/src/translator/aligned.h b/inference/src/translator/aligned.h
+--- a/inference/src/translator/aligned.h
++++ b/inference/src/translator/aligned.h
+@@ -1,6 +1,9 @@
+ #pragma once
+ #include <cstdlib>
+ #include <new>
++#include <cerrno>
++#include <limits>
++#include <system_error>
+ #ifdef _MSC_VER
+ // Ensure _HAS_EXCEPTIONS is defined
+ #include <vcruntime.h>
+@@ -23,6 +26,7 @@
+ 
+     explicit AlignedVector(std::size_t size, std::size_t alignment = 64 /* CPU cares about this */)
+       : size_(size) {
++      if(size > std::numeric_limits<std::size_t>::max() / sizeof(T)) throw std::bad_alloc();
+ #ifdef _MSC_VER
+       mem_ = static_cast<T*>(_aligned_malloc(size * sizeof(T), alignment));
+       if (!mem_) {
+@@ -34,13 +38,10 @@
+       }
+ #else
+-      if (posix_memalign(reinterpret_cast<void **>(&mem_), alignment, size * sizeof(T))) {
+-#  if (defined(_MSC_VER) && !defined(__clang__)) ? (_HAS_EXCEPTIONS) : (__EXCEPTIONS)
+-        throw std::bad_alloc();
+-#  else
+-        std::abort();
+-#  endif
+-      }
++      mem_ = nullptr;
++      const int error = posix_memalign(reinterpret_cast<void **>(&mem_), alignment, size * sizeof(T));
++      if(error == ENOMEM || (!error && size && !mem_)) throw std::bad_alloc();
++      if(error) throw std::system_error(error, std::generic_category());
+ #endif
+     }

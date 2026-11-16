@@ -1,0 +1,96 @@
+{"id":"moz1-en-vi-request","source":"en","target":"vi","text":"Could you show me the ferry ticket office?"}
+{"id":"moz1-en-vi-negation","source":"en","target":"vi","text":"Please leave the balcony door closed, not open."}
+{"id":"moz1-en-vi-price-time","source":"en","target":"vi","text":"Is the boat ticket 45 euros for two adults?"}
+{"id":"moz1-vi-en-request","source":"vi","target":"en","text":"Làm ơn cho tôi mượn một chiếc ô."}
+{"id":"moz1-vi-en-negation","source":"vi","target":"en","text":"Tôi không muốn đổi phòng, chỉ muốn thêm một chiếc khăn."}
+{"id":"moz1-vi-en-price-time","source":"vi","target":"en","text":"Xe buýt cuối cùng có chạy lúc 21:40 không?"}
+{"id":"moz1-en-es-request","source":"en","target":"es","text":"Could you keep my suitcase until this evening?"}
+{"id":"moz1-en-es-negation","source":"en","target":"es","text":"I need a paper map, not a guided tour."}
+{"id":"moz1-en-es-price-time","source":"en","target":"es","text":"Does the walking tour start tomorrow at 09:25?"}
+{"id":"moz1-es-en-request","source":"es","target":"en","text":"Por favor, llame a un taxi con espacio para una silla de ruedas."}
+{"id":"moz1-es-en-negation","source":"es","target":"en","text":"No cancele la mesa; vamos a llegar un poco tarde."}
+{"id":"moz1-es-en-price-time","source":"es","target":"en","text":"¿Los 18 euros son por bicicleta o por las dos?"}
+{"id":"moz1-en-id-request","source":"en","target":"id","text":"Please write the name of this bus stop for me."}
+{"id":"moz1-en-id-negation","source":"en","target":"id","text":"Do not heat the sandwich; I want it cold."}
+{"id":"moz1-en-id-price-time","source":"en","target":"id","text":"Is the locker 6 euros for three hours?"}
+{"id":"moz1-id-en-request","source":"id","target":"en","text":"Tolong tunjukkan jalan ke tempat pengambilan bagasi."}
+{"id":"moz1-id-en-negation","source":"id","target":"en","text":"Saya tidak mau menyewa mobil, hanya sepeda."}
+{"id":"moz1-id-en-price-time","source":"id","target":"en","text":"Apakah kapal berangkat pukul 16:20 hari ini?"}
+{"id":"moz1-en-it-request","source":"en","target":"it","text":"Could you book a quiet room away from the lift?"}
+{"id":"moz1-en-it-negation","source":"en","target":"it","text":"Please do not add cheese to my pasta."}
+{"id":"moz1-en-it-price-time","source":"en","target":"it","text":"Is breakfast served before 07:15?"}
+{"id":"moz1-it-en-request","source":"it","target":"en","text":"Mi può indicare l’ingresso accessibile del museo?"}
+{"id":"moz1-it-en-negation","source":"it","target":"en","text":"Non voglio annullare il biglietto, voglio cambiare il posto."}
+{"id":"moz1-it-en-price-time","source":"it","target":"en","text":"Il deposito costa 4 euro per ogni valigia?"}
+{"id":"moz1-en-zh-request","source":"en","target":"zh","text":"Please help me find the lost property desk."}
+{"id":"moz1-en-zh-negation","source":"en","target":"zh","text":"I have not paid yet; please bring the bill."}
+{"id":"moz1-en-zh-price-time","source":"en","target":"zh","text":"Is the museum open until 17:50 today?"}
+{"id":"moz1-zh-en-request","source":"zh","target":"en","text":"请帮我预订一张靠窗的火车票。"}
+{"id":"moz1-zh-en-negation","source":"zh","target":"en","text":"我没有带现金，可以用银行卡付款吗？"}
+{"id":"moz1-zh-en-price-time","source":"zh","target":"en","text":"这辆出租车到码头一共要85元吗？"}
+{"id":"moz1-en-ko-request","source":"en","target":"ko","text":"Could you lend me a charger for my phone?"}
+{"id":"moz1-en-ko-negation","source":"en","target":"ko","text":"Please do not move my bag to another room."}
+{"id":"moz1-en-ko-price-time","source":"en","target":"ko","text":"Does the shuttle leave at 06:35 tomorrow morning?"}
+{"id":"moz1-ko-en-request","source":"ko","target":"en","text":"공항 가는 버스 승강장을 알려 주세요."}
+{"id":"moz1-ko-en-negation","source":"ko","target":"en","text":"매운 소스는 넣지 말고 따로 주세요."}
+{"id":"moz1-ko-en-price-time","source":"ko","target":"en","text":"이 표는 한 사람에 12000원인가요?"}
+{"id":"moz1-en-de-request","source":"en","target":"de","text":"Please show me where to refill my water bottle."}
+{"id":"moz1-en-de-negation","source":"en","target":"de","text":"I did not ask for a smoking room."}
+{"id":"moz1-en-de-price-time","source":"en","target":"de","text":"Is the taxi fare 28 euros including luggage?"}
+{"id":"moz1-de-en-request","source":"de","target":"en","text":"Können Sie mir bitte einen Stadtplan geben?"}
+{"id":"moz1-de-en-negation","source":"de","target":"en","text":"Bitte wecken Sie uns nicht vor acht Uhr."}
+{"id":"moz1-de-en-price-time","source":"de","target":"en","text":"Fährt die Seilbahn heute um 18:10 zum letzten Mal?"}
+{"id":"moz1-en-pl-request","source":"en","target":"pl","text":"Could you print my boarding pass, please?"}
+{"id":"moz1-en-pl-negation","source":"en","target":"pl","text":"I do not need breakfast with the room."}
+{"id":"moz1-en-pl-price-time","source":"en","target":"pl","text":"Are these two postcards 3 euros altogether?"}
+{"id":"moz1-pl-en-request","source":"pl","target":"en","text":"Proszę pokazać mi drogę do przystani."}
+{"id":"moz1-pl-en-negation","source":"pl","target":"en","text":"Nie chcę siedzieć przy drzwiach, wolę miejsce przy oknie."}
+{"id":"moz1-pl-en-price-time","source":"pl","target":"en","text":"Czy śniadanie zaczyna się o 06:45?"}
+{"id":"moz1-en-pt-request","source":"en","target":"pt","text":"Please help me carry this suitcase up the stairs."}
+{"id":"moz1-en-pt-negation","source":"en","target":"pt","text":"Please do not put ice in the orange juice."}
+{"id":"moz1-en-pt-price-time","source":"en","target":"pt","text":"Can we check out tomorrow at 11:30?"}
+{"id":"moz1-pt-en-request","source":"pt","target":"en","text":"Pode guardar a minha mochila por favor?"}
+{"id":"moz1-pt-en-negation","source":"pt","target":"en","text":"Não quero pagar em dinheiro, quero pagar com cartão."}
+{"id":"moz1-pt-en-price-time","source":"pt","target":"en","text":"O passeio de barco custa 22 euros por pessoa?"}
+{"id":"moz1-en-ru-request","source":"en","target":"ru","text":"Please tell me which platform the night train uses."}
+{"id":"moz1-en-ru-negation","source":"en","target":"ru","text":"Do not cancel my return journey; only change the seat."}
+{"id":"moz1-en-ru-price-time","source":"en","target":"ru","text":"Is the luggage fee 9 euros per bag?"}
+{"id":"moz1-ru-en-request","source":"ru","target":"en","text":"Пожалуйста, покажите на карте вход в ботанический сад."}
+{"id":"moz1-ru-en-negation","source":"ru","target":"en","text":"Мне не нужен новый билет, нужен только чек."}
+{"id":"moz1-ru-en-price-time","source":"ru","target":"en","text":"Можно оставить чемодан до 14:20 сегодня?"}
+{"id":"moz1-en-th-request","source":"en","target":"th","text":"Could you find a table in the shade for us?"}
+{"id":"moz1-en-th-negation","source":"en","target":"th","text":"I do not want a motorbike taxi; please call a car."}
+{"id":"moz1-en-th-price-time","source":"en","target":"th","text":"Is the entrance fee 150 baht for one adult?"}
+{"id":"moz1-th-en-request","source":"th","target":"en","text":"ช่วยเขียนที่อยู่โรงแรมให้หน่อยได้ไหม"}
+{"id":"moz1-th-en-negation","source":"th","target":"en","text":"ไม่ใส่น้ำตาลในชา ขอแยกน้ำตาลมาต่างหาก"}
+{"id":"moz1-th-en-price-time","source":"th","target":"en","text":"รถไฟเที่ยวแรกออกตอนหกโมงเช้าใช่ไหม"}
+{"id":"moz1-en-tr-request","source":"en","target":"tr","text":"Please show us the path to the beach."}
+{"id":"moz1-en-tr-negation","source":"en","target":"tr","text":"Please do not wash this jacket; just dry it."}
+{"id":"moz1-en-tr-price-time","source":"en","target":"tr","text":"Does the ticket office close today at 15:45?"}
+{"id":"moz1-tr-en-request","source":"tr","target":"en","text":"Lütfen bavulumu tartar mısınız?"}
+{"id":"moz1-tr-en-negation","source":"tr","target":"en","text":"Bu yemeğe yoğurt koymayın, ayrı getirin lütfen."}
+{"id":"moz1-tr-en-price-time","source":"tr","target":"en","text":"Bu oda gecelik 900 lira mı?"}
+{"id":"moz1-en-fr-request","source":"en","target":"fr","text":"Could you reserve two seats near the front?"}
+{"id":"moz1-en-fr-negation","source":"en","target":"fr","text":"This is not my suitcase; mine is green."}
+{"id":"moz1-en-fr-price-time","source":"en","target":"fr","text":"Is bicycle rental 14 euros for the whole day?"}
+{"id":"moz1-fr-en-request","source":"fr","target":"en","text":"Pouvez-vous me prêter un adaptateur de prise ?"}
+{"id":"moz1-fr-en-negation","source":"fr","target":"en","text":"Ne fermez pas la fenêtre, il fait trop chaud."}
+{"id":"moz1-fr-en-price-time","source":"fr","target":"en","text":"Le départ du car est bien à 13 h 55 demain ?"}
+{"id":"moz1-en-hi-request","source":"en","target":"hi","text":"Please tell me where to collect my reserved tickets."}
+{"id":"moz1-en-hi-negation","source":"en","target":"hi","text":"I do not need a blanket; please bring a pillow."}
+{"id":"moz1-en-hi-price-time","source":"en","target":"hi","text":"Is the guide 500 rupees for our whole group?"}
+{"id":"moz1-hi-en-request","source":"hi","target":"en","text":"कृपया मेरा सामान कमरे तक पहुँचा दीजिए।"}
+{"id":"moz1-hi-en-negation","source":"hi","target":"en","text":"मुझे ठंडा पानी नहीं चाहिए, गरम पानी दीजिए।"}
+{"id":"moz1-hi-en-price-time","source":"hi","target":"en","text":"क्या नाव कल सुबह 08:10 बजे चलेगी?"}
+{"id":"moz1-en-ja-request","source":"en","target":"ja","text":"Please show me a seat where I can charge my phone."}
+{"id":"moz1-en-ja-negation","source":"en","target":"ja","text":"I do not want the express train; I need the local one."}
+{"id":"moz1-en-ja-price-time","source":"en","target":"ja","text":"Is this umbrella 800 yen including tax?"}
+{"id":"moz1-ja-en-request","source":"ja","target":"en","text":"荷物を預ける場所を教えてください。"}
+{"id":"moz1-ja-en-negation","source":"ja","target":"en","text":"このスープに肉を入れないでください。"}
+{"id":"moz1-ja-en-price-time","source":"ja","target":"en","text":"チェックインは今日の午後3時からですか。"}
+{"id":"moz1-en-nl-request","source":"en","target":"nl","text":"Could you help me open this luggage locker?"}
+{"id":"moz1-en-nl-negation","source":"en","target":"nl","text":"Please do not take the toll road."}
+{"id":"moz1-en-nl-price-time","source":"en","target":"nl","text":"Does the next ferry leave at 12:05?"}
+{"id":"moz1-nl-en-request","source":"nl","target":"en","text":"Kunt u een tafel buiten voor ons reserveren?"}
+{"id":"moz1-nl-en-negation","source":"nl","target":"en","text":"Ik wil geen grotere kamer, alleen een extra sleutel."}
+{"id":"moz1-nl-en-price-time","source":"nl","target":"en","text":"Kost het ontbijt 11 euro per kind?"}

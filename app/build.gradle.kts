@@ -12,13 +12,17 @@ val generateLicenseAssets = tasks.register<Sync>("generateLicenseAssets") {
     from(rootProject.layout.projectDirectory.dir("LICENSES")) { into("LICENSES") }
     from(rootProject.layout.projectDirectory.file("engine-sherpa/THIRD_PARTY.md")) { into("engine-sherpa") }
     from(rootProject.layout.projectDirectory.file("engine-tencent/THIRD_PARTY.md")) { into("engine-tencent") }
+    from(rootProject.layout.projectDirectory.file("engine-mozilla/THIRD_PARTY.md")) { into("engine-mozilla") }
+    from(rootProject.layout.projectDirectory.dir("engine-mozilla/LICENSES")) { into("engine-mozilla/LICENSES") }
     into(licenseAssets.map { it.dir("licenses") })
 }
 tasks.matching { it.name == "preBuild" }.configureEach { dependsOn(generateLicenseAssets) }
 
 val canonicalSmoke = rootProject.layout.projectDirectory.dir("test-data/corpus/v1/smoke")
+val translationFixtureSources = rootProject.layout.projectDirectory.dir("test-data/corpus/translation")
 val fixtureAliases = layout.buildDirectory.dir("generated/androidTestOfficialFixtureAliases/debug")
 val generateDebugAndroidTestOfficialFixtureAliases = tasks.register<Sync>("generateDebugAndroidTestOfficialFixtureAliases") {
+    val translationSourceDirectory = translationFixtureSources.asFile
     from(canonicalSmoke) {
         include("ru-official-0.wav", "en-official-0.wav")
         rename("ru-official-0.wav", "speech-ru-fixture.wav")
@@ -39,6 +43,10 @@ val generateDebugAndroidTestOfficialFixtureAliases = tasks.register<Sync>("gener
         include("nl-fleurs-test-0.wav", "nl-fleurs-test-1.wav", "manifest.json")
         into("conversation")
     }
+    from(translationFixtureSources) {
+        include("mozilla-v1/cases.jsonl", "mozilla-v1/warmup.jsonl", "v1/cases.jsonl", "v1/warmup.jsonl")
+        into("translation")
+    }
     into(fixtureAliases)
     doFirst {
         mapOf(
@@ -54,6 +62,17 @@ val generateDebugAndroidTestOfficialFixtureAliases = tasks.register<Sync>("gener
         ).forEach { (name, pin) ->
             val file = inputs.files.files.single { it.name == name }
             require(file.length() == pin.first && MessageDigest.getInstance("SHA-256").digest(file.readBytes()).joinToString("") { "%02x".format(it) } == pin.second) { "Official fixture mismatch: $name" }
+        }
+        mapOf(
+            "mozilla-v1/cases.jsonl" to (11226L to "f5d0ffe50ae442d653e24fe7a74fcae70d2d4c6f854a737f045ec8f05dac3760"),
+            "mozilla-v1/warmup.jsonl" to (3498L to "92411837c2a46a31ed5b1224316ea089e470b96cfb5ab90bc59ab909842ee124"),
+            "v1/cases.jsonl" to (10291L to "bb060ef99b129f2ebb791656ad1286c0a0de8232ebdd334f729b21d1ace8a135"),
+            "v1/warmup.jsonl" to (3693L to "5edb88309e80dc382729f093a73f5d9d7467e038ae5b6cba531e6fa25fae3c01"),
+        ).forEach { (name, pin) ->
+            val file = translationSourceDirectory.resolve(name)
+            require(file.length() == pin.first && MessageDigest.getInstance("SHA-256").digest(file.readBytes()).joinToString("") { "%02x".format(it) } == pin.second) {
+                "Translation source fixture mismatch: $name"
+            }
         }
     }
 }
@@ -113,6 +132,7 @@ configurations.configureEach {
 dependencies {
     implementation(project(":core"))
     implementation(project(":engine-tencent"))
+    implementation(project(":engine-mozilla"))
     implementation(project(":engine-sherpa"))
     implementation(project(":speech-models"))
     // `:engine-sherpa` owns the runtime through the root's local verified artifact repo.

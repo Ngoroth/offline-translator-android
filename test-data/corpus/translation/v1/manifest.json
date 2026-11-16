@@ -1,0 +1,53 @@
+{
+  "schemaVersion": 1,
+  "id": "translation-tourist-v1",
+  "encoding": "UTF-8",
+  "lineEndings": "LF",
+  "license": "Apache-2.0 (repository license)",
+  "provenance": "Synthetic tourist utterances and semantic expectations authored with AI assistance for the SMaLL-100/NLLB/Tencent comparison; frozen before inspecting model outputs.",
+  "directions": {
+    "ru-en": 12,
+    "en-ru": 12,
+    "en-es": 4,
+    "es-en": 4,
+    "en-zh": 4,
+    "zh-en": 4,
+    "ru-zh": 4,
+    "zh-ru": 4,
+    "en-ar": 4,
+    "ar-en": 4
+  },
+  "languageNotes": {
+    "zh": "Mainland Simplified Chinese",
+    "ar": "Modern Standard Arabic"
+  },
+  "files": [
+    {
+      "path": "cases.jsonl",
+      "rows": 56,
+      "bytes": 10291,
+      "sha256": "bb060ef99b129f2ebb791656ad1286c0a0de8232ebdd334f729b21d1ace8a135",
+      "role": "measured source inputs"
+    },
+    {
+      "path": "meaning-expectations.jsonl",
+      "rows": 56,
+      "bytes": 13927,
+      "sha256": "3afd1eeafcae083b22d440b102105788e4acb57a07f7438d6f8a009d0d666477",
+      "role": "host-only semantic expectations; not reference translations"
+    },
+    {
+      "path": "warmup.jsonl",
+      "rows": 10,
+      "bytes": 3693,
+      "sha256": "5edb88309e80dc382729f093a73f5d9d7467e038ae5b6cba531e6fa25fae3c01",
+      "role": "unmeasured disjoint warm-up inputs"
+    }
+  ],
+  "limitations": [
+    "Not a parallel reference-translation corpus.",
+    "Semantic expectations have not received native-speaker acceptance in every language.",
+    "Previously used for model comparison; it is a regression set, not an unseen benchmark.",
+    "Warm-up cases are excluded from measured cases."
+  ]
+}

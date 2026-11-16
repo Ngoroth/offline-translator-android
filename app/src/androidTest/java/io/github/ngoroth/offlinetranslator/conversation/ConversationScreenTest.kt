@@ -73,6 +73,7 @@ import io.github.ngoroth.offlinetranslator.core.TranslationPreparationPhase
 import io.github.ngoroth.offlinetranslator.core.TranslationPreparationState
 import io.github.ngoroth.offlinetranslator.core.TranslationFailure
 import io.github.ngoroth.offlinetranslator.tencent.TencentTranslationEngine
+import io.github.ngoroth.offlinetranslator.mozilla.MozillaTranslationEngine
 import io.github.ngoroth.offlinetranslator.ui.pressSystemBack
 import io.github.ngoroth.offlinetranslator.ui.TranslatorHelpTestTags
 import org.junit.Assert.assertEquals
@@ -627,7 +628,7 @@ class ConversationScreenTest {
         val context = InstrumentationRegistry.getInstrumentation().targetContext
         compose.setContent { MaterialTheme {
             ConversationScreen(ConversationState(), readyModels(), emptyList(), preparation.value, false, false,
-                { prepares++ }, { actions++ }, provider = TencentTranslationEngine.descriptor,
+                { prepares++ }, { actions++ }, provider = MozillaTranslationEngine.descriptor,
                 translationPreparation = detail.value)
         } }
         for ((phase, label) in listOf(TranslationPreparationPhase.VERIFYING to R.string.translation_verifying,
@@ -1043,9 +1044,11 @@ class ConversationScreenTest {
             val node = compose.onNodeWithTag(tag)
             if (scrollTo) node.performScrollTo()
             node.assertIsDisplayed().assertHasClickAction().assertHeightIsAtLeast(48.dp)
-            val visible = node.fetchSemanticsNode().boundsInRoot
-            assertTrue("The clipped $tag must retain a 48dp touch area",
-                visible.height >= 48f * pixelsPerDp && visible.width >= 48f * pixelsPerDp)
+            val snapshot = node.fetchSemanticsNode()
+            val visible = snapshot.boundsInRoot
+            val touchable = visible.height >= 48f * pixelsPerDp && visible.width >= 48f * pixelsPerDp
+            assertTrue("The clipped $tag must retain a 48dp touch area: visible=${visible.width}x${visible.height}px, " +
+                "layout=${snapshot.size}, required=${48f * pixelsPerDp}px", touchable)
             return node
         }
         touchTarget(ConversationTestTags.SESSION_ACTION, scrollTo = false).assertIsNotEnabled()

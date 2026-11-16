@@ -220,7 +220,10 @@ fun ConversationScreen(
     val scroll = rememberScrollState()
     LaunchedEffect(current?.id) { scroll.scrollTo(0) }
 
-    Column(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.surface)) {
+    BoxWithConstraints(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.surface)) {
+        // Compact height keeps status readable by scrolling, without starving language touch targets.
+        val compactHeight = maxHeight < 480.dp
+    Column(Modifier.fillMaxSize()) {
         BoxWithConstraints(Modifier.weight(1f).fillMaxWidth()) {
             val emptyHeight = (maxHeight - 180.dp).coerceIn(0.dp, 320.dp)
             Column(
@@ -231,6 +234,7 @@ fun ConversationScreen(
                 modifier = Modifier.widthIn(max = 680.dp).fillMaxWidth().padding(20.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp),
             ) {
+                if (compactHeight) ConversationCaptureStatus(captureActive, captureStatus, captureReason)
                 LanguagePairControls(
                     pair = pair, enabled = canEditLanguages,
                     firstLabel = stringResource(R.string.language_participant_first),
@@ -379,7 +383,7 @@ fun ConversationScreen(
                                     color = if (preparation == ConversationPreparation.ERROR) MaterialTheme.colorScheme.error
                                         else MaterialTheme.colorScheme.onSurface)
                             }
-                            if (provider?.id == "tencent" && confirmedMissing) Text(stringResource(R.string.model_prepare_hint))
+                            if (confirmedMissing) Text(stringResource(R.string.model_prepare_hint))
                             if (translationPreparation != null && visibleTranslationPreparation) {
                                 io.github.ngoroth.offlinetranslator.ui.TranslationPreparation(translationPreparation)
                             } else translationPreparation?.lastFailure?.let {
@@ -464,41 +468,7 @@ fun ConversationScreen(
                     verticalArrangement = Arrangement.spacedBy(4.dp),
                     horizontalAlignment = Alignment.CenterHorizontally,
                 ) {
-                    Column(
-                        Modifier.fillMaxWidth().testTag(ConversationTestTags.CAPTURE_STATUS)
-                            .semantics(mergeDescendants = true) { liveRegion = LiveRegionMode.Polite },
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                    ) {
-                        Row(
-                            Modifier.fillMaxWidth(),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally),
-                        ) {
-                            Icon(
-                                painterResource(if (captureActive) R.drawable.conversation_microphone else R.drawable.conversation_microphone_off),
-                                contentDescription = null,
-                                modifier = Modifier.size(28.dp),
-                                tint = if (captureActive) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
-                            Text(
-                                stringResource(captureStatus),
-                                modifier = Modifier.weight(1f, fill = false),
-                                style = MaterialTheme.typography.titleLarge,
-                                fontWeight = if (captureStatus == R.string.conversation_capture_off) FontWeight.Normal else FontWeight.SemiBold,
-                                color = if (captureStatus == R.string.conversation_capture_off)
-                                    MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurface,
-                                textAlign = TextAlign.Center,
-                            )
-                        }
-                        Text(
-                            captureReason?.let { stringResource(it) }.orEmpty(),
-                            modifier = if (captureReason != null) Modifier.testTag(ConversationTestTags.CAPTURE_REASON) else Modifier,
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            textAlign = TextAlign.Center,
-                            minLines = 1,
-                        )
-                    }
+                    if (!compactHeight) ConversationCaptureStatus(captureActive, captureStatus, captureReason)
                     Row(Modifier.widthIn(max = 372.dp).fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp),
                         verticalAlignment = Alignment.CenterVertically) {
                         TooltipBox(
@@ -551,6 +521,46 @@ fun ConversationScreen(
                 }
             }
         }
+    }
+    }
+}
+
+@Composable
+private fun ConversationCaptureStatus(captureActive: Boolean, captureStatus: Int, captureReason: Int?) {
+    Column(
+        Modifier.fillMaxWidth().testTag(ConversationTestTags.CAPTURE_STATUS)
+            .semantics(mergeDescendants = true) { liveRegion = LiveRegionMode.Polite },
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        Row(
+            Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally),
+        ) {
+            Icon(
+                painterResource(if (captureActive) R.drawable.conversation_microphone else R.drawable.conversation_microphone_off),
+                contentDescription = null,
+                modifier = Modifier.size(28.dp),
+                tint = if (captureActive) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Text(
+                stringResource(captureStatus),
+                modifier = Modifier.weight(1f, fill = false),
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = if (captureStatus == R.string.conversation_capture_off) FontWeight.Normal else FontWeight.SemiBold,
+                color = if (captureStatus == R.string.conversation_capture_off)
+                    MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurface,
+                textAlign = TextAlign.Center,
+            )
+        }
+        Text(
+            captureReason?.let { stringResource(it) }.orEmpty(),
+            modifier = if (captureReason != null) Modifier.testTag(ConversationTestTags.CAPTURE_REASON) else Modifier,
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            textAlign = TextAlign.Center,
+            minLines = 1,
+        )
     }
 }
 

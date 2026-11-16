@@ -12,11 +12,13 @@ param(
     [string]$CaseList,
     [Parameter(Mandatory = $true)]
     [ValidateNotNullOrEmpty()]
-    [string]$EvidenceDir
+    [string]$EvidenceDir,
+    [ValidateNotNullOrEmpty()]
+    [ValidatePattern('\A[A-Za-z][A-Za-z0-9_]*(?:\.[A-Za-z][A-Za-z0-9_]*)+/(?:\.[A-Za-z_$][A-Za-z0-9_$]*(?:\.[A-Za-z_$][A-Za-z0-9_$]*)*|[A-Za-z_$][A-Za-z0-9_$]*(?:\.[A-Za-z_$][A-Za-z0-9_$]*)+)\z')]
+    [string]$Runner = 'io.github.ngoroth.offlinetranslator.test/androidx.test.runner.AndroidJUnitRunner'
 )
 
 $ErrorActionPreference = 'Stop'
-$runner = 'io.github.ngoroth.offlinetranslator.test/androidx.test.runner.AndroidJUnitRunner'
 $proof = New-Item -ItemType Directory -Path $EvidenceDir -Force
 $logPath = Join-Path $proof.FullName 'device-gate-full.log'
 $receiptPath = Join-Path $proof.FullName 'device-gate-receipt.json'
