@@ -1,10 +1,10 @@
 # Standard release R8 shrinking, optimization and obfuscation remain enabled.
 # Preserve only the native binding names and shapes required below.
 
-# sherpa-onnx 1.13.8, source 11afbd009a7f8c08f4bcf2fc1b265d0df4670fbf.
+# sherpa-onnx 2.0.2, source 5d2bd37de78b223a2e8e00e25483d12c5b164299.
 # JNI GetOfflineConfig, GetOnlineModelConfig/GetConfig, GetOfflineTtsConfig and
 # GetVadModelConfig read these exact fields through common.h macros/GetFieldID.
-# Types come from classes.jar in the prepared sherpa-onnx-1.13.8-pair-v1.aar.
+# Types come from classes.jar in the official sherpa-onnx-2.0.2.aar.
 # All sibling configs are traversed, including unselected models. Keep field
 # storage/values and descriptor classes; unrelated methods remain shrinkable.
 # Native entry points use Android's default native-method rules; Tencent retains
@@ -47,6 +47,11 @@
     java.lang.String language;
     boolean usePunct;
     boolean useItn;
+}
+
+-keep,includedescriptorclasses class com.k2fsa.sherpa.onnx.OfflineCtcFstDecoderConfig {
+    java.lang.String graph;
+    int maxActive;
 }
 
 -keep,includedescriptorclasses class com.k2fsa.sherpa.onnx.OfflineDolphinModelConfig {
@@ -116,10 +121,12 @@
     java.lang.String uncachedDecoder;
     java.lang.String cachedDecoder;
     java.lang.String mergedDecoder;
+    com.k2fsa.sherpa.onnx.QnnConfig qnnConfig;
 }
 
 -keep,includedescriptorclasses class com.k2fsa.sherpa.onnx.OfflineNemoEncDecCtcModelConfig {
     java.lang.String model;
+    com.k2fsa.sherpa.onnx.QnnConfig qnnConfig;
 }
 
 -keep,includedescriptorclasses class com.k2fsa.sherpa.onnx.OfflineOmnilingualAsrCtcModelConfig {
@@ -153,6 +160,7 @@
     java.lang.String ruleFars;
     float blankPenalty;
     com.k2fsa.sherpa.onnx.FeatureConfig featConfig;
+    com.k2fsa.sherpa.onnx.OfflineCtcFstDecoderConfig ctcFstDecoderConfig;
     com.k2fsa.sherpa.onnx.OfflineModelConfig modelConfig;
     com.k2fsa.sherpa.onnx.HomophoneReplacerConfig hr;
 }
@@ -183,6 +191,7 @@
     java.lang.String model;
     java.lang.String voices;
     java.lang.String tokens;
+    java.lang.String lexicon;
     java.lang.String dataDir;
     float lengthScale;
 }
@@ -276,6 +285,7 @@
     int tailPaddings;
     boolean enableTokenTimestamps;
     boolean enableSegmentTimestamps;
+    com.k2fsa.sherpa.onnx.QnnConfig qnnConfig;
 }
 
 -keep,includedescriptorclasses class com.k2fsa.sherpa.onnx.OfflineZipformerCtcModelConfig {
@@ -353,6 +363,7 @@
     java.lang.String backendLib;
     java.lang.String contextBinary;
     java.lang.String systemLib;
+    boolean htpPerfMode;
 }
 
 -keep,includedescriptorclasses class com.k2fsa.sherpa.onnx.SileroVadModelConfig {
@@ -385,7 +396,7 @@
 # FindClass/GetMethodID create these results; only the exact constructors are
 # native roots. Getters and other Java/Kotlin uses are discovered normally.
 -keep class com.k2fsa.sherpa.onnx.OfflineRecognizerResult {
-    <init>(java.lang.String, java.lang.String[], float[], java.lang.String, java.lang.String, java.lang.String, float[]);
+    <init>(java.lang.String, java.lang.String[], float[], java.lang.String, java.lang.String, java.lang.String, float[], int[]);
 }
 
 -keep class com.k2fsa.sherpa.onnx.OnlineRecognizerResult {
@@ -397,7 +408,21 @@
 }
 
 -keep class com.k2fsa.sherpa.onnx.SpeechSegment {
-    <init>(int, float[]);
+    <init>(long, float[]);
+}
+
+# GetGenerationConfig in offline-tts.cc reads these fields through JNI.
+-keepclassmembers class com.k2fsa.sherpa.onnx.GenerationConfig {
+    float silenceScale;
+    float speed;
+    int sid;
+    float[] referenceAudio;
+    int referenceSampleRate;
+    java.lang.String referenceText;
+    int numSteps;
+    java.util.Map extra;
+    int[][] phonemeCodepoints;
+    java.lang.String[][] tokens;
 }
 
 # offline-tts.cc calls invoke with descriptor ([F)Ljava/lang/Integer;.

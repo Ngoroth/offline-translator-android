@@ -52,61 +52,9 @@ jobs:
         shell: bash
         run: python3 tools/android/test_mozilla_native_preparation.py
 
-      - name: Prepare verified Sherpa runtime
+      - name: Prepare verified Sherpa and Piper runtimes
         shell: bash
         run: bash ./gradlew :engine-sherpa:prepareSherpaArchive --no-daemon --console=plain
-
-      - name: Prepare pinned Sherpa native toolchains
-        shell: bash
-        run: |
-          set -euo pipefail
-          tools_root="$RUNNER_TEMP/sherpa-tools"
-          mkdir -p "$tools_root"
-          python3 - <<'PY' > "$RUNNER_TEMP/sherpa-tool-pins.tsv"
-          import json
-          from pathlib import Path
-          manifest = json.loads(Path("engine-sherpa/native-build.json").read_text())
-          for name, tool in manifest["tools"].items():
-              print("\t".join((name, tool["url"], tool["archiveSha256"], tool["directory"])))
-          PY
-          while IFS=$'\t' read -r name url digest directory; do
-            archive="$tools_root/$name.archive"
-            curl --fail --location --proto '=https' --proto-redir '=https' "$url" --output "$archive"
-            printf '%s  %s\n' "$digest" "$archive" | sha256sum --check
-            case "$name" in
-              ndk) unzip -q "$archive" -d "$tools_root" ;;
-              cmake) tar -xzf "$archive" -C "$tools_root" ;;
-              ninja) mkdir "$tools_root/$directory"; unzip -q "$archive" -d "$tools_root/$directory" ;;
-              *) echo "Unsupported pinned native tool: $name" >&2; exit 1 ;;
-            esac
-          done < "$RUNNER_TEMP/sherpa-tool-pins.tsv"
-
-      - name: Prepare pinned paired Sherpa runtime
-        shell: bash
-        run: |
-          set -euo pipefail
-          python3 tools/android/prepare-sherpa-native.py \
-            --tools-root "$RUNNER_TEMP/sherpa-tools" \
-            --source-cache "$RUNNER_TEMP/sherpa-sources" \
-            --output engine-sherpa/.native-cache/android \
-            --abis arm64-v8a x86_64 --download
-          python3 tools/android/prepare-sherpa-native.py --verify \
-            --output engine-sherpa/.native-cache/android --abis arm64-v8a x86_64
-
-      - name: Retain verified paired Sherpa runtime
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
-        with:
-          name: paired-sherpa-native-${{ github.sha }}
-          retention-days: 7
-          if-no-files-found: error
-          include-hidden-files: true
-          path: |
-            engine-sherpa/.native-cache/android/sherpa-onnx-1.13.8-pair-v1.aar
-            engine-sherpa/.native-cache/android/receipt.json
-
-      - name: Test paired Sherpa preparation boundaries
-        shell: bash
-        run: python3 -m unittest discover -s tools/android -p 'test_prepare_sherpa_native.py'
 
       - name: Run application host checks
         shell: bash

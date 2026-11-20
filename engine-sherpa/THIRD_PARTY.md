@@ -5,103 +5,90 @@ project's Apache-2.0 grant, preserves upstream native license texts and records
 remaining native, model and audio rights questions. It does not replace these
 module-specific notices or establish redistribution clearance.
 
-## sherpa-onnx Android runtime
+## Official Android runtimes
 
-- Version: `1.13.8`
-- Source: <https://github.com/k2-fsa/sherpa-onnx/releases/tag/v1.13.8>
-- Official upstream preparation input (not the packaged selected-pair distribution): `libs/sherpa-onnx-1.13.8.aar`
-- SHA-256: `633c24321e06b1fe79feafa03ea16cbc0f8a286641e2da3559bac91bdb13bd96`
-- sherpa-onnx source license: Apache License 2.0,
-  <https://github.com/k2-fsa/sherpa-onnx/blob/v1.13.8/LICENSE>.
-  This does not describe every component linked into the AAR.
-- ONNX Runtime: MIT; preserved version-specific license and notices are linked in
-  the root inventory. Native eSpeak NG and Piper evidence is recorded below.
-
-The official input AAR is obtained explicitly with
-`./gradlew.bat :engine-sherpa:prepareSherpaArchive --console=plain` (Windows) or
+Both unmodified AARs are obtained explicitly with
+`.\gradlew.bat :engine-sherpa:prepareSherpaArchive --console=plain` (Windows) or
 `bash ./gradlew :engine-sherpa:prepareSherpaArchive --console=plain` (POSIX).
-Acquisition verifies size/SHA-256 before atomic placement and reuses valid local
-bytes. Corrupt input fails unchanged. The app instead resolves the locally
-rebuilt selected-pair distribution described below. SDK types remain inside
-`:engine-sherpa`; neither `:core` nor `:app` receives them through public APIs.
-Historical official-AAR Git blobs are not removed by this change.
+Acquisition verifies the pinned size and SHA-256 before atomic placement and
+reuses valid local copies. Ordinary Gradle builds verify both files locally,
+without compilation, repair or downloads. The files are not vendored in the
+current source tree. `:engine-sherpa` exposes sherpa-onnx configuration types
+through its public factories. The isolated `:engine-sherpa-model-smoke`
+instrumentation tests use those factories and call the Sherpa SDK directly.
+Piper Phonemize remains an implementation dependency of `:engine-sherpa`.
 
-### Locally modified selected-pair distribution
+| Prepared file | Release asset | Bytes | SHA-256 |
+| --- | --- | ---: | --- |
+| `libs/sherpa-onnx-2.0.2.aar` | [sherpa-onnx v2.0.2](https://github.com/k2-fsa/sherpa-onnx/releases/download/v2.0.2/sherpa-onnx-2.0.2.aar) | 52,321,252 | `6420cfb86c2ef8462dadd77b2202b7430487bdfb2bc715e9ce2864871209a80e` |
+| `libs/piper-phonemize-1.5.9.aar` | [Piper Phonemize v1.5.9](https://github.com/csukuangfj/piper-phonemize/releases/download/v1.5.9/piper-phonemize-1.5.9.aar) | 12,672,185 | `d0ed1cc8ac8029937a10099539ff4e532e4ec875a4745137283b618d9075daa2` |
 
-`tools/android/prepare-sherpa-native.py` builds
-`.native-cache/android/sherpa-onnx-1.13.8-pair-v1.aar` explicitly on Linux/WSL.
-`native-build.json` pins source, the complete selected dependency closure,
-ORT headers and the exact NDK/CMake/Ninja identities. The six-file
-`native/whisper-language-pair.patch` adds a metadata-backed two-language SOT
-comparison while preserving one encoder, one transcription and old no-option
-behavior. It does not change public C/JNI/Kotlin layouts.
+### sherpa-onnx 2.0.2
 
-Only ARM64/x86_64 are packaged. All three Sherpa libraries are rebuilt for each;
-official non-native AAR entries and per-ABI ORT1.28.2 bytes are retained exactly.
-The generated receipt binds source/patch/recipe/tool identities, actual archive
-and ELF hashes, public exports, dependency closure,16KiB alignment and an
-explicit retained `whisper-language-pair-v1` feature marker. Source-supplied
-license/notice material is bundled under `assets/sherpa-native/licenses/`.
-Ordinary Gradle verification is read-only: no stock fallback, repair, download
-or implicit compilation. The upstream-input composition below remains provenance
-for that input, not a claim that its unmodified native libraries are shipped.
+[Release metadata](https://api.github.com/repos/k2-fsa/sherpa-onnx/releases/tags/v2.0.2)
+identifies asset `766997436`; the release tag resolves to commit
+[`5d2bd37de78b223a2e8e00e25483d12c5b164299`](https://github.com/k2-fsa/sherpa-onnx/tree/5d2bd37de78b223a2e8e00e25483d12c5b164299).
+Sherpa's [Apache-2.0 license](https://github.com/k2-fsa/sherpa-onnx/blob/5d2bd37de78b223a2e8e00e25483d12c5b164299/LICENSE)
+matches the root [license text](../LICENSE). It does not cover every linked component.
 
-### Exact artifact and native composition
+The tagged [Android release recipe](https://github.com/k2-fsa/sherpa-onnx/blob/5d2bd37de78b223a2e8e00e25483d12c5b164299/.github/workflows/android.yaml)
+uses `ANDROID_NDK_LATEST_HOME`, enables the C API, builds four ABIs and packages
+the native outputs in the AAR. The [successful release run](https://github.com/k2-fsa/sherpa-onnx/actions/runs/44486230886)
+matches the tag commit and asset upload window. The verified AAR contains
+`libonnxruntime.so`, `libsherpa-onnx-c-api.so`, `libsherpa-onnx-cxx-api.so` and
+`libsherpa-onnx-jni.so` for `arm64-v8a`, `armeabi-v7a`, `x86` and `x86_64`.
+The app packages only `arm64-v8a` and `x86_64`.
 
-The official [release asset](https://github.com/k2-fsa/sherpa-onnx/releases/download/v1.13.8/sherpa-onnx-1.13.8.aar)
-is 50,129,134 bytes; [release metadata](https://api.github.com/repos/k2-fsa/sherpa-onnx/releases/tags/v1.13.8)
-identifies asset `555224925` with the same pinned SHA-256 above.
-The inspected release tag resolves to source commit
-`11afbd009a7f8c08f4bcf2fc1b265d0df4670fbf`.
+The Android scripts use shared ONNX Runtime 1.28.2 by default; see the
+[ARM64 script](https://github.com/k2-fsa/sherpa-onnx/blob/5d2bd37de78b223a2e8e00e25483d12c5b164299/build-android-arm64-v8a.sh)
+and [x86_64 script](https://github.com/k2-fsa/sherpa-onnx/blob/5d2bd37de78b223a2e8e00e25483d12c5b164299/build-android-x86-64.sh).
+All four `libonnxruntime.so` files byte-match the previous 1.13.8 dependency
+and the corresponding entries in
+[`onnxruntime-android-1.28.2.zip`](https://github.com/csukuangfj/onnxruntime-libs/releases/download/v1.28.2/onnxruntime-android-1.28.2.zip)
+(33,765,715 bytes, SHA-256 `01518867f78241138b6aa25925802e843a4fa9085af8d303d49e35bbb52aff4d`).
+That ZIP carries no license inventory. The existing 1.28.2
+[MIT text](../LICENSES/onnxruntime-MIT.txt) and
+[third-party notices](../LICENSES/onnxruntime-ThirdPartyNotices.txt) are retained
+for these unchanged binaries.
 
-The AAR contains `libonnxruntime.so`, `libsherpa-onnx-c-api.so`,
-`libsherpa-onnx-cxx-api.so` and `libsherpa-onnx-jni.so` for each of
-`arm64-v8a`, `armeabi-v7a`, `x86` and `x86_64`. Both C API and JNI binaries
-contain eSpeak NG and Piper phonemizer code; this is not just downloaded voice data.
-The native dependencies are statically linked rather than shipped as separate
-`libespeak-ng.so` or `libpiper_phonemize.so` files.
+The release includes upstream [PR #4093](https://github.com/k2-fsa/sherpa-onnx/pull/4093):
+CPU ONNX Whisper accepts `language_candidates` per stream, returns the selected
+language in the existing result, and has no separate option status. Upstream
+[PR #4055](https://github.com/k2-fsa/sherpa-onnx/pull/4055) removed linked
+eSpeak NG and Piper Phonemize from Sherpa before this release. The 2.0.2 native
+recipe no longer links them, and inspection of the shipped-ABI C API and JNI
+libraries did not find the corresponding old eSpeak/Piper symbols or source
+diagnostics. Piper models now need a lexicon or external phonemization.
 
-The embedded diagnostics include eSpeak's
-[`src/libespeak-ng/error.c`](https://github.com/csukuangfj/espeak-ng/blob/ed530aa113046142eb5115cf2fc9157854d0ffe1/src/libespeak-ng/error.c),
-copyright Reece H. Dunn (2016), GPL-3.0-or-later, and Piper's
-[`src/phonemize.cpp`](https://github.com/csukuangfj/piper-phonemize/blob/f3ff95afc03640bc1399e113e83361192a2fafb4/src/phonemize.cpp).
-Binary inspection establishes their presence, not the exact source revision used
-to build this release asset.
+### Piper Phonemize 1.5.9
 
-### Available source recipe and preserved notices
+[Release metadata](https://api.github.com/repos/csukuangfj/piper-phonemize/releases/tags/v1.5.9)
+identifies asset `658561689` and tag source
+[`dae4d2d831f9f0817355f7c0e8abd98c2fb0a49d`](https://github.com/csukuangfj/piper-phonemize/tree/dae4d2d831f9f0817355f7c0e8abd98c2fb0a49d).
+Its [README license declaration](https://github.com/csukuangfj/piper-phonemize/blob/dae4d2d831f9f0817355f7c0e8abd98c2fb0a49d/README.md#license)
+is GPL-3.0-or-later; its [GPLv3 text](https://github.com/csukuangfj/piper-phonemize/blob/dae4d2d831f9f0817355f7c0e8abd98c2fb0a49d/LICENSE.md)
+byte-matches the [preserved text](../LICENSES/espeak-ng-COPYING.txt). The
+app feeds phoneme codepoints from this separate runtime to Sherpa's VITS
+synthesis, following the [upstream Android example](https://github.com/k2-fsa/sherpa-onnx/blob/5d2bd37de78b223a2e8e00e25483d12c5b164299/android/SherpaOnnxTts/app/src/main/java/com/k2fsa/sherpa/onnx/MainActivity.kt).
 
-The v1.13.8 [Android release workflow](https://github.com/k2-fsa/sherpa-onnx/blob/v1.13.8/.github/workflows/android.yaml)
-builds all four ABIs, enables the C API, uses `ANDROID_NDK_LATEST_HOME`, then copies
-the native libraries into the AAR. Its per-ABI scripts
-[`build-android-arm64-v8a.sh`](https://github.com/k2-fsa/sherpa-onnx/blob/v1.13.8/build-android-arm64-v8a.sh),
-[`build-android-armv7-eabi.sh`](https://github.com/k2-fsa/sherpa-onnx/blob/v1.13.8/build-android-armv7-eabi.sh),
-[`build-android-x86.sh`](https://github.com/k2-fsa/sherpa-onnx/blob/v1.13.8/build-android-x86.sh)
-and [`build-android-x86-64.sh`](https://github.com/k2-fsa/sherpa-onnx/blob/v1.13.8/build-android-x86-64.sh)
-default TTS to `ON`. The arm64 script defaults to shared ONNX Runtime 1.28.2 from
-<https://github.com/csukuangfj/onnxruntime-libs/releases/download/v1.28.2/onnxruntime-android-1.28.2.zip>.
-This describes the published recipe, not an attestation of the release runner's
-actual environment or overrides.
+The tagged [Android recipe](https://github.com/csukuangfj/piper-phonemize/blob/dae4d2d831f9f0817355f7c0e8abd98c2fb0a49d/.github/workflows/android.yaml)
+and [successful release run](https://github.com/csukuangfj/piper-phonemize/actions/runs/39384537865)
+show four ABIs and an API 26 native target (the AAR manifest declares minSdk 21).
+Its [CMake recipe](https://github.com/csukuangfj/piper-phonemize/blob/dae4d2d831f9f0817355f7c0e8abd98c2fb0a49d/CMakeLists.txt)
+statically links eSpeak NG, selecting
+[`ed530aa113046142eb5115cf2fc9157854d0ffe1`](https://github.com/csukuangfj/espeak-ng/tree/ed530aa113046142eb5115cf2fc9157854d0ffe1)
+(archive SHA-256 `e4e262cbe34f7fe21f91f1ba3397f2728e1f30eafbae7853f2b753a9ed13f0dd`).
+The recipe copies the repository's `swift-api-examples/espeak-ng-data` into the
+AAR. The verified asset contains `libpiper-phonemize-jni.so` for all four ABIs
+with eSpeak and Piper code, and bundles `assets/espeak-ng-data/`, including
+Russian and US English data. Both packaged 64-bit libraries have 16 KiB ELF
+load-segment alignment. The bundled data is not a voice model. The downloaded
+Irina and Lessac model packages retain their distinct terms below.
 
-The [root CMake file](https://github.com/k2-fsa/sherpa-onnx/blob/v1.13.8/CMakeLists.txt)
-loads eSpeak first, sets `ESPEAK_NG_DIR` to that source tree and then loads Piper
-when TTS is enabled. Thus Piper's standalone fallback eSpeak revision is **not**
-the eSpeak revision selected by this sherpa recipe.
-[`cmake/espeak-ng-for-piper.cmake`](https://github.com/k2-fsa/sherpa-onnx/blob/v1.13.8/cmake/espeak-ng-for-piper.cmake)
-and [`cmake/piper-phonemize.cmake`](https://github.com/k2-fsa/sherpa-onnx/blob/v1.13.8/cmake/piper-phonemize.cmake)
-temporarily force static builds. Piper links `espeak-ng` and `ucd`;
-[`sherpa-onnx/csrc/CMakeLists.txt`](https://github.com/k2-fsa/sherpa-onnx/blob/v1.13.8/sherpa-onnx/csrc/CMakeLists.txt)
-links Piper into the static core, and the
-[`JNI target`](https://github.com/k2-fsa/sherpa-onnx/blob/v1.13.8/sherpa-onnx/jni/CMakeLists.txt)
-links that core.
-
-The following exact upstream archives are among the pinned inputs of the local
-build; the manifest records the remaining dependencies and tool/header pins:
-
-| Candidate source input | SHA-256 |
-| --- | --- |
-| [sherpa-onnx v1.13.8 source](https://github.com/k2-fsa/sherpa-onnx/archive/refs/tags/v1.13.8.zip) | `b63b7613812346f2d1396a3a7f94accd47539e3dadc3ea385ba6474c70ab9897` |
-| [eSpeak NG `ed530aa113046142eb5115cf2fc9157854d0ffe1`](https://github.com/csukuangfj/espeak-ng/archive/ed530aa113046142eb5115cf2fc9157854d0ffe1.zip) | `e4e262cbe34f7fe21f91f1ba3397f2728e1f30eafbae7853f2b753a9ed13f0dd` |
-| [Piper phonemize `f3ff95afc03640bc1399e113e83361192a2fafb4`](https://github.com/csukuangfj/piper-phonemize/archive/f3ff95afc03640bc1399e113e83361192a2fafb4.zip) | `d9cca4e2bdc7d6dd8dffb96a4668283dbd3f77a9c194a3e530c1e8eba9406a5d` |
+Neither inspected AAR contains a license/notice inventory. Archive inspection,
+byte matches and public recipe/run metadata identify the checked inputs and
+outputs; they do not attest to every runner input or constitute an exhaustive
+SBOM, a complete Corresponding Source package or release qualification.
 
 Relevant full texts preserved in this repository:
 
@@ -110,12 +97,11 @@ Relevant full texts preserved in this repository:
   specifies GPL-3.0-or-later. Its `ucd-tools` sources also specify GPL-3.0-or-later,
   for example [case.c](https://github.com/csukuangfj/espeak-ng/blob/ed530aa113046142eb5115cf2fc9157854d0ffe1/src/ucd-tools/src/case.c),
   copyright Reece H. Dunn (2012–2018, 2021).
-- Piper phonemize: [MIT](../LICENSES/piper-phonemize-MIT.txt), copyright Michael
-  Hansen (2023), from the pinned
-  [LICENSE.md](https://github.com/csukuangfj/piper-phonemize/blob/f3ff95afc03640bc1399e113e83361192a2fafb4/LICENSE.md).
-- Piper's included uni-algo header: [Public Domain or MIT text](../LICENSES/piper-phonemize-uni-algo.txt),
-  from [licenses/uni-algo/LICENSE.md](https://github.com/csukuangfj/piper-phonemize/blob/f3ff95afc03640bc1399e113e83361192a2fafb4/licenses/uni-algo/LICENSE.md).
-  The same alternatives appear in the embedded `src/uni_algo.h` used by the phonemizer.
+- Piper Phonemize includes a [uni-algo header](https://github.com/csukuangfj/piper-phonemize/blob/dae4d2d831f9f0817355f7c0e8abd98c2fb0a49d/src/uni_algo.h)
+  under [Public Domain or MIT terms](../LICENSES/piper-phonemize-uni-algo.txt).
+- The historical [Piper phonemize MIT notice](../LICENSES/piper-phonemize-MIT.txt)
+  is retained from [`f3ff95afc03640bc1399e113e83361192a2fafb4`](https://github.com/csukuangfj/piper-phonemize/blob/f3ff95afc03640bc1399e113e83361192a2fafb4/LICENSE.md),
+  used by the earlier Sherpa 1.13.8 runtime. It does not replace v1.5.9's GPL terms.
 - eSpeak/ucd-tools Unicode tables: [Unicode permission notice](../LICENSES/espeak-ng-Unicode.txt),
   copyright Unicode, Inc. (1991–2018), from pinned
   [COPYING.UCD](https://github.com/csukuangfj/espeak-ng/blob/ed530aa113046142eb5115cf2fc9157854d0ffe1/COPYING.UCD)
@@ -123,20 +109,21 @@ Relevant full texts preserved in this repository:
 
 ### Conditions before redistributing this AAR or an APK containing it
 
-Publishing a repository containing this AAR also distributes object code; calling
-it a source release does not avoid the native obligations. Preserve applicable
-copyright, permission, attribution and warranty notices, including the Apache,
-MIT, Unicode and GPL texts above. The root Apache grant remains a grant for
-original project materials, not an Apache-only license for this linked binary.
+Publishing a repository containing either AAR also distributes object code;
+calling it a source release does not avoid native obligations. Preserve
+applicable copyright, permission, attribution and warranty notices,
+including the Apache, MIT, Unicode and GPL texts above. The root Apache grant
+licenses original project materials, not all linked binaries or the full APK.
 
 For GPL-covered object code, [GPLv3 sections 1, 4–6](../LICENSES/espeak-ng-COPYING.txt)
 require the applicable notices and machine-readable Corresponding Source, including
 the source and scripts needed to generate, install, run and modify the covered
 work, with the section 1 exclusions for System Libraries and general-purpose tools.
 An eSpeak source link alone is not necessarily the Corresponding Source of the
-statically linked combination. Establish the covered combined-work scope and
-compatible distribution terms; do not assume that placing a GPL text beside an
-Apache-licensed application resolves that question.
+statically linked phonemizer or any covered combination. Establish the covered
+combined-work scope and compatible terms; neither putting GPL text beside an
+Apache-licensed application nor moving the GPL code into a separate AAR
+establishes redistribution clearance.
 
 For a public network download, section 6(d) permits equivalent no-charge source
 access with clear directions next to the object-code download. A third-party source
@@ -146,15 +133,21 @@ different route tied to physical-product distribution. Installation Information
 is required only when section 6's User Product/transfer conditions apply, not
 automatically for every APK download.
 
-For the official upstream input, its recipe and candidate archives alone do not
-attest a complete Corresponding Source package for that historical binary.
-The local modified distribution records its actual source/dependency/tool pins,
-modification patch, build helper and byte receipt. Supply that source material
-and the scripts needed for the shipped combined work with any binary handoff;
-public hosting/redistribution still requires the applicable compatible terms
-and source availability. No formal exhaustive SBOM or byte-for-byte identical
-rebuild guarantee is asserted, and no third-party rights can be granted by the
-project owner.
+For the current Piper Phonemize AAR or an APK containing it, account for the
+actual linked eSpeak/ucd-tools code, packaged language data and the preferred
+form for changing that data, as well as the build/install scripts and the
+covered work as a whole. No complete source package or redistribution clearance
+is provided. The pinned Sherpa recipe and inspected binaries do not establish
+rights to distribute other native components, audio, models or voice data.
+
+Historical [sherpa-onnx 1.13.8](https://github.com/k2-fsa/sherpa-onnx/releases/tag/v1.13.8)
+binaries (tag commit `11afbd009a7f8c08f4bcf2fc1b265d0df4670fbf`) included
+embedded eSpeak and Piper code. The former local `sherpa-onnx-1.13.8-pair-v1.aar`
+used a native source patch and an exact-byte receipt; its
+[archived plan](../docs/workflow/archive/2026-10-21-2346-whisper-conversation/plans/2026-10-21-2346-whisper-conversation.md)
+records the old inputs and obligations. Historical Git blobs were not removed
+by this change. The new release does not retroactively change the terms of those
+binaries or attest that Corresponding Source was provided for them.
 
 ## Apache Commons Compress
 
@@ -167,8 +160,8 @@ project owner.
 
 Model weights are separate downloads and are not included in the AAR or APK.
 Production packages pin archive/file hashes, byte counts, redirect hosts and
-installation quotas in `src/main/assets/speech-models.json`. Legacy Sherpa
-recognition uses one Whisper tiny identifier and two offline recognizers:
+installation quotas in `src/main/assets/speech-models.json`. The following
+notices also cover retained catalog resources from legacy recognition paths:
 
 - Russian GigaAM v1 NeMo CTC int8:
   <https://github.com/salute-developers/GigaAM>.
@@ -232,12 +225,14 @@ remain applicable; neither original ASR is accepted for A059P.
   revision `672fbf1b30579d6585301139bb363f42a0ad4a24`,
   <https://huggingface.co/csukuangfj/sherpa-onnx-streaming-zipformer-en-2023-06-26>.
 
-## Conversation language identification and voices
+## Downloaded voice packages and retained language-ID resources
 
-The production catalog additionally pins Whisper tiny encoder/decoder files and the
-Piper Irina/Lessac voices. All seven packages are downloaded separately; weights and
-eSpeak data are excluded from the production APK. Exact byte counts, SHA-256 digests,
-redirect hosts and complete voice file inventories are in `src/main/assets/speech-models.json`.
+The catalog pins Piper Irina/Lessac voices and retains Whisper tiny resources from
+the former standalone language-ID path. These packages are separate downloads.
+Voice weights and their package-specific eSpeak data are not included in the
+production APK; the Piper Phonemize AAR's bundled eSpeak data is a separate input.
+Exact byte counts, SHA-256 digests, redirect hosts and complete voice inventories
+are in `src/main/assets/speech-models.json`.
 
 - Whisper upstream: MIT, <https://github.com/openai/whisper/blob/main/LICENSE>.
   Converted tiny files are pinned to revision `65176e2deb88badc814a94058666cadccc29b61c`:

@@ -1,5 +1,6 @@
 package io.github.ngoroth.offlinetranslator.sherpa
 
+import android.content.Context
 import io.github.ngoroth.offlinetranslator.core.SpeechModelRole
 import io.github.ngoroth.offlinetranslator.core.LanguagePair
 import io.github.ngoroth.offlinetranslator.core.SpeechSegment
@@ -116,15 +117,15 @@ object SherpaModelFactories {
         )
     }
 
-    fun ttsConfig(definition: SpeechModelDefinition, paths: (SpeechModelRef) -> String): OfflineTtsConfig {
+    internal fun ttsConfig(definition: SpeechModelDefinition, paths: (SpeechModelRef) -> String): OfflineTtsConfig {
         require(definition.role == SpeechModelRole.TTS && definition.sampleRateHz == SpeechPcmBuffer.SAMPLE_RATE)
         val adapter = definition.adapter as? SherpaSpeechModelAdapter.PiperVits ?: error("Model is not a Piper voice")
         return OfflineTtsConfig(
             model = OfflineTtsModelConfig(
                 vits = OfflineTtsVitsModelConfig(
-                    model = paths(adapter.model), tokens = paths(adapter.tokens), dataDir = paths(adapter.dataDir),
-                    lexicon = "", dictDir = "", noiseScale = adapter.noiseScale,
-                    noiseScaleW = adapter.noiseScaleW, lengthScale = adapter.lengthScale,
+                    model = paths(adapter.model), tokens = paths(adapter.tokens),
+                    noiseScale = adapter.noiseScale, noiseScaleW = adapter.noiseScaleW,
+                    lengthScale = adapter.lengthScale,
                 ),
                 numThreads = adapter.numThreads, provider = "cpu", debug = false,
             ),
@@ -164,31 +165,44 @@ object SherpaModelFactories {
         return PairedWhisperAsr(OfflineRecognizer(config = offlineConfig(definition, paths::getValue)), pair)
     }
 
-    internal suspend fun createVoice(cacheDir: File, store: SpeechModelStore, definition: SpeechModelDefinition, speedPercent: Int): ConversationVoice {
-        require(speedPercent in 75..125)
-        val adapter = definition.adapter as? SherpaSpeechModelAdapter.PiperVits ?: error("Model is not a Piper voice")
+    suspend fun createPiperVoice(
+        context: Context, store: SpeechModelStore, definition: SpeechModelDefinition, speedPercent: Int,
+    ): PiperVoice {
+        val speed = synthesisSpeed(speedPercent)
+        require(definition.adapter is SherpaSpeechModelAdapter.PiperVits) { "Model is not a Piper voice" }
         val paths = resolveFiles(store, definition)
-        val inventoryRef = definition.requiredRefs.firstOrNull {
-            it.packageId == adapter.dataDir.packageId && it.path.startsWith(adapter.dataDir.path + "/")
-        } ?: error("Voice phonemizer inventory is missing")
-        val inventoryFile = store.modelFile(inventoryRef.packageId, inventoryRef.path)
-        var root = inventoryFile
-        repeat(inventoryRef.path.count { it == '/' } + 1) { root = requireNotNull(root.parentFile) }
-        val dataDir = File(root, adapter.dataDir.path)
-        require(dataDir.isDirectory && dataDir.canonicalFile == dataDir.absoluteFile) { "Unsafe voice phonemizer directory" }
-        val config = ttsConfig(definition) { ref ->
-            if (ref == adapter.dataDir) dataDir.absolutePath else paths.getValue(ref)
-        }
+        val config = ttsConfig(definition, paths::getValue)
+        currentCoroutineContext().ensureActive()
+        PiperPhonemizer.initialize(context)
         // Private trusted options disable the expanding VITS high-water CPU memory arena.
         // Native construction consumes this synchronously; metadata never supplies this path.
-        val options = File.createTempFile("piper-options-", ".conf", cacheDir)
+        val options = File.createTempFile("piper-options-", ".conf", context.cacheDir)
         return try {
             options.writeText("EnableCpuMemArena=0\n")
             config.model.provider = "cpu:${options.absolutePath}"
             currentCoroutineContext().ensureActive()
-            PiperVoice(OfflineTts(config = config), synthesisSpeed(speedPercent))
+            openPiperVoice(config, speed)
         } finally {
             options.delete()
+        }
+    }
+
+    fun createPiperVoice(
+        context: Context, definition: SpeechModelDefinition, speedPercent: Int, paths: (SpeechModelRef) -> String,
+    ): PiperVoice {
+        val speed = synthesisSpeed(speedPercent)
+        val config = ttsConfig(definition, paths)
+        PiperPhonemizer.initialize(context)
+        return openPiperVoice(config, speed)
+    }
+
+    private fun openPiperVoice(config: OfflineTtsConfig, speed: Float): PiperVoice {
+        val native = OfflineTts(config = config)
+        return try {
+            PiperVoice(native, speed)
+        } catch (failure: Throwable) {
+            native.release()
+            throw failure
         }
     }
 
@@ -225,24 +239,23 @@ private class OfflineAsr(private val native: OfflineRecognizer) : NativeSpeechRe
     override fun close() = native.release()
 }
 
-/** A fresh stream must prove paired native completion; a generic option roundtrip cannot do so. */
 private class PairedWhisperAsr(
     private val native: OfflineRecognizer,
     pair: LanguagePair,
 ) : NativeWhisperRecognizer {
-    private val selectedPair = "${pair.source.value},${pair.target.value}"
+    private val languageCandidates = "${pair.source.value},${pair.target.value}"
 
     override suspend fun recognize(samples: FloatArray, ensureActive: suspend () -> Unit): NativeWhisperResult {
         ensureActive()
         val stream = native.createStream()
         return try {
-            stream.setOption("whisper-language-pair", selectedPair)
+            stream.setOption("language_candidates", languageCandidates)
             stream.acceptWaveform(samples, sampleRate = SpeechSegment.SAMPLE_RATE_HZ)
             ensureActive()
             native.decode(stream)
             ensureActive()
             val result = native.getResult(stream)
-            NativeWhisperResult(result.text, result.lang, stream.getOption("whisper-language-pair-status"))
+            NativeWhisperResult(result.text, result.lang)
         } finally { stream.release() }
     }
 
@@ -296,17 +309,4 @@ private fun deduplicateConsecutiveSentences(text: String): String {
         }
     }
     return result.joinToString(" ")
-}
-
-private class PiperVoice(private val native: OfflineTts, private val speed: Float) : ConversationVoice {
-    override val sampleRate: Int get() = native.sampleRate()
-    override fun generate(text: String, callback: ((FloatArray) -> Int)?): ConversationVoiceResult {
-        val audio = if (callback != null) {
-            native.generateWithCallback(text, sid = 0, speed = speed, callback = callback)
-        } else {
-            native.generate(text, sid = 0, speed = speed)
-        }
-        return ConversationVoiceResult(audio.sampleRate, audio.samples.size)
-    }
-    override fun close() = native.release()
 }

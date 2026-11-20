@@ -4,30 +4,29 @@ Original project materials are licensed under [Apache-2.0](LICENSE). Third-party
 code, audio, models, data and trademarks retain their own terms. This inventory
 is not a complete APK dependency inventory or redistribution clearance.
 
-## Locally prepared native runtimes
+## Sherpa and Piper Phonemize Android runtimes
 
-The project locally prepares a **modified sherpa-onnx 1.13.8** Android AAR using
-the pinned official AAR as wrapper/ORT input and a six-file selected-pair source
-patch. `:engine-sherpa:prepareSherpaArchive` acquires only that verified input;
-`tools/android/prepare-sherpa-native.py` explicitly rebuilds and verifies the
-ARM64/x86_64 native closure. The source tree does not vendor either AAR.
-Source/dependency/tool pins, the patch, actual-byte receipt and applicable
-redistribution conditions are in the [module provenance record](engine-sherpa/THIRD_PARTY.md).
-Prepared source-supplied license/notice material is retained under
-`assets/sherpa-native/licenses/`; original project licensing does not relicense
-linked third-party components.
+`:engine-sherpa:prepareSherpaArchive` acquires the unmodified official
+sherpa-onnx 2.0.2 and Piper Phonemize 1.5.9 Android AARs. Ordinary builds verify
+the pinned local bytes; neither AAR is vendored in the current source tree.
+Sherpa no longer embeds eSpeak NG or Piper Phonemize. The separate Piper
+Phonemize AAR contains native eSpeak NG code and eSpeak language data, but no
+voice weights. See the [module provenance record](engine-sherpa/THIRD_PARTY.md)
+for exact binaries, recipes and evidence limits.
 
 | Component | Terms and preserved texts |
 | --- | --- |
-| sherpa-onnx | [Apache-2.0](https://github.com/k2-fsa/sherpa-onnx/blob/v1.13.8/LICENSE); full text in [LICENSE](LICENSE) |
+| sherpa-onnx 2.0.2 | [Apache-2.0](https://github.com/k2-fsa/sherpa-onnx/blob/v2.0.2/LICENSE); full text in [LICENSE](LICENSE) |
 | ONNX Runtime 1.28.2 | [MIT](LICENSES/onnxruntime-MIT.txt) and [upstream third-party notices](LICENSES/onnxruntime-ThirdPartyNotices.txt) |
-| Embedded eSpeak NG / ucd-tools | GPL-3.0-or-later; full [GPL-3.0 text](LICENSES/espeak-ng-COPYING.txt) |
-| Piper phonemize | MIT, copyright Michael Hansen (2023); full [license](LICENSES/piper-phonemize-MIT.txt) |
-| Piper's uni-algo | [Public Domain or MIT text](LICENSES/piper-phonemize-uni-algo.txt) |
+| Piper Phonemize 1.5.9 and embedded eSpeak NG / ucd-tools | GPL-3.0-or-later; full [GPLv3 text](LICENSES/espeak-ng-COPYING.txt) |
+| Piper Phonemize's uni-algo | [Public Domain or MIT text](LICENSES/piper-phonemize-uni-algo.txt) |
 | eSpeak / ucd-tools Unicode data | Copyright Unicode, Inc. (1991–2018); [permission notice](LICENSES/espeak-ng-Unicode.txt) |
 
-Redistributing the AAR or an APK containing it requires the applicable notices,
-Corresponding Source and compatible combined-work terms; see
+The [historical Piper phonemize MIT notice](LICENSES/piper-phonemize-MIT.txt)
+applies to the earlier source used with Sherpa 1.13.8, not as a license for the
+current combined phonemizer. Redistributing either AAR or an APK containing
+them requires the applicable notices and terms. For GPL-covered object code,
+Corresponding Source and compatible combined-work terms still apply; see
 [native distribution conditions](engine-sherpa/THIRD_PARTY.md#conditions-before-redistributing-this-aar-or-an-apk-containing-it).
 
 ## Tencent local translation
@@ -81,9 +80,10 @@ coordinates are in [the version catalog](gradle/libs.versions.toml).
 
 ## Downloaded model weights and voice data
 
-Model packages are downloaded separately, not included in the production AAR/APK.
-Their source revisions, licenses and model/voice-specific restrictions are recorded
-in the [module notice](engine-sherpa/THIRD_PARTY.md).
+Model weights and voice packages are downloaded separately, not included in
+the production AARs or APK. This is distinct from the eSpeak language data
+bundled in Piper Phonemize. Model source revisions, licenses and voice-specific
+restrictions are recorded in the [module notice](engine-sherpa/THIRD_PARTY.md).
 
 Whisper recognition separately downloads the pinned multilingual **OpenAI Whisper
 Small INT8 ONNX** export and token table. OpenAI publishes its code and model

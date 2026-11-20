@@ -14,9 +14,11 @@ dependencyResolutionManagement {
         mavenCentral()
         exclusiveContent {
             forRepository {
-                flatDir {
-                    name = "verifiedSherpaPairedRuntime"
-                    dirs(rootDir.resolve("engine-sherpa/.native-cache/android"))
+                ivy {
+                    name = "verifiedSherpaRuntime"
+                    url = uri("engine-sherpa/libs")
+                    patternLayout { artifact("[artifact]-[revision].[ext]") }
+                    metadataSources { artifact() }
                 }
             }
             filter { includeGroup("local.verified.sherpa") }

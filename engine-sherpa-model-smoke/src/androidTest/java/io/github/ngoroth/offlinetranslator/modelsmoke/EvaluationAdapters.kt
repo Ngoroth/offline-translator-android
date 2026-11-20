@@ -2,8 +2,6 @@ package io.github.ngoroth.offlinetranslator.modelsmoke
 
 import android.os.SystemClock
 import io.github.ngoroth.offlinetranslator.testkit.*
-import io.github.ngoroth.offlinetranslator.testkit.WaveReader
-import com.k2fsa.sherpa.onnx.*
 import io.github.ngoroth.offlinetranslator.core.LanguageId
 import io.github.ngoroth.offlinetranslator.core.SpeechModelRole
 import io.github.ngoroth.offlinetranslator.sherpa.SherpaSpeechModelAdapter
@@ -32,28 +30,32 @@ class EvaluationVoice(language: String) : AutoCloseable {
             ref(model.files.single { it.path.endsWith(".onnx") }.path), ref("tokens.txt"), ref("espeak-ng-data"),
             parameters.getDouble("noiseScale").toFloat(), parameters.getDouble("noiseScaleW").toFloat(),
             parameters.getDouble("lengthScale").toFloat(), parameters.getInt("numThreads")), model.files.map { ref(it.path) })
-    private val native = OfflineTts(config = SherpaModelFactories.ttsConfig(definition) { ref ->
+    private val voice = SherpaModelFactories.createPiperVoice(
+        EvaluationSession.context, definition, speedPercent = (parameters.getDouble("speed") * 100).toInt(),
+    ) { ref ->
         File(root, ref.path).absolutePath
-    })
+    }
 
     fun synthesize(text: String, destination: File, warmup: Boolean = false): JSONObject {
         require(text.length in 1..4096)
         val start = nowNanos()
         val callback=BoundedSynthesisCallback()
-        val audio = native.generateWithCallback(text, sid = parameters.getInt("speaker"),
-            speed = parameters.getDouble("speed").toFloat(),callback=callback)
+        val samples = voice.synthesize(text, callback)
         val compute = millisSince(start)
-        require(callback.valid) { "Synthesis nonfinite/range/output quota violation" }
-        require(audio.sampleRate == 22050)
-        val pcm = WaveWriter.fromFloats(audio.samples)
+        require(callback.valid && callback.sampleCount > 0 && callback.sampleCount == samples.size) {
+            "Synthesis returned invalid or incomplete streamed PCM"
+        }
+        require(voice.sampleRate == 22050)
+        val pcm = WaveWriter.fromFloats(samples)
         val signal = SignalMetrics.measure(pcm)
         val seconds = pcm.size / 22050.0
         WaveWriter.write(destination,pcm,22050)
         WaveReader.read(destination,22050)
         return JSONObject().put("durationSeconds",seconds).put("sampleCount",pcm.size).put("sampleRateHz",22050)
+            .put("callbackSampleCount",callback.sampleCount)
             .put("rms",signal.rms).put("zeroFraction",signal.zeroFraction).put("clippingFraction",signal.clippingFraction)
             .put("computeMs",compute).put("rtf",compute / 1000 / seconds).put("sha256",Integrity.sha256(destination))
             .put("valid", seconds in .5..15.0 && EvaluationGates.signal(signal) && (warmup || compute / 1000 / seconds <= 1.0))
     }
-    override fun close() = native.release()
+    override fun close() = voice.close()
 }

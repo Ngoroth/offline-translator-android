@@ -87,16 +87,19 @@ including cancelled/closed operations. The SDK cannot interrupt ORT; replacement
 waits for stream disposal and close/join. One exact FloatArray is normalized
 directly from immutable PCM without an intermediate ShortArray copy.
 
-The native patch reads `whisper-language-pair` once, validates two distinct
-metadata-backed codes before the encoder, compares only their SOT logits, and
-reuses encoder cross-KV for one transcription. Equal scores choose the first
-participant; no confidence threshold, separate classifier or second transcript
-is used. Only native completion writes `whisper-language-pair-status=ok`.
-Missing status, malformed candidates, wrong result language, native failure,
-blank/oversize text and stale ownership cannot authorize direction/MT/output.
-Generic stock stream-option roundtrip is not capability evidence: ordinary
-builds require the source/patch/tool-bound custom AAR and retained native feature
-marker. System-service controls are hidden, not cleared, for this choice.
+The CPU ONNX Whisper path leaves the fixed language unset and passes the two
+ordered model language codes as a comma-separated `language_candidates` value
+on each new stream ([upstream PR #4093](https://github.com/k2-fsa/sherpa-onnx/pull/4093)).
+Sherpa validates the codes against model metadata before running the encoder,
+compares only their language-token logits and reuses the encoder output to
+produce one transcription. An exact score tie favors the first candidate.
+The result's language is the existing `lang` field; there is no custom status
+echo. Invalid lists return an empty result rather than triggering unrestricted
+recognition. Native failure, an invalid or out-of-pair result language,
+blank/oversize text or stale ownership cannot authorize direction/MT/output.
+The candidate restriction does not identify out-of-pair speech as such or
+guarantee accurate attribution. System-service controls are hidden, not cleared,
+for this choice.
 Raw silence can produce a Whisper hallucination; production VAD is a required
 input boundary rather than treating any low-level text as speech evidence.
 
@@ -120,7 +123,7 @@ One immutable PCM boundary copy feeds chunked unpaced FD writes; there is no app
 
 ### Selected Speech Output and Truthful Timing
 
-`SpeechOutputBackend` persists `system-offline` or `piper`; one backend implements `ConversationSpeechOutput.readiness(): SpeechOutputReadiness` (`READY`, `MISSING_LOCAL_VOICE`, `ENGINE_UNAVAILABLE`, `INITIALIZATION_FAILED`). System selected preparation excludes Piper TTS package download/digest/JNI load; Piper keeps its existing selected models, synthesis, AudioTrack and licensing obligations. System voice data is external engine-owned preparation, not a fabricated model-store package.
+`SpeechOutputBackend` persists `system-offline` or `piper`; one backend implements `ConversationSpeechOutput.readiness(): SpeechOutputReadiness` (`READY`, `MISSING_LOCAL_VOICE`, `ENGINE_UNAVAILABLE`, `INITIALIZATION_FAILED`). System selected preparation excludes Piper TTS package download/digest/JNI load. Piper keeps its Russian and English voice models and AudioTrack playback. The separate Piper Phonemize runtime converts text to per-sentence phoneme codepoints for sherpa-onnx's `GenerationConfig`; sherpa-onnx 2.0.2 no longer phonemizes text internally and ignores the old `dataDir` setting. Its replacement runtime packages eSpeak data, not voice weights. System voice data is external engine-owned preparation, not a fabricated model-store package. See [native and voice licensing](../engine-sherpa/THIRD_PARTY.md).
 
 `AppSettings.speechOutputEnabled` is a live persisted choice, seeded into the owner/pipeline separately from structural `ConversationSessionConfig` identity. The same value governs ordinary validation, coverage, selected model preparation, readiness and startup; `ConversationModelRepository.install(speechOutputRequired)` and `isConversationReady(speechOutputRequired)` omit output-only packages during ordinary silent operation. After a failed supported-Piper enable, an explicit idle-only preparation action includes the missing selected output resources without changing the saved/effective choice. Fresh defaults and explicit Reset enable output; ordinary Apply, setup and pair changes patch the latest saved choice instead of replaying a stale settings draft.
 
@@ -153,12 +156,12 @@ Paths abbreviated with `...` below retain the module's existing `src/main/java/i
 
 ### 2. Add a Speech Model or Adapter
 
-Backend assets retain schema version2: Sherpa owns `engine-sherpa/src/main/assets/speech-models.json` and runtime `sherpa-onnx-1.13.8`. Read common `SpeechModelCatalog.kt`, `SpeechModelDefinition.kt` and `SpeechModelAdapterReader.kt` in `speech-models/.../speechmodels/`, plus the backend loader/profile, before editing. Common parsing rejects unknown fields; the compiled decoder enforces backend role/family compatibility.
+Sherpa owns the schema-2 catalog `engine-sherpa/src/main/assets/speech-models.json` and consumes the pinned sherpa-onnx 2.0.2 and Piper Phonemize 1.5.9 Android AARs. Read common `SpeechModelCatalog.kt`, `SpeechModelDefinition.kt` and `SpeechModelAdapterReader.kt` in `speech-models/.../speechmodels/`, plus the backend loader/profile, before editing. Common parsing rejects unknown fields; the compiled decoder enforces backend role/family compatibility.
 
 1. Add or reuse a `packages` entry. Existing fields are `id`, `displayName`, `source`, `license`, `url`, `allowedRedirectHosts`, `format`, `archiveBytes`, `archiveSha256`, `maxUnpackedBytes`, `files`, and optional `maxEntries`. IDs follow `[a-z0-9][a-z0-9.-]{0,79}`. URLs must be HTTPS with allowed redirect hosts; accepted formats are `raw` and `tar.bz2`.
 2. Pin exact artifacts, archive sizes/SHA-256, extraction quotas, and a safe-path inventory of every expected file (`path`, `bytes`, `sha256`). Include license/attribution files where supplied. A license string or an upstream project's later relicensing announcement is not legal clearance for the pinned archive: check that exact code/weight package and its redistribution conditions. The current GigaAM archive metadata explicitly records its noncommercial-license caveat.
 3. Add a `models` entry with `id`, `displayName`, `role`, `languages`, `sampleRateHz`, and `adapter`. Sample rate is model metadata, not a package field. Roles are `VAD`, `ASR`, `LANGUAGE_ID`, and `TTS`. VAD has an empty language list; other roles must satisfy family-specific language rules.
-4. Reuse a compiled backend profile. Sherpa families include `silero`, `nemoCtcOffline`, `whisperOffline`, `whisperMultilingual`, `whisperLanguageId`, `piperVits`, `toneCtcOnline` and `zipformer2Online`. Legacy `nemoCtcOffline`/GigaAM is not the removed Parakeet backend. References use `{ "packageId": "...", "path": "..." }` and must resolve to declared inventory files or, for Piper `dataDir`, an inventoried directory. Match the family's exact parser fields and rate constraints rather than copying another family's JSON.
+4. Reuse a compiled backend profile. Sherpa families include `silero`, `nemoCtcOffline`, `whisperOffline`, `whisperMultilingual`, `whisperLanguageId`, `piperVits`, `toneCtcOnline` and `zipformer2Online`. Legacy `nemoCtcOffline`/GigaAM is not the removed Parakeet backend. References use `{ "packageId": "...", "path": "..." }` and must resolve within the declared inventory. Match the family's exact parser fields and rate constraints rather than copying another family's JSON.
 5. For a new Sherpa family, update sealed `SherpaSpeechModelAdapter`, `SherpaSpeechModelCatalog` and `SherpaModelFactories.kt` together, including role/rate checks and native teardown. A separate runtime owns a separate strict loader and compiled adapter implementing the shared marker; it must not relax the common parser or masquerade as a Sherpa profile. Factories create actual native configurations; metadata alone cannot implement a new engine. Wire a real provider through the existing runtime/pipeline ownership boundary.
 6. Maintain host/evaluator projections and model-manifest checks where affected (`translator-test-kit`, `build-logic`, and `engine-sherpa-model-smoke`). Add package/parser/integrity and actual native model coverage, then qualify the selected conversation combination in both directions. A native decode smoke does not prove automatic language identification, semantic translation, usable voice, or phone performance.
 

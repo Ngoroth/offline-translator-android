@@ -32,6 +32,21 @@ descriptor classes, native-created result constructors and boxed streaming
 callback against `app/src/release/keepRules/release.keep`. Android's native-method
 defaults and the narrow Tencent and Mozilla JNI consumer keeps remain applicable.
 
+For an unsigned static JNI check, prepare all native dependencies and run:
+
+```powershell
+.\gradlew.bat :app:analyzeReleaseR8Config :app:assembleRelease --offline --console=plain
+```
+
+Hash `app/build/outputs/apk/release/app-release-unsigned.apk` and
+inspect **every** `classes*.dex` from that APK with Build Tools 36.0.0 `dexdump`.
+Compare the retained Sherpa result constructors, JNI-read fields and descriptor
+classes, Piper static native methods and boxed `invoke([F)Ljava/lang/Integer;`
+to the pinned JNI source and keep rules. Check both packaged ABI closures,
+16 KiB ELF LOAD and `zipalign -c -P 16 4` alignment, the Piper AAR's eSpeak
+assets and absence of model weights. This does not require signing and is not
+optimized-device execution.
+
 Use a persistent, artifact-specific `$EvidenceDir` outside the checkout and
 disposable build directories. `$Keystore`, `$PasswordFile`, `$KeyAlias` and
 `$Bundletool` below are caller-supplied external paths/alias, not checked-in
@@ -441,10 +456,10 @@ Preparation can download resources and requires connectivity. It is separate fro
 
 ## Whisper selected-pair checks
 
-Prepare both native distributions before assembly as documented in
-[Build and run](../../README.md#build-and-run). Ordinary Gradle must reject
-missing/stale/stock native output, not repair it. Record unique APK filenames
-or SHA-256 and confirm the installed artifact before attributing runtime reports.
+Prepare the pinned Sherpa and Piper AARs and the Tencent and Mozilla native
+distributions as documented in [Build and run](../../README.md#build-and-run).
+Ordinary Gradle rejects missing or changed native inputs; it does not repair them.
+Record APK SHA-256 and confirm the installed artifact before attributing results.
 
 In the actual app, confirm **Whisper · offline recognition** in Advanced Settings.
 Choose the pair and use **Prepare languages**. Whisper uses one shared
@@ -482,8 +497,9 @@ Do not advertise this selected three-language run as full-catalog qualification.
 
 The `engine-sherpa-model-smoke` evaluator uses real Tencent translation for its
 translation/full-pipeline/stress stages. It no longer includes ML Kit or its
-badge. Build both evaluator APKs with the verified Sherpa and Tencent native
-distributions; assembling them does not download weights or execute inference.
+badge. Build both evaluator APKs with the verified Sherpa and Piper AARs and
+the Tencent and Mozilla native distributions. Assembly neither downloads
+weights nor executes inference.
 The evaluator has a separate application ID and private storage, so prepared
 production-app weights do not establish evaluator readiness.
 
@@ -509,35 +525,81 @@ Keep the original evaluator corpus, selected speech resources, semantic/latency
 assertions and measured failures. Tencent's size, experimental meaning errors
 and unqualified phone performance still apply; replacing the translator does
 not make previous ML Kit evaluator results current or passing. Translation-free
-Whisper boundary checks below do not require a Tencent model download.
+Whisper and Piper boundary checks below do not require a Tencent model download.
 
-The isolated model-smoke boundary case is
-`io.github.ngoroth.offlinetranslator.modelsmoke.WhisperLanguagePairNativeTest#selectedPairProducesItsOwnTranscriptAndRejectsInvalidConfiguration`.
-Build **both** APKs with
-`./gradlew.bat :engine-sherpa-model-smoke:assembleModelSmoke :engine-sherpa-model-smoke:assembleModelSmokeAndroidTest`;
-assembling only the test APK does not refresh the target's catalog/native libraries.
-Install both freshly identified APKs and use runner
+### Isolated offline Whisper and Piper smoke
+
+Build **both** APKs after preparing the official Sherpa 2.0.2 and Piper
+Phonemize 1.5.9 AARs and the verified Tencent and Mozilla native
+distributions. The copied UI regression tests need Mozilla on the test
+classpath; these speech smoke cases do not use either translation backend.
+
+```powershell
+.\gradlew.bat :engine-sherpa-model-smoke:assembleModelSmoke :engine-sherpa-model-smoke:assembleModelSmokeAndroidTest --offline --console=plain
+```
+
+Record the SHA-256 of each APK, install them on the isolated offline emulator,
+and confirm the installed identities. Use the package
+`io.github.ngoroth.offlinetranslator.modelsmoke` and runner
 `io.github.ngoroth.offlinetranslator.modelsmoke.test/io.github.ngoroth.offlinetranslator.modelsmoke.EvaluationInstrumentation`.
-Pass instrumentation argument `whisperModelInput` naming an accessible, absolute canonical owned
-directory. It must contain the three exact catalog package-ID directories,
-each with its declared single file. The existing verified evaluator import
-checks/copies only this selected catalog; it neither downloads nor imports
-private production audio. Invalid/duplicate/unknown/forced-language requests
-must produce no text or direction; the valid case must preserve real speech
-meaning and the native-produced completion status.
-Use the application's canonical `/data/data/io.github.ngoroth.offlinetranslator.modelsmoke/files/...`
-input path; shell `realpath` can instead return the noncanonical `/data/user/0/...` alias.
-For binary stdin staging, use `adb exec-in run-as ...`, not `adb shell` stdin;
-verify every staged SHA256 before execution. Keep the production import checks intact.
+Stage the three Whisper Small INT8 packages and complete RU Irina/EN Lessac
+package trees, each under its catalog package ID. Verify file sizes and SHA-256
+against `engine-sherpa/src/main/assets/speech-models.json`. Use a binary
+subprocess stdin stream to `adb -s emulator-5554 exec-in run-as
+io.github.ngoroth.offlinetranslator.modelsmoke tar -xf - -C files/<owned-input>`
+(create the destination first); do not use `adb shell` stdin. Verify the staged
+hashes and pass `/data/data/io.github.ngoroth.offlinetranslator.modelsmoke/files/<owned-input>`
+as the canonical path, not the alias `/data/user/0/...` sometimes returned by
+shell `realpath`. Leave the on-device verified import checks enabled.
 
-Keep raw no-speech behavior visible: a low-level decoder may hallucinate on
-silence, so prove the production VAD creates no accepted turn for that control.
-For bounded speed proof, record the exact models/runtime/device, cold preparation,
-warm whole recognition and native encoder/SOT/transcription counts. Compare a
-matched stock control; stage counters must use actual execution, not source text.
-ASR-only timing and System TTS onStart do not pass the2000ms
-speech-end-to-first-non-silent-presentation goal. Record missing/failed timing
-as such. None of these commands by itself records user acceptance.
+Select these two methods together, not their entire classes:
+
+```powershell
+$pkg = 'io.github.ngoroth.offlinetranslator.modelsmoke'
+$runner = "$pkg.test/$pkg.EvaluationInstrumentation"
+$inputPath = "/data/data/$pkg/files/<owned-input>"
+$whisper = "$pkg.WhisperLanguagePairNativeTest#selectedPairProducesItsOwnTranscriptAndRejectsInvalidConfiguration"
+$piper = "$pkg.PiperVoiceNativeTest#selectedRussianAndEnglishVoicesStreamOfflinePcm"
+& $adb -s emulator-5554 shell am instrument -w -r -e class "$whisper,$piper" `
+  -e whisperModelInput $inputPath -e piperModelInput $inputPath $runner
+```
+
+Verify no active networks and require two actual passes, no skips/failures,
+instrumentation code `-1` and zero transport exit. The unrestricted English
+fixture must report `en`; excluding English with `nl,ru` must report one of
+those two codes, not `en`. Invalid lists and forced language combined with
+automatic candidates return an empty result; there is no completion echo.
+Both Piper voices must deliver non-silent, valid 22,050 Hz PCM in callback
+chunks whose aggregate matches returned audio. Raw silence can still cause
+Whisper hallucinations; a separate production VAD check must prove silence
+does not admit a turn.
+
+For Piper first-use evidence, use an isolated target with no published
+`no_backup/piper-phonemize-1.5.9` tree. Seed a sentinel under
+`no_backup/.piper-phonemize-1.5.9.partial` before the combined invocation above.
+Verify the complete published AAR asset tree and no staging residue. Force-stop
+only the isolated target and repeat `$piper` alone; verify the published
+directory's device/inode and mtime are unchanged. Then force-stop again,
+preserve the valid tree and replace it temporarily with an incomplete tree
+missing mandatory eSpeak data. Invoke
+`PiperVoiceNativeTest#nativeInitializationFailureRemainsTerminalInProcess`
+with `-e piperModelInput $inputPath -e runPiperInitializationFailure true`.
+The same new process must report initialization failure twice without opening a
+voice or emitting PCM. Restore the preserved tree even if the case fails.
+
+For evaluator PCM evidence, stage a fresh UUID `files/evaluation/<runId>/`
+containing `models.json` with only the two exact TTS entries from
+`test-data/model-sets/baseline.json` and their fully verified file trees at
+`models/<candidate-id>/`. Select
+`PiperVoiceNativeTest#evaluationVoiceSynthesizesBothPinnedVoicesOffline`
+with `-e runId <runId> -e phase smoke -e candidate vits-piper-ru_RU-irina-medium`.
+The evaluator selects Russian explicitly and resolves English via its baseline
+lookup. Require exactly one pass, `HARNESS_COUNTS run=1 failed=0 skipped=0`,
+instrumentation code `-1` and zero transport exit. Retain the per-voice reports
+and WAVs: positive actual callback sample count equals the report and decoded
+22,050 Hz WAV counts for both voices. The smoke uses warmup synthesis, not the
+performance gate. Keep these results separate from a benchmark, ARM device
+check or general quality/latency claims.
 
 ### Bounded emulator evidence — 2026-10-22
 

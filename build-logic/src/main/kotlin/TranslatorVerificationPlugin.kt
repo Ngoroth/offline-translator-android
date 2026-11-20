@@ -3,6 +3,7 @@ import com.android.build.api.artifact.SingleArtifact
 import io.github.ngoroth.offlinetranslator.testkit.*
 import org.gradle.api.Plugin
 import org.gradle.api.Project
+import org.gradle.api.artifacts.VersionCatalogsExtension
 import org.gradle.kotlin.dsl.register
 import org.gradle.api.file.DirectoryProperty
 import org.gradle.api.provider.Property
@@ -66,11 +67,18 @@ class TranslatorVerificationPlugin : Plugin<Project> {
             notCompatibleWithConfigurationCache("Owns the verification cleanup lock across all clean dependencies")
             doLast {cleanOwnership.get().cleanRoot()}
         }
+        val catalog = extensions.getByType(VersionCatalogsExtension::class.java).named("libs")
+        val sherpaArchives = layout.projectDirectory.dir("engine-sherpa/libs")
+        fun runtimeArchive(alias: String) = catalog.findLibrary(alias).orElseThrow().map { dependency ->
+            sherpaArchives.file("${dependency.name}-${dependency.versionConstraint.requiredVersion}.aar")
+        }
         val verify=tasks.register<VerifyTranslatorTask>("verifyTranslator") {
             val task=this
             task.group="verification"; task.description="Run isolated emulator regression and pinned speech evaluation; always clean inputs."
             task.repo.set(layout.projectDirectory)
             task.modelSet.set(providers.gradleProperty("modelSet").orElse("test-data/model-sets/baseline.json"))
+            task.sherpaArchive.set(runtimeArchive("sherpa-onnx-runtime"))
+            task.piperPhonemizeArchive.set(runtimeArchive("piper-phonemize-runtime"))
             task.fault.set(providers.gradleProperty("evaluationFault").orElse(""))
             task.gradleVersion.set(gradle.gradleVersion)
             task.completion=completion

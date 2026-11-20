@@ -123,7 +123,8 @@ class WhisperConversationRecognitionEngine internal constructor(
     }
 
     private fun validateResult(result: NativeWhisperResult, allowEmptyText: Boolean): LanguagePair {
-        check(result.pairStatus == "ok") { "Whisper selected-pair native completion is missing or failed" }
+        // Upstream returns an empty result on invalid candidates and has no separate status.
+        check(result.language.isNotBlank()) { "Whisper returned no selected language" }
         val direction = when (result.language) {
             pair.source.value -> pair
             pair.target.value -> reverse
@@ -214,7 +215,7 @@ class WhisperConversationRecognitionEngine internal constructor(
     }
 }
 
-internal data class NativeWhisperResult(val text: String, val language: String, val pairStatus: String)
+internal data class NativeWhisperResult(val text: String, val language: String)
 
 internal interface NativeWhisperRecognizer : AutoCloseable {
     suspend fun recognize(samples: FloatArray, ensureActive: suspend () -> Unit): NativeWhisperResult

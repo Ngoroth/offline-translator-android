@@ -3,6 +3,9 @@ import java.net.URI
 import java.nio.file.Files
 import java.nio.file.StandardCopyOption
 import java.security.MessageDigest
+import org.gradle.api.provider.ListProperty
+import org.gradle.api.provider.ValueSource
+import org.gradle.api.provider.ValueSourceParameters
 
 /** Explicit preparation only: normal builds verify the local archive without network access. */
 class SherpaArchivePreparation(
@@ -28,7 +31,7 @@ class SherpaArchivePreparation(
         }
         val actual = digest.digest().joinToString("") { "%02x".format(it.toInt() and 0xff) }
         check(archive.length() == expectedBytes && actual.equals(expectedSha256, ignoreCase = true)) {
-            "Unexpected Sherpa archive at ${archive.absolutePath}: ${archive.length()} bytes, SHA-256 $actual; expected $expectedBytes bytes, SHA-256 $expectedSha256. Existing files are not replaced; remove the corrupt file explicitly before preparation."
+            "Unexpected Sherpa archive at ${archive.absolutePath}: ${archive.length()} bytes, SHA-256 $actual; expected $expectedBytes bytes, SHA-256 $expectedSha256. Existing files are not replaced; remove the corrupt file explicitly, then run :engine-sherpa:prepareSherpaArchive --console=plain."
         }
         return actual
     }
@@ -49,5 +52,23 @@ class SherpaArchivePreparation(
         } finally {
             Files.deleteIfExists(staged)
         }
+    }
+}
+
+/** A configuration-cache input when Gradle resolves the runtime before preBuild. */
+abstract class VerifiedSherpaArchives : ValueSource<Boolean, VerifiedSherpaArchives.Parameters> {
+    interface Parameters : ValueSourceParameters {
+        val archives: ListProperty<File>
+        val bytes: ListProperty<Long>
+        val sha256: ListProperty<String>
+    }
+
+    override fun obtain(): Boolean {
+        val sizes = parameters.bytes.get()
+        val hashes = parameters.sha256.get()
+        parameters.archives.get().forEachIndexed { index, archive ->
+            SherpaArchivePreparation(archive.toURI(), sizes[index], hashes[index]).verify(archive)
+        }
+        return true
     }
 }

@@ -9,14 +9,14 @@ Small focused pull requests are welcome. Explain the problem, behavior changed, 
 - JDK **17**, configured through `JAVA_HOME`.
 - Android SDK, configured through `ANDROID_HOME`, with `platform-tools`, **`platforms;android-37.0`**, and **`build-tools;36.0.0`**.
 - Use current Android SDK command-line tools **23.0** or newer with repository schema 3 support for this platform package. The package name is `platforms;android-37.0`, not `platforms;android-37`; old schema 1/2 repository listings do not include it.
-- Python **3.12+** and complete verified paired Sherpa, Tencent and Mozilla native distributions; see [README preparation](README.md#build-and-run).
-- The checked-in Gradle wrapper supplies Gradle. Run commands from the repository root. Native preparation supports Linux x86_64; Windows uses PowerShell 7 and an existing WSL Ubuntu with Python 3 and Git. macOS needs separately prepared verified Linux artifacts, not automatic toolchain substitution.
+- Python **3.12+** to prepare Tencent and Mozilla native distributions; see [README preparation](README.md#build-and-run). The official Sherpa and Piper Phonemize AARs need no local toolchain.
+- The checked-in Gradle wrapper supplies Gradle. Run commands from the repository root. Tencent and Mozilla preparation supports Linux x86_64; Windows uses PowerShell 7 and an existing WSL Ubuntu with Python 3 and Git. macOS needs separately prepared verified Linux artifacts for those two engines, not automatic toolchain substitution.
 
 The [host workflow](.github/workflows/host-checks.yml) provisions official Android command-line tools archive revision **16111833** (CLI 23.0), JDK 17, platform 37.0 and Build Tools 36.0.0 on Ubuntu 24.04. Locally, install the named packages with the official SDK Manager and review/accept its licenses; the project's Apache license does not grant SDK or third-party rights.
 
 Host checks run for branch pushes, pull requests and manual dispatch. Tag-only pushes do not start this workflow; publish release tags only after checking their branch commit.
 
-The app compiles against API 37, targets API 36, requires API 34 (Android 14), and packages `arm64-v8a` and `x86_64`. Explicit native preparation and build/dependency downloads require network access; host checks need neither translation/speech model weights nor an emulator.
+The app compiles against API 37, targets API 36, requires API 34 (Android 14), and packages `arm64-v8a` and `x86_64`. Explicit native preparation and build/dependency downloads require network access on a clean checkout; host checks need neither translation/speech model weights nor an emulator.
 
 ## Baseline host checks
 
@@ -56,7 +56,7 @@ bash ./gradlew -p build-logic test --console=plain
 
 Using `bash ./gradlew` works even when the wrapper is not executable. Run the separate build-logic tests from a real repository checkout with valid Git metadata: existing recovery fixtures use the repository's `.git`. An export without Git metadata is not an equivalent test environment.
 
-Prepare all three native distributions explicitly before the application host gate. The Sherpa command above downloads the pinned official 1.13.8 AAR only as the verified wrapper/ORT preparation input and for build-logic recovery tests. Follow the [Linux/WSL paired-Sherpa command](README.md#build-and-run) and pinned tool-archive layout in the [host workflow](.github/workflows/host-checks.yml) to prepare `sherpa-onnx-1.13.8-pair-v1.aar`. Ordinary builds consume only this source/patch/tool-bound distribution after read-only receipt/hash/ABI/alignment/feature verification; they never fall back to the stock AAR or repair/rebuild missing bytes. Valid prepared bytes are reusable offline. Do not edit receipts or submit generated caches. See [Sherpa provenance](engine-sherpa/THIRD_PARTY.md).
+Prepare the native dependencies explicitly before the application host gate. The Sherpa task acquires two unmodified official release assets in `engine-sherpa/libs/`: `sherpa-onnx-2.0.2.aar` and `piper-phonemize-1.5.9.aar`. It checks size and SHA-256 and reuses valid copies offline. Ordinary builds verify both archives locally and fail on missing or altered input without downloading, repairing or recompiling it. Do not submit the AARs or generated caches. See [Sherpa and Piper Phonemize provenance and redistribution conditions](engine-sherpa/THIRD_PARTY.md).
 
 Tencent preparation builds CPU-only JNI from llama.cpp commit `d8d92973c8c21bb4dd5d592f0fec26fe2cd1e654` using isolated NDK `29.0.13113456-beta1`, CMake `4.2.3` and Ninja `1.13.2`. It explicitly obtains/verifies pinned sources/tools under ignored `engine-tencent/.native-cache` and publishes both ABIs in `engine-tencent/libs/tencent-native-d8d92973-r2.aar` plus its receipt. It does not mutate the host Android SDK or download model weights. The Windows wrapper translates absolute paths and forwards to that same Linux recipe in WSL Ubuntu.
 
@@ -90,7 +90,7 @@ Keep generated reports, recordings, model downloads and machine-local configurat
 
 ## Signed release APK (Windows)
 
-Release builds use AGP 9.4's `optimization { enable = true }`: R8 code/resource shrinking, optimization and obfuscation with default repackaging. Debug remains unminified. App-owned `app/src/release/keepRules/release.keep` preserves only the pinned Sherpa JNI-read field/descriptor closure, four native-created constructors and the boxed streaming callback; Android native-method defaults and Tencent's existing narrow consumer rules supply the other boundaries. Re-derive those rules from the pinned JNI sources and prepared `classes.jar` when updating Sherpa; do not keep the whole SDK or disable processing to hide native failures.
+Release builds use AGP 9.4's `optimization { enable = true }`: R8 code/resource shrinking, optimization and obfuscation with default repackaging. Debug remains unminified. App-owned `app/src/release/keepRules/release.keep` preserves fields and constructors read or invoked by JNI and the boxed streaming callback; Android native-method defaults and Tencent's narrow consumer rules supply the other boundaries. Re-derive native keep rules from the pinned JNI sources and official `classes.jar` when updating the speech runtimes; do not keep the whole SDK or disable processing to hide native failures.
 
 Use PowerShell 7, JDK 17 and `ANDROID_HOME` pointing to an Android SDK with Build Tools 36.0.0. Keep the signing keystore and its password file outside the repository; do not pass the password itself on the command line.
 

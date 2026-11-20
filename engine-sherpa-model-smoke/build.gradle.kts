@@ -105,13 +105,10 @@ dependencies {
     androidTestImplementation(libs.androidx.test.espresso.core)
     androidTestImplementation(project(":translator-test-kit"))
     androidTestImplementation(project(":engine-tencent"))
+    androidTestImplementation(project(":engine-mozilla"))
     androidTestImplementation(platform(libs.androidx.compose.bom))
     androidTestImplementation(libs.androidx.compose.ui.test.junit4)
     "modelSmokeImplementation"(libs.androidx.compose.ui.test.manifest)
-    // Only the isolated instrumentation APK calls VAD's native API directly.
-    androidTestImplementation(libs.sherpa.onnx.runtime) {
-        artifact { type = "aar" }
-    }
 }
 
 androidComponents.onVariants(androidComponents.selector().withBuildType("modelSmoke")) { variant ->

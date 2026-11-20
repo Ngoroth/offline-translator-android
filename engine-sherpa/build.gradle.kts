@@ -5,55 +5,57 @@ plugins {
     alias(libs.plugins.android.library)
 }
 
-val sherpaOnnxVersion = libs.versions.sherpa.onnx.asProvider().get()
-val sherpaArchive = layout.projectDirectory.file("libs/sherpa-onnx-$sherpaOnnxVersion.aar")
-val expectedSherpaSha256 = "633c24321e06b1fe79feafa03ea16cbc0f8a286641e2da3559bac91bdb13bd96"
-val expectedSherpaBytes = 50_129_134L
-val sherpaArchiveUrl = "https://github.com/k2-fsa/sherpa-onnx/releases/download/v$sherpaOnnxVersion/sherpa-onnx-$sherpaOnnxVersion.aar"
-tasks.register("prepareSherpaArchive") {
-    group = "build setup"
-    description = "Explicitly downloads and verifies the pinned official Sherpa AAR, or reuses verified local bytes."
-    inputs.property("archivePath", sherpaArchive.asFile.absolutePath)
-    inputs.property("archiveUrl", sherpaArchiveUrl)
-    inputs.property("expectedBytes", expectedSherpaBytes)
-    inputs.property("expectedSha256", expectedSherpaSha256)
-    doLast {
-        val archive = File(inputs.properties.getValue("archivePath") as String)
-        val url = inputs.properties.getValue("archiveUrl") as String
-        val bytes = inputs.properties.getValue("expectedBytes") as Long
-        val hash = inputs.properties.getValue("expectedSha256") as String
-        logger.lifecycle("Preparing Sherpa archive from $url")
-        SherpaArchivePreparation(URI(url), bytes, hash).prepare(archive)
-        logger.lifecycle("Verified Sherpa archive: $archive ($bytes bytes, SHA-256 $hash)")
-    }
-}
-val nativeOutput = layout.projectDirectory.dir(".native-cache/android")
-val nativePython = providers.gradleProperty("sherpaPython").orElse(
-    if (System.getProperty("os.name").startsWith("Windows")) "python" else "python3"
+data class ArchivePin(val archive: File, val url: String, val bytes: Long, val sha256: String) : java.io.Serializable
+
+val sherpaOnnxVersion = libs.versions.sherpa.onnx.get()
+val piperPhonemizeVersion = libs.versions.piper.phonemize.get()
+val archives = listOf(
+    ArchivePin(
+        layout.projectDirectory.file("libs/sherpa-onnx-$sherpaOnnxVersion.aar").asFile,
+        "https://github.com/k2-fsa/sherpa-onnx/releases/download/v$sherpaOnnxVersion/sherpa-onnx-$sherpaOnnxVersion.aar",
+        52_321_252L,
+        "6420cfb86c2ef8462dadd77b2202b7430487bdfb2bc715e9ce2864871209a80e",
+    ),
+    ArchivePin(
+        layout.projectDirectory.file("libs/piper-phonemize-$piperPhonemizeVersion.aar").asFile,
+        "https://github.com/csukuangfj/piper-phonemize/releases/download/v$piperPhonemizeVersion/piper-phonemize-$piperPhonemizeVersion.aar",
+        12_672_185L,
+        "d0ed1cc8ac8029937a10099539ff4e532e4ec875a4745137283b618d9075daa2",
+    ),
 )
-val nativeVerification = providers.exec {
-    workingDir(rootProject.projectDir)
-    commandLine(nativePython.get(), "tools/android/prepare-sherpa-native.py", "--verify",
-        "--output", nativeOutput.asFile.absolutePath, "--abis", "arm64-v8a", "x86_64")
-    isIgnoreExitValue = true
-}
-val verifiedNative = nativeVerification.result.map { result ->
-    if (result.exitValue != 0) {
-        throw GradleException(nativeVerification.standardError.asText.get())
+val prepareSherpaArchive = tasks.register("prepareSherpaArchive") {
+    group = "build setup"
+    description = "Explicitly downloads and verifies the pinned official Sherpa and Piper AARs."
+    val pins = archives
+    doLast {
+        pins.forEach { (archive, url, bytes, sha256) ->
+            SherpaArchivePreparation(URI(url), bytes, sha256).prepare(archive)
+            logger.lifecycle("Verified ${archive.name} ($bytes bytes, SHA-256 $sha256)")
+        }
     }
-    true
 }
-// Dependency resolution may precede preBuild; never resolve an unverified/missing AAR.
-configurations.configureEach {
-    incoming.beforeResolve { verifiedNative.get() }
-}
-val verifySherpaArchive = tasks.register<Exec>("verifySherpaArchive") {
+val verifySherpaArchive = tasks.register("verifySherpaArchive") {
     group = "verification"
-    description = "Read-only verification of the prepared paired Sherpa AAR, provenance and both ABI closures."
-    workingDir(rootProject.projectDir)
-    commandLine(nativePython.get(), "tools/android/prepare-sherpa-native.py", "--verify",
-        "--output", nativeOutput.asFile.absolutePath, "--abis", "arm64-v8a", "x86_64")
-    outputs.upToDateWhen { false }
+    description = "Verifies the pinned Sherpa and Piper AARs offline without repairing them."
+    mustRunAfter(prepareSherpaArchive)
+    val pins = archives
+    doLast {
+        pins.forEach { (archive, url, bytes, sha256) ->
+            SherpaArchivePreparation(URI(url), bytes, sha256).verify(archive)
+        }
+    }
+}
+
+val verifiedArchives = providers.of(VerifiedSherpaArchives::class) {
+    parameters.archives.set(archives.map { it.archive })
+    parameters.bytes.set(archives.map { it.bytes })
+    parameters.sha256.set(archives.map { it.sha256 })
+}
+
+// AGP configures dependency declarations eagerly, even for archive preparation.
+// Check only when a configuration is actually resolved.
+configurations.configureEach {
+    incoming.beforeResolve { verifiedArchives.get() }
 }
 
 android {
@@ -74,8 +76,11 @@ android {
 dependencies {
     implementation(project(":core"))
     implementation(project(":speech-models"))
-    // Resolve only from the root's local flat directory; explicit preparation supplies verified bytes.
-    implementation(libs.sherpa.onnx.runtime) {
+    // Public factory configuration types and isolated JNI tests use Sherpa SDK types.
+    api(libs.sherpa.onnx.runtime) {
+        artifact { type = "aar" }
+    }
+    implementation(libs.piper.phonemize.runtime) {
         artifact { type = "aar" }
     }
 

@@ -20,7 +20,9 @@ $aligned = $null
 $previousPassword = $env:OFFLINE_TRANSLATOR_RELEASE_PASSWORD
 Push-Location $root
 try {
-    & .\gradlew.bat :engine-sherpa:prepareSherpaArchive :app:assembleRelease :app:lintRelease --no-daemon --console=plain
+    & .\gradlew.bat :engine-sherpa:prepareSherpaArchive --no-daemon --console=plain
+    if ($LASTEXITCODE -ne 0) { throw 'Sherpa and Piper archive preparation failed.' }
+    & .\gradlew.bat :app:assembleRelease :app:lintRelease --no-daemon --console=plain
     if ($LASTEXITCODE -ne 0) { throw 'Release build or lint failed.' }
     $directory = Join-Path $root 'app/build/outputs/apk/release'
     $metadata = Get-Content -Raw (Join-Path $directory 'output-metadata.json') | ConvertFrom-Json

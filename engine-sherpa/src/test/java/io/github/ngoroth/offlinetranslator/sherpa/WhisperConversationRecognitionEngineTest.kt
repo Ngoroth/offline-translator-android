@@ -49,7 +49,7 @@ class WhisperConversationRecognitionEngineTest {
         val native = Recognizer()
         val engine = WhisperConversationRecognitionEngine(pair, { true }, {}, { native })
         engine.prepare()
-        native.result = NativeWhisperResult("Late but readable", "nl", "ok")
+        native.result = NativeWhisperResult("Late but readable", "nl")
         native.block = { entered.countDown(); check(release.await(5, TimeUnit.SECONDS)) }
         val recognition = async(Dispatchers.Default) { runCatching { engine.recognize(segment()) } }
         try {
@@ -78,51 +78,51 @@ class WhisperConversationRecognitionEngineTest {
             assertEquals(1, creates)
             assertEquals(1, native.calls)
             assertEquals(1, checks)
-            native.result = NativeWhisperResult("  Go! Go!  ", "en", "ok")
+            native.result = NativeWhisperResult("  Go! Go!  ", "en")
             val first = engine.recognize(segment())
             assertEquals(pair, first.direction)
             assertEquals("  Go! Go!  ", first.text)
             assertArrayEquals(floatArrayOf(-1f, 0f, 32767f / 32768), native.samples, 0f)
-            native.result = NativeWhisperResult("Kom hier!", "nl", "ok")
+            native.result = NativeWhisperResult("Kom hier!", "nl")
             assertEquals(pair.reverse(), engine.recognize(segment()).direction)
-            native.result = NativeWhisperResult("Come here!", "en", "ok")
+            native.result = NativeWhisperResult("Come here!", "en")
             assertEquals(pair, engine.recognize(segment()).direction)
+            assertEquals(4, native.calls) // One warmup and one call per turn.
             assertEquals(1, creates)
             assertEquals(1, checks)
         } finally { engine.closeAndJoin() }
         assertEquals(1, native.closes.get())
     }
 
-    @Test fun missingFailedForeignAndBlankResultsNeverAcquireADirectionAndNextTurnStillWorks(): Unit = runBlocking {
+    @Test fun missingOrForeignLanguageAndBlankTurnFailClosedWithoutDiscardingTheOwner(): Unit = runBlocking {
         val native = Recognizer()
         val engine = WhisperConversationRecognitionEngine(pair, { true }, {}, { native })
         try {
             engine.prepare()
-            for (status in listOf("", "invalid-config", "decode-error", "OK")) {
-                native.result = NativeWhisperResult("Readable text", "en", status)
+            for (result in listOf(NativeWhisperResult("", ""), NativeWhisperResult("Readable text", ""))) {
+                native.result = result
                 assertThrows(IllegalStateException::class.java) { runBlocking { engine.recognize(segment()) } }
             }
-            for (language in listOf("ru", "", "EN", "en-US")) {
-                native.result = NativeWhisperResult("Readable text", language, "ok")
+            for (language in listOf("ru", "EN", "en-US")) {
+                native.result = NativeWhisperResult("Readable text", language)
                 assertThrows(UnsupportedSpeechLanguageException::class.java) { runBlocking { engine.recognize(segment()) } }
             }
             for (text in listOf("", " \n\t")) {
-                native.result = NativeWhisperResult(text, "en", "ok")
+                native.result = NativeWhisperResult(text, "en")
                 assertThrows(IllegalStateException::class.java) { runBlocking { engine.recognize(segment()) } }
             }
-            native.result = NativeWhisperResult("x".repeat(ConversationPipeline.MAX_TEXT_CHARACTERS + 1), "en", "ok")
+            native.result = NativeWhisperResult("x".repeat(ConversationPipeline.MAX_TEXT_CHARACTERS + 1), "en")
             assertThrows(IllegalArgumentException::class.java) { runBlocking { engine.recognize(segment()) } }
-            native.result = NativeWhisperResult("x".repeat(ConversationPipeline.MAX_TEXT_CHARACTERS), "nl", "ok")
+            native.result = NativeWhisperResult("x".repeat(ConversationPipeline.MAX_TEXT_CHARACTERS), "nl")
             assertEquals(pair.reverse(), engine.recognize(segment()).direction)
             assertEquals(0, native.closes.get())
         } finally { engine.closeAndJoin() }
     }
 
-    @Test fun failedWarmupDisposesUnpublishedOwnerAndRetryRequiresFreshSuccessfulHandshake(): Unit = runBlocking {
+    @Test fun failedWarmupDisposesUnpublishedOwnerAndRetryRequiresSelectedLanguage(): Unit = runBlocking {
         for (invalid in listOf(
-            NativeWhisperResult("", "en", ""),
-            NativeWhisperResult("", "en", "decode-error"),
-            NativeWhisperResult("", "ru", "ok"),
+            NativeWhisperResult("", ""),
+            NativeWhisperResult("", "ru"),
         )) {
             val rejected = Recognizer().also { it.result = invalid }
             val replacement = Recognizer()
@@ -135,8 +135,8 @@ class WhisperConversationRecognitionEngineTest {
                 assertEquals(1, rejected.closes.get())
                 assertEquals(SpeechRecognitionReadiness.CHECK_FAILED, engine.readinessState.value)
                 assertThrows(IllegalStateException::class.java) { runBlocking { engine.recognize(segment()) } }
-                engine.prepare() // Empty warmup text is allowed, but status and pair language are real.
-                replacement.result = NativeWhisperResult("Ready", "en", "ok")
+                engine.prepare() // Empty warmup text is allowed when Whisper returned a selected language.
+                replacement.result = NativeWhisperResult("Ready", "en")
                 assertEquals(pair, engine.recognize(segment()).direction)
                 assertEquals(2, creates)
             } finally { engine.closeAndJoin() }
@@ -222,7 +222,7 @@ class WhisperConversationRecognitionEngineTest {
             assertEquals(0, rejected.calls)
             assertThrows(IllegalStateException::class.java) { runBlocking { engine.recognize(segment()) } }
             engine.prepare()
-            replacement.result = NativeWhisperResult("Recovered", "nl", "ok")
+            replacement.result = NativeWhisperResult("Recovered", "nl")
             assertEquals(pair.reverse(), engine.recognize(segment()).direction)
         } finally { release.complete(Unit); preparation.cancelAndJoin(); engine.closeAndJoin() }
     }
@@ -250,7 +250,7 @@ class WhisperConversationRecognitionEngineTest {
         val native = Recognizer()
         val engine = WhisperConversationRecognitionEngine(pair, { true }, {}, { native })
         engine.prepare()
-        native.result = NativeWhisperResult("Late result", "en", "ok")
+        native.result = NativeWhisperResult("Late result", "en")
         native.block = { entered.countDown(); check(release.await(5, TimeUnit.SECONDS)) }
         val recognition = async(Dispatchers.Default) { engine.recognize(segment()) }
         var queued: kotlinx.coroutines.Deferred<Result<*>>? = null
@@ -294,14 +294,14 @@ class WhisperConversationRecognitionEngineTest {
             assertThrows(IllegalStateException::class.java) { runBlocking { engine.recognize(segment()) } }
             failCreation = false
             engine.prepare()
-            native.result = NativeWhisperResult("Recovered", "en", "ok")
+            native.result = NativeWhisperResult("Recovered", "en")
             assertEquals(pair, engine.recognize(segment()).direction)
             assertEquals(2, creates)
         } finally { engine.closeAndJoin() }
     }
 
     private class Recognizer : NativeWhisperRecognizer {
-        var result = NativeWhisperResult("", "en", "ok")
+        var result = NativeWhisperResult("", "en")
         var calls = 0
         var samples: FloatArray? = null
         var block: (() -> Unit)? = null

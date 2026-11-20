@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "runtime": "sherpa-onnx-1.13.8",
+  "runtime": "sherpa-onnx-2.0.2",
   "candidates": [
     {
       "id": "vad-silero-6.2.2",

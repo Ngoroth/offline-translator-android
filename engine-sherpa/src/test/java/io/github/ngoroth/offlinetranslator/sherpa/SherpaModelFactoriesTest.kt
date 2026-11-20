@@ -87,7 +87,8 @@ class SherpaModelFactoriesTest {
             val config = SherpaModelFactories.ttsConfig(definition, ::path)
             assertEquals(path(adapter.model), config.model.vits.model)
             assertEquals(path(adapter.tokens), config.model.vits.tokens)
-            assertEquals(path(adapter.dataDir), config.model.vits.dataDir)
+            assertEquals("", config.model.vits.dataDir) // Sherpa no longer provides the Piper text front end.
+            assertEquals("", config.model.vits.lexicon)
             assertEquals(.667f, config.model.vits.noiseScale, 0f)
             assertEquals(.8f, config.model.vits.noiseScaleW, 0f)
             assertEquals(1f, config.model.vits.lengthScale, 0f)

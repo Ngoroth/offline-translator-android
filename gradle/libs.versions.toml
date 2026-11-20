@@ -5,8 +5,8 @@ compose-bom = "2026.08.00"
 activity-compose = "1.12.4"
 lifecycle = "2.10.0"
 coroutines = "1.10.2"
-sherpa-onnx = "1.13.8"
-sherpa-onnx-pair = "1.13.8-pair-v1"
+sherpa-onnx = "2.0.2"
+piper-phonemize = "1.5.9"
 commons-compress = "1.28.0"
 json-jvm = "20260814"
 junit = "4.13.2"
@@ -35,7 +35,8 @@ androidx-test-runner = { module = "androidx.test:runner", version.ref = "android
 kotlinx-coroutines-core = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-core", version.ref = "coroutines" }
 kotlinx-coroutines-android = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-android", version.ref = "coroutines" }
 kotlinx-coroutines-test = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-test", version.ref = "coroutines" }
-sherpa-onnx-runtime = { module = "local.verified.sherpa:sherpa-onnx", version.ref = "sherpa-onnx-pair" }
+sherpa-onnx-runtime = { module = "local.verified.sherpa:sherpa-onnx", version.ref = "sherpa-onnx" }
+piper-phonemize-runtime = { module = "local.verified.sherpa:piper-phonemize", version.ref = "piper-phonemize" }
 commons-compress = { module = "org.apache.commons:commons-compress", version.ref = "commons-compress" }
 json-jvm = { module = "org.json:json", version.ref = "json-jvm" }
 junit = { module = "junit:junit", version.ref = "junit" }

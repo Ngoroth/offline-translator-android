@@ -52,9 +52,6 @@ class VerificationActionRecoveryTest {
         File(repo,"test-data/corpus/v1").copyRecursively(File(root,"test-data/corpus/v1"))
         File(root,"test-data/model-sets").mkdirs()
         File(repo,"test-data/model-sets/baseline.json").copyTo(File(root,"test-data/model-sets/baseline.json"))
-        val aar=File(root,"engine-sherpa/.native-cache/android/sherpa-onnx-1.13.8-pair-v1.aar")
-        aar.parentFile.mkdirs()
-        File(repo,"engine-sherpa/.native-cache/android/sherpa-onnx-1.13.8-pair-v1.aar").copyTo(aar)
         // Read-only git commands in the action use the existing repository's object database.
         val gitDirectory=BoundedProcess.run(listOf("git","rev-parse","--absolute-git-dir"),10,4096,repo)
         check(gitDirectory.exitCode==0) { "Fixture requires the current repository's Git directory" }
@@ -71,6 +68,9 @@ class VerificationActionRecoveryTest {
         val project=ProjectBuilder.builder().withProjectDir(root).build()
         val task=project.tasks.register("verifyTranslator",VerifyTranslatorTask::class.java).get()
         task.repo.set(root);task.modelSet.set(modelSet);task.fault.set("");task.gradleVersion.set("test")
+        val archives = File(System.getProperty("evaluation.repo"), "engine-sherpa/libs")
+        task.sherpaArchive.set(File(archives, "sherpa-onnx-2.0.2.aar"))
+        task.piperPhonemizeArchive.set(File(archives, "piper-phonemize-1.5.9.aar"))
         task.adbFactory={adb}
         assertThrows(GradleException::class.java) {task.verify()}
         return JSONObject(File(root,"build/reports/model-evaluation/report.json").readText())
@@ -107,6 +107,9 @@ class VerificationActionRecoveryTest {
                 }
                 adb.fault="";adb.serial=null
                 val next=action(root,adb)
+                assertEquals("6420cfb86c2ef8462dadd77b2202b7430487bdfb2bc715e9ce2864871209a80e", next.getString("aarSha256"))
+                assertEquals("piper-phonemize-1.5.9.aar", next.getString("piperPhonemizeArchive"))
+                assertEquals("d0ed1cc8ac8029937a10099539ff4e532e4ec875a4745137283b618d9075daa2", next.getString("piperPhonemizeAarSha256"))
                 assertEquals("verified",next.getJSONObject("orphanRecovery").getString("status"))
                 assertEquals("verified",next.getJSONObject("cleanup").getString("status"))
                 assertFalse(journal.exists());assertFalse(priorDirectory.exists())

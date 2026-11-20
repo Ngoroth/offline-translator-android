@@ -100,7 +100,7 @@ data class EvaluationSpeechDefinition(val id: String, val displayName: String, v
 }
 
 object ModelManifest {
-    const val RUNTIME = "sherpa-onnx-1.13.8"
+    const val RUNTIME = "sherpa-onnx-2.0.2"
     private val allowedAdapters = setOf("silero", "toneCtc", "zipformer2", "piperVits")
     fun read(file: File): List<EvaluationModel> {
         val document = Integrity.json(file)

@@ -71,9 +71,9 @@ See the [architecture and extension guide](docs/EXTENSIBILITY.md) for the actual
 - **JDK 17**, with `JAVA_HOME` configured.
 - **Android SDK platform 37.0** (`platforms;android-37.0`), Build Tools **36.0.0** and current SDK command-line tools; set `ANDROID_HOME`.
 - An Android **14 / API 34+** emulator or device. The app targets API 36 and packages `arm64-v8a` and `x86_64`.
-- **Python 3.12+** and explicitly prepared paired Sherpa, Tencent and Mozilla native distributions. Native compilation requires Linux x86_64 (including WSL) and the pinned toolchains below; ordinary Gradle builds only verify the prepared distributions.
+- **Python 3.12+** to prepare the Tencent and Mozilla native distributions. Their compilation requires Linux x86_64 (including WSL) and pinned toolchains. Sherpa and Piper Phonemize are acquired as official Android AARs, with no local native compilation.
 
-Native preparation needs network access but does not download language models. It requires Linux x86_64; on Windows use PowerShell 7 and WSL Ubuntu with Python 3 and Git. See [environment setup](CONTRIBUTING.md#development-environment) for full prerequisites.
+Native preparation needs network access but does not download language models. On Windows, use PowerShell 7 and WSL Ubuntu with Python 3 and Git for Tencent and Mozilla; the Sherpa Gradle task runs directly on Windows or POSIX. See [environment setup](CONTRIBUTING.md#development-environment) for full prerequisites.
 
 **Windows — PowerShell**
 
@@ -99,45 +99,14 @@ are not migrated. Owned Kotlin packages and source namespaces now also use
 `io.github.ngoroth.offlinetranslator`; updating an existing same-ID installation
 preserves its settings and downloaded models.
 
-The explicit stock-input command downloads the official Sherpa 1.13.8 AAR (50,129,134 bytes) to `engine-sherpa/libs/sherpa-onnx-1.13.8.aar`, verifies SHA-256 `633c24321e06b1fe79feafa03ea16cbc0f8a286641e2da3559bac91bdb13bd96`, and reuses valid bytes without network access. It is a preparation input, **not** the paired runtime shipped by the app. Corrupt existing input fails unchanged; inspect it explicitly rather than allowing an ordinary build to repair it.
+`:engine-sherpa:prepareSherpaArchive` explicitly acquires the official
+`sherpa-onnx-2.0.2.aar` and `piper-phonemize-1.5.9.aar` in `engine-sherpa/libs/`.
+It verifies the pinned size and SHA-256 of each and reuses valid local copies
+offline. Normal builds verify both local AARs without downloading, rebuilding
+or repairing them. Only `arm64-v8a` and `x86_64` are packaged in the app.
+See [artifact identities, build provenance and licenses](engine-sherpa/THIRD_PARTY.md).
 
-Prepare the selected-pair Sherpa distribution on Linux/WSL before assembly:
-
-```bash
-python3 tools/android/prepare-sherpa-native.py \
-  --tools-root /absolute/path/to/verified-native-tools \
-  --source-cache /absolute/path/to/pinned-native-sources/sherpa \
-  --output engine-sherpa/.native-cache/android \
-  --abis arm64-v8a x86_64 --download
-```
-
-Its [manifest](engine-sherpa/native-build.json) pins source, dependencies, headers
-and tools; its [six-file patch](engine-sherpa/native/whisper-language-pair.patch)
-adds selected-pair recognition without changing the stock Kotlin/JNI layouts.
-The generated `sherpa-onnx-1.13.8-pair-v1.aar` retains the official wrapper and
-per-ABI ORT bytes, rebuilds all three Sherpa libraries for both shipped ABIs, and
-preserves notices. Its receipt binds actual native bytes, public APIs, 16 KiB
-alignment and the explicit retained feature marker. Ordinary builds never fall
-back to the official AAR or invoke native compilation. Read-only verification:
-
-```powershell
-python tools/android/prepare-sherpa-native.py --verify --output engine-sherpa/.native-cache/android --abis arm64-v8a x86_64
-```
-
-The read-only Sherpa tool root must contain the exact NDK r29 beta1, CMake 4.2.3
-and Ninja 1.13.2 directories pinned in
-[`native-build.json`](engine-sherpa/native-build.json). The
-[host workflow's preparation step](.github/workflows/host-checks.yml) downloads
-the official tool archives, verifies their hashes and lays them out. The helper
-independently verifies tool-tree identities; `--download` permits only missing
-pinned SDK source archives, never tool or model installation.
-Windows can prepare through WSL; macOS/Windows Gradle builds need the complete
-verified Linux-prepared distribution. Copy its receipt and payload together
-without editing the receipt. Missing, stale, extra or corrupt artifacts fail
-closed. See [Sherpa provenance and licenses](engine-sherpa/THIRD_PARTY.md) and
-[Tencent preparation](CONTRIBUTING.md#baseline-host-checks).
-
-After all three distributions are prepared, assemble with `.\gradlew.bat :app:assembleDebug`
+After preparing the native dependencies, assemble with `.\gradlew.bat :app:assembleDebug`
 on Windows or `bash ./gradlew :app:assembleDebug` on Linux/macOS.
 
 ### Multilingual Whisper recognition
@@ -146,13 +115,16 @@ Whisper is selected by default and remains available in Advanced Settings alongs
 Android on-device recognition. The shared model has 375,485,327 bytes across three
 verified raw packages; installation also requires temporary headroom. It needs
 neither Android recognition-language packs nor a separate language-ID model.
+For each turn, Whisper restricts recognition to the selected pair through
+sherpa-onnx's upstream `language_candidates` option.
 System output still needs genuine offline voices for both participants.
 
 The legacy Russian/English Sherpa conversation recognizer and its separate
-language-ID path have been retired. The shared sherpa-onnx library, VAD, Piper
-and ASR resources used by the isolated evaluation harness remain. First-launch
-translation selection is saved atomically with setup completion before either
-main route opens; restart does not repeat completed setup.
+language-ID path have been retired. Native VAD and evaluator ASR remain.
+Piper uses the separately packaged offline phonemizer and the existing
+Russian/English voice downloads. First-launch translation selection is saved
+atomically with setup completion before either main route opens; restart does
+not repeat completed setup.
 
 After installation:
 

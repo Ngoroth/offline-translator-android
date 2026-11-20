@@ -4,6 +4,12 @@ Notable capability, behavior and developer-facing compatibility changes. Entries
 
 ## Unreleased
 
+### Official Android Sherpa and Piper Phonemize runtimes — 2026-11-20
+
+- Replaced the locally patched sherpa-onnx build with the official 2.0.2 AAR. Whisper now uses upstream `language_candidates` from [PR #4093](https://github.com/k2-fsa/sherpa-onnx/pull/4093) for selected-pair transcription, without the old custom status echo.
+- Kept Russian and English Piper synthesis with the official standalone Piper Phonemize 1.5.9 AAR. It packages eSpeak data and supplies phoneme codepoints to Sherpa; voice weights remain separate downloads.
+- The explicit Sherpa preparation task acquires both pinned AARs. Normal builds verify them locally without rebuilding or downloading; app ABIs remain ARM64 and x86_64. The [native license and source requirements](../engine-sherpa/THIRD_PARTY.md) still apply; no binary redistribution is cleared by this update.
+
 ### Mozilla native toolchain path resolution — 2026-11-16
 
 - Resolve reused native tool directories to absolute paths before passing NDK and Ninja locations to CMake, fixing out-of-tree configuration with the relative `--installed-tools` path used by CI.

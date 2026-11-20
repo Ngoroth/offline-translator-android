@@ -286,9 +286,15 @@ class SherpaConversationSpeechOutput internal constructor(
                 }
             }
             return { language ->
-                val voice = SherpaModelFactories.createVoice(
-                    context.cacheDir, store, definitions.getValue(language), config.ttsSpeedPercent,
+                val piper = SherpaModelFactories.createPiperVoice(
+                    context, store, definitions.getValue(language), config.ttsSpeedPercent,
                 )
+                val voice = object : ConversationVoice {
+                    override val sampleRate = piper.sampleRate
+                    override fun generate(text: String, callback: ((FloatArray) -> Int)?): ConversationVoiceResult =
+                        ConversationVoiceResult(sampleRate, piper.synthesize(text, callback).size)
+                    override fun close() = piper.close()
+                }
                 try {
                     coroutineContext.ensureActive()
                     val text = LanguageCatalog.find(language)?.warmUpText

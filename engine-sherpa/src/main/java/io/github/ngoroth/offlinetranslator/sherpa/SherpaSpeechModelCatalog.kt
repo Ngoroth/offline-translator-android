@@ -13,7 +13,7 @@ object SherpaSpeechModelCatalog {
         context.assets.open("speech-models.json").use(::parse)
 
     fun parse(input: InputStream): SpeechModelCatalog =
-        SpeechModelCatalog.parse(input, "sherpa-onnx-1.13.8", ::decodeAdapter)
+        SpeechModelCatalog.parse(input, "sherpa-onnx-2.0.2", ::decodeAdapter)
 
     private fun decodeAdapter(reader: SpeechModelAdapterReader): SherpaSpeechModelAdapter = with(reader) {
         fun threads() = intRange("numThreads", 1..16)
