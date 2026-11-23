@@ -1,6 +1,6 @@
 # Mozilla Translation engine integration outcome
 
-Date: 2026-11-15. Scope: [approved implementation plan, revision 3](../plans/2026-11-14-2248-mozilla-translation-engine.md), against base `3d028a8e3e2da237cfa161b57746f760c62ce30a`.
+Date: 2026-11-15. Scope: [approved implementation plan, revision 3](../workflow/archive/2026-11-14-2248-mozilla-translation-engine/plans/2026-11-14-2248-mozilla-translation-engine.md), against base `3d028a8e3e2da237cfa161b57746f760c62ce30a`.
 
 > **Evidence availability — 2026-11-16:** Local cleanup removed the integration's raw evidence, screenshots, cached release artifacts and helper scripts from `.cache/translator-evaluation/`. References to retained cache files below describe their status at the time of verification, not current availability. The recorded results, hashes, failures and acceptance limitations remain unchanged, but the deleted files can no longer be inspected or reanalyzed. The separate `engine-mozilla/.native-evidence/` directory was not removed; its build receipts do not replace the deleted runtime evidence.
 
