@@ -9,7 +9,7 @@ plugins {
     alias(libs.plugins.android.library)
 }
 
-val nativeVersion = "b1b770d9-r1"
+val nativeVersion = "b1b770d9-r2"
 val nativeArchive = layout.projectDirectory.file("libs/tencent-native-$nativeVersion.aar")
 val nativeReceipt = layout.projectDirectory.file("libs/tencent-native-$nativeVersion.receipt.properties")
 val nativeInputFiles = fileTree("src/main/cpp") + files(
@@ -76,7 +76,13 @@ val verifyTencentNativeArchive = tasks.register("verifyTencentNativeArchive") {
                     if (hash(zipped.getInputStream(entry)) != expected[entry.name]) reject("member checksum mismatch: ${entry.name}")
                 }
                 val libraries = names.filter { it.startsWith("jni/") }.sorted()
-                if (libraries != listOf("jni/arm64-v8a/libtencent_jni.so", "jni/x86_64/libtencent_jni.so")) {
+                if (libraries != listOf(
+                        "jni/arm64-v8a/libtencent_cpu_features.so",
+                        "jni/arm64-v8a/libtencent_jni.so",
+                        "jni/arm64-v8a/libtencent_jni_simd.so",
+                        "jni/x86_64/libtencent_cpu_features.so",
+                        "jni/x86_64/libtencent_jni.so",
+                    )) {
                     reject("unexpected native library inventory")
                 }
                 if ("assets/tencent-native/LICENSE" !in names) reject("missing runtime license")

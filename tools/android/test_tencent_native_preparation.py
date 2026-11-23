@@ -37,9 +37,14 @@ class PreparedArtifactTest(unittest.TestCase):
         self.output.mkdir(parents=True)
         self.archive = self.output / f"{PREP.ARTIFACT}.aar"
         self.receipt = self.output / f"{PREP.ARTIFACT}.receipt.properties"
-        self.members = {"jni/arm64-v8a/libtencent_jni.so": elf(183),
-                        "jni/x86_64/libtencent_jni.so": elf(62),
-                        "assets/tencent-native/LICENSE": b"Fixture license"}
+        self.members = {
+            "jni/arm64-v8a/libtencent_cpu_features.so": elf(183),
+            "jni/arm64-v8a/libtencent_jni.so": elf(183),
+            "jni/arm64-v8a/libtencent_jni_simd.so": elf(183),
+            "jni/x86_64/libtencent_cpu_features.so": elf(62),
+            "jni/x86_64/libtencent_jni.so": elf(62),
+            "assets/tencent-native/LICENSE": b"Fixture license",
+        }
         self.publish()
 
     def publish(self):
@@ -87,6 +92,21 @@ class PreparedArtifactTest(unittest.TestCase):
 
     def test_self_consistent_wrong_abi_is_rejected(self):
         del self.members["jni/arm64-v8a/libtencent_jni.so"]
+        self.publish()
+        with self.assertRaisesRegex(RuntimeError, "native library inventory"):
+            PREP.verify(self.root)
+
+    def test_self_consistent_missing_simd_or_probe_is_rejected(self):
+        for member in ("jni/arm64-v8a/libtencent_jni_simd.so", "jni/x86_64/libtencent_cpu_features.so"):
+            with self.subTest(member=member):
+                original = self.members.pop(member)
+                self.publish()
+                with self.assertRaisesRegex(RuntimeError, "native library inventory"):
+                    PREP.verify(self.root)
+                self.members[member] = original
+
+    def test_self_consistent_simd_for_x86_is_rejected(self):
+        self.members["jni/x86_64/libtencent_jni_simd.so"] = elf(62)
         self.publish()
         with self.assertRaisesRegex(RuntimeError, "native library inventory"):
             PREP.verify(self.root)

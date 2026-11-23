@@ -28,6 +28,7 @@
     "jobs": 2,
     "elf_alignment": 16384,
     "arm_arch": "armv8-a",
+    "arm_simd_arch": "armv8-a+dotprod+fp16+i8mm",
     "x86_features": "sse4.2,no-avx,no-avx2,no-f16c,no-fma",
     "cpu_only": true,
     "static_runtime": true

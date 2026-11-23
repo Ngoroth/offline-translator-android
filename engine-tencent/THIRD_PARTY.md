@@ -4,8 +4,12 @@ The provider uses CPU-only llama.cpp [v1.0.0](https://github.com/ggml-org/llama.
 at immutable commit `b1b770d90d94cad9e9ea5b993bdbc383a522fb28` from
 <https://github.com/ggml-org/llama.cpp/tree/b1b770d90d94cad9e9ea5b993bdbc383a522fb28>.
 The prepared AAR statically links llama/ggml into `libtencent_jni.so` for
-`arm64-v8a` and `x86_64`; it contains no model weights. Its `assets/tencent-native/`
-directory includes the upstream MIT license and additional upstream license inputs.
+`arm64-v8a` and `x86_64`. ARM64 also includes `libtencent_jni_simd.so`, built with
+`armv8-a+dotprod+fp16+i8mm`. A separate baseline-compiled probe uses Android's
+hardware capability bits before loading exactly one runtime; if any required
+ARM64 feature is absent, the ARMv8-A runtime is loaded instead.
+The AAR contains no model weights. Its `assets/tencent-native/` directory includes
+the upstream MIT license and additional upstream license inputs.
 
 The separately downloaded model is Tencent Hy-MT2-1.8B Q4_K_M, repository revision
 `a0c709d9fac510f2c807aa3af52872340dc37a4a`, 1,133,080,448 bytes,
@@ -32,14 +36,15 @@ an existing WSL Ubuntu installation, without changing the Android SDK.
 Python 3.12+, Git, HTTPS access and standard archive support are required.
 The recipe obtains SHA-256-pinned official NDK r29-beta1 (29.0.13113456-beta1),
 CMake 4.2.3 and Ninja 1.13.2 and resolves the exact upstream commit. Archives,
-source snapshots, tools and sequential two-job builds live in ignored
+source snapshots, tools and sequential two-job builds for baseline `arm64-v8a`,
+baseline `x86_64` and optional ARM64 SIMD live in ignored
 `engine-tencent/.native-cache`. Optional `--source-repository PATH` and
 `--ndk-archive PATH` seed preparation with verified local inputs, not runtime dependencies.
 All effective native compiler/backend settings are pinned by the tool manifest,
 CMake and preparation script, included in the current-input receipt digest.
 
-Outputs are `engine-tencent/libs/tencent-native-b1b770d9-r1.aar` and
-`engine-tencent/libs/tencent-native-b1b770d9-r1.receipt.properties`.
+Outputs are `engine-tencent/libs/tencent-native-b1b770d9-r2.aar` and
+`engine-tencent/libs/tencent-native-b1b770d9-r2.receipt.properties`.
 Ordinary Gradle builds verify current source/recipe/settings inventory, upstream pin,
 AAR SHA-256, complete JNI ABI inventory, member hashes and ELF 16-KiB LOAD alignment
 without fetching or building anything. Changes to native sources, adapter, manifest,

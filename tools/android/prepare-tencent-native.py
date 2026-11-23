@@ -18,7 +18,9 @@ import urllib.request
 import zipfile
 
 ROOT = Path(__file__).resolve().parents[2]
-ARTIFACT = "tencent-native-b1b770d9-r1"
+ARTIFACT = "tencent-native-b1b770d9-r2"
+BASELINE_TARGETS = ("tencent_cpu_features", "tencent_jni")
+SIMD_TARGET = "tencent_jni_simd"
 INSTRUCTIONS = ("Run python3 tools/android/prepare-tencent-native.py on Linux, or "
                 "pwsh -File tools/android/prepare-tencent-native.ps1 on Windows/WSL.")
 
@@ -103,12 +105,17 @@ def verify(root: Path = ROOT) -> dict[str, str]:
             if members != expected:
                 raise ValueError("AAR member inventory mismatch")
             libraries = sorted(name for name in members if name.startswith("jni/"))
-            if libraries != [f"jni/{abi}/libtencent_jni.so" for abi in manifest["settings"]["abis"]]:
+            expected_libraries = sorted(
+                f"jni/{abi}/lib{target}.so"
+                for abi in manifest["settings"]["abis"]
+                for target in BASELINE_TARGETS + ((SIMD_TARGET,) if abi == "arm64-v8a" else ())
+            )
+            if libraries != expected_libraries:
                 raise ValueError("Unexpected native library inventory")
             if "assets/tencent-native/LICENSE" not in members:
                 raise ValueError("Missing runtime license")
-            for abi in manifest["settings"]["abis"]:
-                elf_inventory(zipped.read(f"jni/{abi}/libtencent_jni.so"), abi)
+            for name in libraries:
+                elf_inventory(zipped.read(name), name.split("/")[1])
         return saved
     except (OSError, KeyError, ValueError, zipfile.BadZipFile, struct.error) as error:
         raise RuntimeError(f"Tencent native artifact verification failed: {error}. {INSTRUCTIONS}") from error
@@ -267,28 +274,41 @@ def prepare(args: argparse.Namespace) -> None:
         for name in ("ndk", "cmake", "ninja"):
             receipt[f"tool.{name}.version"] = manifest[name]["version"]
             receipt[f"tool.{name}.archive.sha256"] = manifest[name]["sha256"]
-        for abi in manifest["settings"]["abis"]:
-            build = cache / f"build-{abi}"
+        abis = manifest["settings"]["abis"]
+        builds = [(abi, abi, BASELINE_TARGETS, "OFF") for abi in abis]
+        builds.append(("arm64-v8a", "arm64-v8a-simd", (SIMD_TARGET,), "ON"))
+        llvm_bin = ndk / "toolchains/llvm/prebuilt/linux-x86_64/bin"
+        for abi, variant, targets, simd in builds:
+            build = cache / f"build-{variant}"
             command = [str(cmake), "-S", str(ROOT / "engine-tencent/src/main/cpp"), "-B", str(build),
                        "-G", "Ninja", f"-DCMAKE_MAKE_PROGRAM={ninja}", "-DCMAKE_BUILD_TYPE=Release",
                        f"-DTENCENT_LLAMA_SOURCE={source}",
                        f"-DCMAKE_TOOLCHAIN_FILE={ndk}/build/cmake/android.toolchain.cmake",
-                       f"-DANDROID_ABI={abi}", "-DANDROID_PLATFORM=android-26", "-DANDROID_STL=c++_static"]
-            run(command, cache / f"{abi}-configure.log")
-            run([str(cmake), "--build", str(build), "--target", "tencent_jni", "-j", "2"],
-                cache / f"{abi}-build.log")
-            library = build / "jni/libtencent_jni.so"
-            run([str(ndk / "toolchains/llvm/prebuilt/linux-x86_64/bin/llvm-strip"), "--strip-unneeded", str(library)])
-            data = library.read_bytes()
-            for key, value in elf_inventory(data, abi).items():
-                receipt[f"elf.{abi}.{key}"] = value
-            libraries[f"jni/{abi}/libtencent_jni.so"] = data
-            dependencies = run([str(ndk / "toolchains/llvm/prebuilt/linux-x86_64/bin/llvm-readelf"), "-d", str(library)])
-            needed = sorted(line.split("[", 1)[1].split("]", 1)[0] for line in dependencies.splitlines()
-                            if "(NEEDED)" in line)
-            if not set(needed) <= {"libm.so", "libdl.so", "libc.so", "liblog.so", "libandroid.so"}:
-                raise RuntimeError(f"Unexpected non-platform dependency: {needed}")
-            receipt[f"elf.{abi}.needed"] = ",".join(needed)
+                       f"-DANDROID_ABI={abi}", "-DANDROID_PLATFORM=android-26", "-DANDROID_STL=c++_static",
+                       f"-DTENCENT_ARM_SIMD={simd}"]
+            run(command, cache / f"{variant}-configure.log")
+            run([str(cmake), "--build", str(build), "--target", *targets, "-j", "2"],
+                cache / f"{variant}-build.log")
+            for target in targets:
+                filename = f"lib{target}.so"
+                library = build / "jni" / filename
+                member = f"jni/{abi}/{filename}"
+                run([str(llvm_bin / "llvm-strip"), "--strip-unneeded", str(library)])
+                data = library.read_bytes()
+                for key, value in elf_inventory(data, abi).items():
+                    receipt[f"elf.{member}.{key}"] = value
+                libraries[member] = data
+                dynamic = run([str(llvm_bin / "llvm-readelf"), "-d", str(library)])
+                needed = sorted(line.split("[", 1)[1].split("]", 1)[0]
+                                for line in dynamic.splitlines() if "(NEEDED)" in line)
+                if not set(needed) <= {"libm.so", "libdl.so", "libc.so", "liblog.so", "libandroid.so"}:
+                    raise RuntimeError(f"{member}: unexpected non-platform dependency: {needed}")
+                sonames = [line.split("[", 1)[1].split("]", 1)[0]
+                           for line in dynamic.splitlines() if "(SONAME)" in line]
+                if sonames != [filename]:
+                    raise RuntimeError(f"{member}: unexpected SONAME: {sonames}")
+                receipt[f"elf.{member}.needed"] = ",".join(needed)
+                receipt[f"elf.{member}.soname"] = filename
         members = dict(libraries)
         members["AndroidManifest.xml"] = (b'<manifest xmlns:android="http://schemas.android.com/apk/res/android" '
             b'package="io.github.ngoroth.offlinetranslator.tencent.nativecpu"><uses-sdk android:minSdkVersion="26"/></manifest>\n')
@@ -298,7 +318,8 @@ def prepare(args: argparse.Namespace) -> None:
         members["classes.jar"] = jar.getvalue()
         members["R.txt"] = b""
         members["proguard.txt"] = (b'-keep class io.github.ngoroth.offlinetranslator.tencent.TencentNativeRuntime { *; }\n'
-                                   b'-keep class io.github.ngoroth.offlinetranslator.tencent.TencentNativeException { *; }\n')
+                                   b'-keep class io.github.ngoroth.offlinetranslator.tencent.TencentNativeException { *; }\n'
+                                   b'-keep class io.github.ngoroth.offlinetranslator.tencent.TencentCpuFeatures { *; }\n')
         license_inputs = [source / "LICENSE"] + sorted((source / "licenses").glob("*"))
         license_inputs += sorted((source / "vendor/hash").rglob("LICENSE*"))
         for path in license_inputs:

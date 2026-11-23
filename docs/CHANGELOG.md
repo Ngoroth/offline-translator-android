@@ -4,6 +4,11 @@ Notable capability, behavior and developer-facing compatibility changes. Entries
 
 ## Unreleased
 
+### Tencent ARM64 CPU acceleration
+
+- Load the dot-product, FP16 and i8mm Tencent CPU runtime only on ARM64 devices that report every required feature. Other ARM64 devices retain the ARMv8-A runtime; x86_64 continues using SSE4.2.
+- The model, decoder, thread settings, KV clearing and Flash Attention policy are unchanged. Re-run explicit Tencent native preparation to obtain the verified variant-aware AAR.
+
 ### Tencent llama.cpp v1.0.0
 
 - Updated the embedded CPU runtime to official llama.cpp v1.0.0 (`b1b770d9`). The pinned Hy-MT2-1.8B Q4_K_M model, prompt, decoding policy and ARMv8-A/x86_64 CPU settings are unchanged.

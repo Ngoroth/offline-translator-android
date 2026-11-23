@@ -70,6 +70,13 @@ internal class TencentNativeRuntime : AutoCloseable {
     private external fun nativeClose(handle: Long)
 
     companion object {
-        init { System.loadLibrary("tencent_jni") }
+        init {
+            System.loadLibrary("tencent_cpu_features")
+            System.loadLibrary(if (TencentCpuFeatures.supportsSimd()) "tencent_jni_simd" else "tencent_jni")
+        }
     }
+}
+
+private object TencentCpuFeatures {
+    external fun supportsSimd(): Boolean
 }
