@@ -6,6 +6,10 @@ import org.junit.Assert.*
 import org.junit.Test
 import org.junit.runner.RunWith
 import java.io.File
+import java.util.concurrent.ExecutionException
+import java.util.concurrent.FutureTask
+import java.util.concurrent.TimeUnit
+import java.util.concurrent.locks.LockSupport
 
 /** Opt-in real JNI tests. Caller provisions the pinned model and passes its absolute modelPath. */
 @RunWith(AndroidJUnit4::class)
@@ -26,6 +30,57 @@ class TencentNativeRuntimeTest {
             val normalized = source.replace("\r\n", "\n").replace('\r', '\n')
             assertEquals(runtime.translate("Russian", normalized), runtime.translate("Russian", source))
             assertEquals(first, runtime.translate("English", "Привет! Как ты?"))
+        }
+    }
+
+    @Test fun leadingNewlineDoesNotReuseAnIncompatibleInstructionPrefix() {
+        val source = "\nЭто ваш поезд?"
+        val cold = TencentNativeRuntime().use { runtime ->
+            runtime.load(modelPath())
+            runtime.translate("English", source)
+        }
+        TencentNativeRuntime().use { runtime ->
+            runtime.load(modelPath())
+            runtime.translate("English", "Красный зонт остался на вокзале.")
+            assertEquals(cold, runtime.translate("English", source))
+        }
+    }
+
+    @Test fun cancellingAnActiveNativeTranslationDoesNotLeakItsTextIntoTheNextRequest() {
+        TencentNativeRuntime().use { runtime ->
+            runtime.load(modelPath())
+            val source = "Где мой билет?"
+            val baseline = runtime.translate("English", source)
+            val translation = FutureTask {
+                runtime.translate("English", "На вокзале мы видели поезд. ".repeat(130))
+            }
+            val worker = Thread(translation, "Tencent JNI cancellation test")
+            worker.start()
+            try {
+                val deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(5)
+                // Observe the actual JNI frame, not merely submission to the worker.
+                var inNative = false
+                while (!translation.isDone && System.nanoTime() < deadline) {
+                    inNative = worker.stackTrace.any {
+                        it.isNativeMethod && it.className == TencentNativeRuntime::class.java.name &&
+                            it.methodName == "nativeTranslate"
+                    }
+                    if (inNative) break
+                    LockSupport.parkNanos(TimeUnit.MILLISECONDS.toNanos(1))
+                }
+                assertTrue("nativeTranslate was not active at cancellation", inNative && !translation.isDone)
+                runtime.cancel()
+                val failure = runCatching { translation.get(30, TimeUnit.SECONDS) }.exceptionOrNull()
+                assertTrue("Expected the active JNI call to fail: $failure", failure is ExecutionException)
+                val cause = (failure as ExecutionException).cause
+                assertTrue("Expected typed native cancellation: $cause", cause is TencentNativeException)
+                assertEquals("cancelled", (cause as TencentNativeException).code)
+            } finally {
+                runtime.cancel()
+                worker.join()
+            }
+            runtime.resetCancellation()
+            assertEquals(baseline, runtime.translate("English", source))
         }
     }
 

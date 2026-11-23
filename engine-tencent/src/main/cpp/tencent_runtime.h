@@ -1,6 +1,7 @@
 #pragma once
 
 #include "llama.h"
+#include <array>
 #include <atomic>
 #include <memory>
 #include <stdexcept>
@@ -70,12 +71,14 @@ private:
     std::unique_ptr<llama_context, decltype(&llama_free)> context_{nullptr, llama_free};
     const llama_vocab *vocab_ = nullptr;
     std::vector<char> piece_buffer_;
+    std::array<std::vector<llama_token>, 2> instruction_prefixes_;
+    size_t next_prefix_slot_ = 0;
     std::atomic<bool> cancelled_{false};
     static bool abort_callback(void *state) noexcept;
     static bool progress_callback(float, void *state) noexcept;
     void check_cancelled() const;
     std::string metadata(const char *key) const;
-    std::vector<llama_token> tokenize(const std::string &text, bool special) const;
+    std::vector<llama_token> tokenize(std::string_view text, bool special) const;
     std::string detokenize(const std::vector<llama_token> &tokens) const;
     void ensure_context(size_t required);
     void decode(llama_token *tokens, int count);

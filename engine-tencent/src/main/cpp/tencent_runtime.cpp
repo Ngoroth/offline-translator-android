@@ -15,11 +15,6 @@ const std::string assistant = "<｜hy_Assistant｜>";
 const std::string exact_template = "{% if messages[0]['role'] == 'system' %}{% set loop_messages = messages[1:] %}{% set system_message = messages[0]['content'] %}<｜hy_begin▁of▁sentence｜>{{ system_message }}<｜hy_place▁holder▁no▁3｜>{% else %}{% set loop_messages = messages %}<｜hy_begin▁of▁sentence｜>{% endif %}{% for message in loop_messages %}{% if message['role'] == 'user' %}<｜hy_User｜>{{ message['content'] }}{% elif message['role'] == 'assistant' %}<｜hy_Assistant｜>{{ message['content'] }}<｜hy_place▁holder▁no▁2｜>{% endif %}{% endfor %}{% if add_generation_prompt %}<｜hy_Assistant｜>{% else %}<｜hy_place▁holder▁no▁8｜>{% endif %}";
 
 void discard_log(ggml_log_level, const char *, void *) {}
-
-struct ClearMemory {
-    llama_context *context;
-    ~ClearMemory() { llama_memory_clear(llama_get_memory(context), true); }
-};
 }
 
 bool detail::Utf8Prefix::append(std::string_view piece) noexcept {
@@ -142,7 +137,7 @@ void Runtime::load(const std::string &path) {
     }
 }
 
-std::vector<llama_token> Runtime::tokenize(const std::string &text, bool special) const {
+std::vector<llama_token> Runtime::tokenize(std::string_view text, bool special) const {
     std::vector<llama_token> tokens(text.size() + 16);
     const int count = llama_tokenize(vocab_, text.data(), static_cast<int>(text.size()), tokens.data(),
                                      static_cast<int>(tokens.size()), false, special);
@@ -165,16 +160,23 @@ std::string Runtime::detokenize(const std::vector<llama_token> &tokens) const {
 }
 
 void Runtime::ensure_context(size_t required) {
-    const auto rounded = static_cast<uint32_t>((required + 255) / 256 * 256);
-    if (rounded > max_context) throw Failure("token_limit");
+    if (required > max_context) throw Failure("token_limit");
+    // In a unified KV buffer the inactive prefixes also occupy cells.
+    const auto reserved = required + instruction_prefixes_[0].size() + instruction_prefixes_[1].size();
+    const auto rounded = static_cast<uint32_t>((std::min(reserved, max_context) + 255) / 256 * 256);
     check_cancelled();
     if (!context_ || llama_n_ctx(context_.get()) < rounded) {
         context_.reset();
+        instruction_prefixes_ = {};
         auto parameters = llama_context_default_params();
         parameters.n_ctx = rounded;
         parameters.n_batch = 256;
         parameters.n_ubatch = 128;
         parameters.n_threads = 4;
+        // Sequence 0 runs inference; 1 and 2 retain only instruction cells.
+        // In the same buffer seq_cp shares cells without copying K/V tensors.
+        parameters.n_seq_max = 1 + instruction_prefixes_.size();
+        parameters.kv_unified = true;
         parameters.n_threads_batch = 4;
         parameters.flash_attn_type = LLAMA_FLASH_ATTN_TYPE_DISABLED;
         parameters.abort_callback = abort_callback;
@@ -183,7 +185,10 @@ void Runtime::ensure_context(size_t required) {
         check_cancelled();
         if (!context_) throw Failure("memory");
     }
-    llama_memory_clear(llama_get_memory(context_.get()), true);
+    if (reserved > max_context) {
+        llama_memory_clear(llama_get_memory(context_.get()), true);
+        instruction_prefixes_ = {};
+    }
 }
 void Runtime::decode(llama_token *tokens, int count) {
     check_cancelled();
@@ -206,8 +211,10 @@ std::string Runtime::translate(const std::string &target, const std::string &tex
     const bool changed = text.find('\r') != std::string::npos;
     if (changed) normalized = normalize_newlines(text);
     const auto &source = changed ? normalized : text;
-    const std::string content = "Translate the following segment into " + target +
-        ", without additional explanation.\n\n" + source;
+    std::string content = "Translate the following segment into " + target +
+        ", without additional explanation.\n\n";
+    const size_t instruction_bytes = content.size();
+    content += source;
     auto body = tokenize(content, false);
     if (detokenize(body) != content || std::any_of(body.begin(), body.end(), [this](llama_token token) {
         return llama_vocab_is_control(vocab_, token);
@@ -219,9 +226,50 @@ std::string Runtime::translate(const std::string &target, const std::string &tex
     prompt.insert(prompt.end(), body.begin(), body.end());
     prompt.push_back(120007);
     ensure_context(prompt.size() + max_tokens + 1);
-    ClearMemory reset{context_.get()};
-    for (size_t offset = 0; offset < prompt.size(); offset += 256) {
+    const auto memory = llama_get_memory(context_.get());
+    struct RequestMemory {
+        llama_memory_t memory;
+        decltype(instruction_prefixes_) &prefixes;
+        const std::atomic<bool> &cancelled;
+        bool completed = false;
+
+        ~RequestMemory() {
+            // Remove the request's entire sequence, including generated tokens.
+            // Only cells shared with a cache sequence can remain addressable.
+            if (completed && !cancelled.load(std::memory_order_acquire) &&
+                llama_memory_seq_rm(memory, 0, -1, -1)) return;
+            llama_memory_clear(memory, true);
+            prefixes = {};
+        }
+    } reset{memory, instruction_prefixes_, cancelled_};
+    const auto matches_prompt = [&](const std::vector<llama_token> &tokens) {
+        return !tokens.empty() && prompt.size() > tokens.size() &&
+            std::equal(tokens.begin(), tokens.end(), prompt.begin());
+    };
+    size_t cached_tokens = 0;
+    for (size_t slot = 0; slot < instruction_prefixes_.size(); ++slot) {
+        const auto &tokens = instruction_prefixes_[slot];
+        if (!matches_prompt(tokens)) continue;
+        llama_memory_seq_cp(memory, static_cast<llama_seq_id>(slot + 1), 0, -1, -1);
+        cached_tokens = tokens.size();
+        next_prefix_slot_ = 1 - slot;
+        break;
+    }
+    for (size_t offset = cached_tokens; offset < prompt.size(); offset += 256) {
         decode(prompt.data() + offset, static_cast<int>(std::min<size_t>(256, prompt.size() - offset)));
+    }
+    if (cached_tokens == 0) {
+        // Tokenize the instruction separately only to identify what is safe to
+        // retain. A merged boundary token belongs to the request, not the cache.
+        auto tokens = tokenize(std::string_view(content).substr(0, instruction_bytes), false);
+        tokens.insert(tokens.begin(), {120000, 120006});
+        if (matches_prompt(tokens)) {
+            const auto sequence = static_cast<llama_seq_id>(next_prefix_slot_ + 1);
+            llama_memory_seq_rm(memory, sequence, -1, -1);
+            llama_memory_seq_cp(memory, 0, sequence, 0, static_cast<llama_pos>(tokens.size()));
+            instruction_prefixes_[next_prefix_slot_] = std::move(tokens);
+            next_prefix_slot_ = 1 - next_prefix_slot_;
+        }
     }
     std::string output;
     output.reserve(max_units * 3);
@@ -254,7 +302,10 @@ std::string Runtime::translate(const std::string &target, const std::string &tex
         auto token = detail::constrained_greedy(llama_get_logits_ith(context_.get(), -1),
                                                llama_vocab_n_tokens(vocab_), eligible);
         check_cancelled();
-        if (token == 120020) return output;
+        if (token == 120020) {
+            reset.completed = true;
+            return output;
+        }
         if (next_prefix.units() > max_units) throw Failure("output_limit");
         // A rejected alternative may overwrite storage, but never prefix state.
         // The ordinary eligible-maximum path converts and validates just once.

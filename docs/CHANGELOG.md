@@ -4,6 +4,11 @@ Notable capability, behavior and developer-facing compatibility changes. Entries
 
 ## Unreleased
 
+### Tencent instruction KV reuse
+
+- Reuse exact system-instruction token prefixes for the two most recent cached target languages. Full prompt tokenization and the decoding policy are unchanged; boundary mismatches run full prefill.
+- Release source and generated KV entries after each translation and clear the KV buffer on in-flight cancellation or inference failure. Re-run explicit Tencent native preparation before building.
+
 ### Tencent ARM64 CPU acceleration
 
 - Load the dot-product, FP16 and i8mm Tencent CPU runtime only on ARM64 devices that report every required feature. Other ARM64 devices retain the ARMv8-A runtime; x86_64 continues using SSE4.2.
