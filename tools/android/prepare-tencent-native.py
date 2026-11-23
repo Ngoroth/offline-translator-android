@@ -18,7 +18,7 @@ import urllib.request
 import zipfile
 
 ROOT = Path(__file__).resolve().parents[2]
-ARTIFACT = "tencent-native-d8d92973-r2"
+ARTIFACT = "tencent-native-b1b770d9-r1"
 INSTRUCTIONS = ("Run python3 tools/android/prepare-tencent-native.py on Linux, or "
                 "pwsh -File tools/android/prepare-tencent-native.ps1 on Windows/WSL.")
 

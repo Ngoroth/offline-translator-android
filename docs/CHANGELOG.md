@@ -4,6 +4,11 @@ Notable capability, behavior and developer-facing compatibility changes. Entries
 
 ## Unreleased
 
+### Tencent llama.cpp v1.0.0
+
+- Updated the embedded CPU runtime to official llama.cpp v1.0.0 (`b1b770d9`). The pinned Hy-MT2-1.8B Q4_K_M model, prompt, decoding policy and ARMv8-A/x86_64 CPU settings are unchanged.
+- Re-run explicit Tencent native preparation before building. Gradle verifies the new two-ABI AAR and receipt offline; an old prepared AAR cannot satisfy the new pin.
+
 ### Official Android Sherpa and Piper Phonemize runtimes — 2026-11-20
 
 - Replaced the locally patched sherpa-onnx build with the official 2.0.2 AAR. Whisper now uses upstream `language_candidates` from [PR #4093](https://github.com/k2-fsa/sherpa-onnx/pull/4093) for selected-pair transcription, without the old custom status echo.

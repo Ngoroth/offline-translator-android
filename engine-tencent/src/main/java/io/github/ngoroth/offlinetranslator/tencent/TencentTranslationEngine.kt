@@ -226,7 +226,7 @@ class TencentTranslationEngine(
         private const val INITIALIZATION_TIMEOUT_MILLIS = 2 * 60 * 1000L
         val descriptor = TranslationProviderDescriptor(
             id = "tencent", displayName = "Tencent Hy-MT2", provider = "Tencent",
-            sdkVersion = "Hy-MT2-1.8B Q4_K_M a0c709d9 / llama.cpp d8d92973",
+            sdkVersion = "Hy-MT2-1.8B Q4_K_M a0c709d9 / llama.cpp v1.0.0 b1b770d9",
             attribution = "Hy-MT2 by Tencent",
             termsUrl = "https://huggingface.co/tencent/Hy-MT2-1.8B-GGUF/blob/${TencentTranslationArtifact.REVISION}/LICENSE.txt",
         )

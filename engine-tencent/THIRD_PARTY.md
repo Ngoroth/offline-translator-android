@@ -1,8 +1,8 @@
 # Tencent native distribution
 
-The provider uses CPU-only llama.cpp at immutable commit
-`d8d92973c8c21bb4dd5d592f0fec26fe2cd1e654` from
-<https://github.com/ggml-org/llama.cpp/tree/d8d92973c8c21bb4dd5d592f0fec26fe2cd1e654>.
+The provider uses CPU-only llama.cpp [v1.0.0](https://github.com/ggml-org/llama.cpp/releases/tag/v1.0.0)
+at immutable commit `b1b770d90d94cad9e9ea5b993bdbc383a522fb28` from
+<https://github.com/ggml-org/llama.cpp/tree/b1b770d90d94cad9e9ea5b993bdbc383a522fb28>.
 The prepared AAR statically links llama/ggml into `libtencent_jni.so` for
 `arm64-v8a` and `x86_64`; it contains no model weights. Its `assets/tencent-native/`
 directory includes the upstream MIT license and additional upstream license inputs.
@@ -38,8 +38,8 @@ source snapshots, tools and sequential two-job builds live in ignored
 All effective native compiler/backend settings are pinned by the tool manifest,
 CMake and preparation script, included in the current-input receipt digest.
 
-Outputs are `engine-tencent/libs/tencent-native-d8d92973-r2.aar` and
-`engine-tencent/libs/tencent-native-d8d92973-r2.receipt.properties`.
+Outputs are `engine-tencent/libs/tencent-native-b1b770d9-r1.aar` and
+`engine-tencent/libs/tencent-native-b1b770d9-r1.receipt.properties`.
 Ordinary Gradle builds verify current source/recipe/settings inventory, upstream pin,
 AAR SHA-256, complete JNI ABI inventory, member hashes and ELF 16-KiB LOAD alignment
 without fetching or building anything. Changes to native sources, adapter, manifest,

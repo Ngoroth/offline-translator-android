@@ -9,7 +9,7 @@ plugins {
     alias(libs.plugins.android.library)
 }
 
-val nativeVersion = "d8d92973-r2"
+val nativeVersion = "b1b770d9-r1"
 val nativeArchive = layout.projectDirectory.file("libs/tencent-native-$nativeVersion.aar")
 val nativeReceipt = layout.projectDirectory.file("libs/tencent-native-$nativeVersion.receipt.properties")
 val nativeInputFiles = fileTree("src/main/cpp") + files(
@@ -60,7 +60,7 @@ val verifyTencentNativeArchive = tasks.register("verifyTencentNativeArchive") {
             reject("stale native source/recipe/settings receipt")
         }
         if (receipt.getProperty("schema") != "1" ||
-            receipt.getProperty("llama.commit") != "d8d92973c8c21bb4dd5d592f0fec26fe2cd1e654" ||
+            receipt.getProperty("llama.commit") != "b1b770d90d94cad9e9ea5b993bdbc383a522fb28" ||
             receipt.getProperty("abis") != "arm64-v8a,x86_64") reject("unexpected runtime pin or ABI receipt")
         if (archive.length().toString() != receipt.getProperty("aar.bytes") ||
             hash(archive.inputStream()) != receipt.getProperty("aar.sha256")) reject("AAR checksum/size mismatch")

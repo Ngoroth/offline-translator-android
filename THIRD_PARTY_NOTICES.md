@@ -31,8 +31,8 @@ Corresponding Source and compatible combined-work terms still apply; see
 
 ## Tencent local translation
 
-The registered Tencent translation provider embeds CPU **llama.cpp** at commit
-[`d8d92973c8c21bb4dd5d592f0fec26fe2cd1e654`](https://github.com/ggml-org/llama.cpp/tree/d8d92973c8c21bb4dd5d592f0fec26fe2cd1e654)
+The registered Tencent translation provider embeds CPU **llama.cpp v1.0.0** at commit
+[`b1b770d90d94cad9e9ea5b993bdbc383a522fb28`](https://github.com/ggml-org/llama.cpp/tree/b1b770d90d94cad9e9ea5b993bdbc383a522fb28)
 under MIT. It is explicitly built into a verified local JNI AAR, not downloaded
 as executable application content. Exact source/toolchain/ABI and license
 inventory is in [Tencent native provenance](engine-tencent/THIRD_PARTY.md); its

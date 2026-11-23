@@ -47,7 +47,7 @@ class PreparedArtifactTest(unittest.TestCase):
         with zipfile.ZipFile(self.archive, "w") as archive:
             for name, data in self.members.items():
                 archive.writestr(name, data)
-        receipt = {"schema": "1", "llama.commit": "d8d92973c8c21bb4dd5d592f0fec26fe2cd1e654",
+        receipt = {"schema": "1", "llama.commit": "b1b770d90d94cad9e9ea5b993bdbc383a522fb28",
                    "abis": "arm64-v8a,x86_64", "inputs.sha256": PREP.inventory_digest(inputs),
                    "aar.sha256": PREP.sha256(self.archive), "aar.bytes": str(self.archive.stat().st_size)}
         receipt.update({"input." + name: value for name, value in inputs.items()})

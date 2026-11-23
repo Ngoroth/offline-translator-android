@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "llama_commit": "d8d92973c8c21bb4dd5d592f0fec26fe2cd1e654",
+  "llama_commit": "b1b770d90d94cad9e9ea5b993bdbc383a522fb28",
   "llama_repository": "https://github.com/ggml-org/llama.cpp.git",
   "ndk": {
     "version": "29.0.13113456-beta1",
