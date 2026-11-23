@@ -4,6 +4,11 @@ Notable capability, behavior and developer-facing compatibility changes. Entries
 
 ## Unreleased
 
+### Host checks recovery
+
+- Fetch the same SHA-256-pinned CMake 4.2.3 archive from Kitware's GitHub release for Tencent and Mozilla native preparation. Re-run both preparation commands to refresh their receipts.
+- Allow general settings saves as soon as the runtime owner is idle, without waiting for the UI busy indicator to catch up. Active exclusive operations still reject the save.
+
 ### Tencent instruction KV reuse
 
 - Reuse exact system-instruction token prefixes for the two most recent cached target languages. Full prompt tokenization and the decoding policy are unchanged; boundary mismatches run full prefill.

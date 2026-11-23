@@ -188,24 +188,57 @@ class RuntimeOwnerTest {
     }
 
     @Test
-    fun saveIfIdleRejectsWhenOwnerIsBusy() = runBlocking {
-        val scope = CoroutineScope(Dispatchers.Default)
-        val controller = RuntimeOwnerController(scope)
+    fun saveIfIdleRejectsWhenOwnerIsBusy() = runTest {
+        val controller = RuntimeOwnerController(backgroundScope)
+        try {
+            val owner = controller.replace { TestOwner(1) }
+            owner.busyState.value = true
+            runCurrent()
+            assertTrue(controller.busy.value)
 
-        val owner = controller.replace { TestOwner(1) }
-        owner.busyState.value = true
+            var committed = false
+            assertFalse(controller.saveIfIdle({ true }) { committed = true })
+            assertFalse(committed)
 
-        var committed = false
-        val saved = controller.saveIfIdle({ true }) { committed = true }
-        assertFalse(saved)
-        assertFalse(committed)
+            owner.busyState.value = false
+            assertTrue("The observer has not processed the idle transition", controller.busy.value)
+            assertTrue(controller.saveIfIdle({ true }) { committed = true })
+            assertTrue(committed)
+        } finally {
+            controller.closeAndJoin()
+        }
+    }
 
-        owner.busyState.value = false
-        val savedIdle = controller.saveIfIdle({ true }) { committed = true }
-        assertTrue(savedIdle)
-        assertTrue(committed)
+    @Test
+    fun saveIfIdleWaitsForInFlightSpeechOutputWrite() = runTest {
+        val controller = RuntimeOwnerController(backgroundScope)
+        val outputWriteStarted = CompletableDeferred<Unit>()
+        val finishOutputWrite = CompletableDeferred<Unit>()
+        val commitOrder = mutableListOf<String>()
+        try {
+            val outputWrite = async {
+                controller.saveSpeechOutput(null, { true }) {
+                    outputWriteStarted.complete(Unit)
+                    finishOutputWrite.await()
+                    commitOrder += "speech output"
+                    true
+                }
+            }
+            outputWriteStarted.await()
+            val settingsWrite = async(start = CoroutineStart.UNDISPATCHED) {
+                controller.saveIfIdle({ true }) { commitOrder += "general settings" }
+            }
+            assertFalse(settingsWrite.isCompleted)
+            assertTrue(commitOrder.isEmpty())
 
-        controller.closeAndJoin()
+            finishOutputWrite.complete(Unit)
+            assertTrue(outputWrite.await())
+            assertTrue(settingsWrite.await())
+            assertEquals(listOf("speech output", "general settings"), commitOrder)
+        } finally {
+            finishOutputWrite.complete(Unit)
+            controller.closeAndJoin()
+        }
     }
 
     @Test

@@ -75,7 +75,7 @@ class RuntimeOwnerController(private val scope: CoroutineScope) {
     }
 
     suspend fun saveIfIdle(retainOwner: suspend (RuntimeOwner) -> Boolean, commit: suspend () -> Unit): Boolean {
-        if (busy.value || current?.isBusy == true || mutableTeardownFailed.value) return false
+        if (exclusive || current?.isBusy == true || mutableTeardownFailed.value) return false
         return control.withLock {
             if (current?.isBusy == true || mutableTeardownFailed.value) return@withLock false
             exclusive = true

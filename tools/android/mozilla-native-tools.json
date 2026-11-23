@@ -20,7 +20,7 @@
   },
   "cmake": {
     "version": "4.2.3",
-    "url": "https://cmake.org/files/v4.2/cmake-4.2.3-linux-x86_64.tar.gz",
+    "url": "https://github.com/Kitware/CMake/releases/download/v4.2.3/cmake-4.2.3-linux-x86_64.tar.gz",
     "sha256": "5bb505d5e0cca0480a330f7f27ccf52c2b8b5214c5bba97df08899f5ef650c23",
     "directory": "cmake-4.2.3-linux-x86_64"
   },
