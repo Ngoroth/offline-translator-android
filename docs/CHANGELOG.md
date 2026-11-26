@@ -4,6 +4,10 @@ Notable capability, behavior and developer-facing compatibility changes. Entries
 
 ## Unreleased
 
+### 0.2.0 release candidate
+
+- Set the Android version to 0.2.0 / versionCode 9 for phone verification before closed testing. This does not record a Play upload or rollout.
+
 ### Host checks recovery
 
 - Fetch the same SHA-256-pinned CMake 4.2.3 archive from Kitware's GitHub release for Tencent and Mozilla native preparation. Re-run both preparation commands to refresh their receipts.

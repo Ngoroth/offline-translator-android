@@ -88,8 +88,8 @@ android {
         applicationId = "io.github.ngoroth.offlinetranslator"
         minSdk = 34
         targetSdk = 36
-        versionCode = 8
-        versionName = "0.1.7"
+        versionCode = 9
+        versionName = "0.2.0"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         ndk { abiFilters += setOf("arm64-v8a", "x86_64") }
     }

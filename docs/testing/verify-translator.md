@@ -80,8 +80,10 @@ Record the signer certificate identity for both artifacts and compare with the
 established release identity. Self-signed-certificate trust warnings are distinct
 from signature integrity; retain and explain them rather than suppressing them.
 Validate the AAB manifest and signed APK application ID/version/ABIs, plus native
-ELF LOAD alignment. Current source remains `io.github.ngoroth.offlinetranslator`,
-0.1.7 / versionCode 8; local verification does not authorize a version increment.
+ELF LOAD alignment. Compare the application ID and version against
+[`app/build.gradle.kts`](../../app/build.gradle.kts). Confirm the chosen
+versionCode is greater than the active Play build's and unused in Play Console
+before uploading.
 
 Retain full command output and emitted R8 analyzer reports, `mapping.txt`,
 `configuration.txt`, `usage.txt` and `seeds.txt` when emitted. Preserve each
