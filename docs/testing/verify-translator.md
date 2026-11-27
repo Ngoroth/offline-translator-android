@@ -213,8 +213,10 @@ pwsh -NoProfile -File tools/android/run-device-gate.ps1 `
 ```
 
 Inspect actual rendered startup and Settings/Help as well as completed instrumentation
-results. Confirm the selected provider's attribution/terms and help on both routes:
-Mozilla must not display Tencent's 1.13 GB or RAM hint. Use only relevant focused
+results. Confirm the active model's attribution/Terms and the selected provider's
+preparation Help on both routes. Before Tencent has a loaded identity, Help
+retains the 1.35 GB and RAM guidance but omits versioned attribution and Terms.
+Mozilla must not display Tencent's size or RAM hint. Use only relevant focused
 attribution cases, not model-dependent full UI suites. Record
 the installed APK SHA-256 and correlate screenshots to that artifact. Source search
 alone does not prove SDK removal: retain `:app:dependencies --configuration
@@ -274,7 +276,7 @@ inference check or permission to delete another owner's model packs.
 `RuntimeSettingsNativeTest#preparedRuntimeOwnerProcessesOfficialRussianFixture`
 is a separate **opt-in** production pipeline test, not part of the startup gate.
 It requires prepared paired Sherpa/Tencent native distributions in the installed
-app/test APKs, verified Tencent Q4_K_M weights (1,133,080,448 bytes), the shared
+app/test APKs, verified Tencent Hy-MT3 Q4_K_M weights (1,348,432,160 bytes), the shared
 Whisper Small INT8 model, native VAD and the selected Russian/English Piper voice
 resources. Prepare these explicitly online before testing offline; allow storage
 headroom and sufficient device memory. A missing resource is BLOCKED, not a reason
@@ -507,7 +509,7 @@ production-app weights do not establish evaluator readiness.
 
 Its explicit `PreparationTest#preparesIsolatedProviderModelForBothDirections`
 requires validated Wi-Fi and sufficient private storage for the pinned
-1,133,080,448-byte Q4_K_M model plus installation headroom. It prepares and
+1,348,432,160-byte Hy-MT3 Q4_K_M model plus installation headroom. It prepares and
 initializes the real Tencent provider, exercises RU↔EN greetings and records the
 model identity in preparation evidence. Run this online preparation before
 offline translation stages. `verifyTranslator` is an opt-in device workflow,
@@ -641,7 +643,18 @@ overall six-direction2000ms goal.
 
 ## Tencent-specific preparation and native checks
 
-Run explicit Tencent native preparation before the host gate; see [CONTRIBUTING](../../CONTRIBUTING.md). No host/CI gate downloads the 1,133,080,448-byte model. In the actual app, confirm the shared Tencent selection in Text and Conversation: fresh startup durably selects the sole provider automatically, and Reset also selects it. No legacy ML Kit selection migration is provided; fresh installation or reinstallation is acceptable, subject to shared-device preservation. Press Prepare over validated Wi-Fi and record missing/downloading/verifying/loading/ready. Inspect separately labelled Speech and Translation download stages with consistent percentages and an uninterrupted bar, not raw byte counters or a fabricated overall percentage. Unknown totals/counts and system-managed downloads remain indeterminate; verification/loading do not imply readiness even after 100% transfer. Check available private storage before preparation; the model requires its full declared bytes plus installation headroom. Reopen and observe automatic local initialization of verified installed bytes. Readiness must never adopt corrupt bytes or enable Conversation before the selected recognition/output stages are ready. Missing/corrupt/storage/load/memory/limit/Unicode/Wi-Fi/timeout outcomes must stay localized without provider fallback.
+Run explicit Tencent native preparation before the host gate; see [CONTRIBUTING](../../CONTRIBUTING.md). Host builds verify the existing native pin and do not download weights. Fresh setup with both providers requires an explicit selection; Reset selects Tencent. On an authorized fresh app state, confirm no transfer on entry, then press Prepare on validated Wi-Fi. Observe separate download, verification and loading stages and no implicit microphone start; verify the exact [Hy-MT3 pin](../../engine-tencent/THIRD_PARTY.md), absence of Hy-MT2, and offline inference after force-stop/reopen. Transfer completion alone does not imply readiness. Conversation also needs the selected recognition and output resources.
+
+For migration, use an explicitly authorized isolated device state and an exact same-signer prior APK with a working pinned Hy-MT2. Keep app data across the candidate install. With networking disabled, verify old-weight inference, both update cards and the loaded Hy-MT2 attribution/Terms. Try Update and confirm the Wi-Fi error leaves inference usable. Then interrupt an actual Wi-Fi transfer before activation and reopen offline; attest the unchanged Hy-MT2 digest and useful inference. Retry and complete with about 1.37 GB free beyond the old model. Verify the final Hy-MT3 digest, exact Hy-MT2 retirement, unchanged settings and speech inventory, both cards gone, Hy-MT3 Terms and offline inference after another actual force-stop/reopen. Keep render and positive method-completion receipts tied to exact APK hashes, configured network and model identity. This is distinct from host simulated rename-boundary coverage.
+
+For update-card render evidence, use the signer-verified candidate debug app and test APKs on the authorized device. Run `tools/android/run-device-gate.ps1` with these two method selectors and retain positive completion for both:
+
+- `io.github.ngoroth.offlinetranslator.translation.TranslationScreenTest#tencentArtifactUpdateCardShowsProgressAndRetryWithoutReplacingTranslate`
+- `io.github.ngoroth.offlinetranslator.conversation.ConversationScreenTest#tencentArtifactUpdateIsSeparateFromStartAndUsesActiveModelTerms`
+
+Separately, inspect the actual candidate UI offline with pinned Hy-MT2 and the selected speech resources already ready. Capture the idle Conversation offer, press Start and capture the active transcript with the entire card absent and Stop available, then press Stop and capture the same actionable offer restored. Use the idle Text offer as the unchanged control. Do not download speech resources or capture user speech for this proof. Inspect Update and Retry on both routes: both edges must align with the card's inner width, and the primary route action must remain in place. Touch-target or click assertions alone do not prove alignment. Tie the captures and method receipts to the exact installed APK hashes, network state and model identity.
+
+The pre-implementation host comparison used all 56 frozen [translation cases](../../test-data/corpus/translation/v1/) on both exact model pins. Blinded, AI-assisted review reported 11 versus 7 substantial meaning flags and 15 versus 13 minor flags (Hy-MT2 to Hy-MT3), with one ambiguous case per model. RU↔EN stayed at 4/24 flagged; improvements and regressions both occurred. This is a limited host regression screen, not Android behavior, general quality or a speed/RAM claim.
 
 After real UI preparation, verify no active networks and restart the app. The new app instrumentation selectors are:
 

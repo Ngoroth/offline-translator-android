@@ -190,8 +190,10 @@
     <string name="translation_encoding_error">ต้นฉบับหรือคำแปลมี Unicode ที่ไม่ถูกต้อง แก้ไขต้นฉบับหรือลองอีกครั้ง ไม่มีการเก็บคำแปลที่ไม่สมบูรณ์</string>
     <string name="translation_timeout">การเตรียมการแปลใช้เวลานานเกินไป โปรดตรวจสอบสถานะแล้วลองเตรียมอีกครั้ง</string>
     <string name="model_prepare_hint">เตรียมโมเดล</string>
-    <string name="tencent_model_download_hint">1.13 GB · ดาวน์โหลดผ่าน Wi‑Fi</string>
-    <string name="tencent_model_explanation">เตรียมโมเดลแปลภาษาขนาด 1.13 GB ผ่าน Wi‑Fi เพื่อใช้งานแบบออฟไลน์ อาจต้องใช้ RAM หลาย GB</string>
+    <string name="tencent_model_download_hint">1.35 GB · ดาวน์โหลดผ่าน Wi‑Fi</string>
+    <string name="tencent_model_explanation">เตรียมโมเดลแปลภาษาขนาด 1.35 GB ผ่าน Wi‑Fi เพื่อใช้งานแบบออฟไลน์ อาจต้องใช้ RAM หลาย GB</string>
+    <string name="translation_artifact_update_title">Tencent Hy-MT3 พร้อมใช้งาน</string>
+    <string name="translation_artifact_update_action">อัปเดตโมเดล</string>
     <string name="mozilla_model_download_hint">โมเดลภาษาที่เลือก · ดาวน์โหลดผ่าน Wi-Fi</string>
     <string name="mozilla_model_explanation">เตรียมโมเดลสำหรับทั้งสองทิศทางของภาษาที่เลือกผ่าน Wi-Fi คู่ภาษาที่ไม่มีภาษาอังกฤษจะแปลผ่านภาษาอังกฤษ การเปลี่ยนผู้ให้บริการจะเก็บโมเดลที่ดาวน์โหลดไว้และไม่เปลี่ยนข้อความที่รู้จำ</string>
     <string name="settings_recognition_service">บริการรู้จำเสียงพูด</string>

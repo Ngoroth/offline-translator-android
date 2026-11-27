@@ -6,14 +6,36 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import java.io.File
 import java.util.concurrent.Executors
-import kotlin.coroutines.resume
+import java.util.logging.Level
+import java.util.logging.Logger
+
+internal interface TencentInference : AutoCloseable {
+    fun load(modelPath: String)
+    fun translate(target: String, text: String): String
+    fun resetCancellation()
+    fun cancel()
+}
+
+private class NativeInference : TencentInference {
+    private val runtime = TencentNativeRuntime()
+    override fun load(modelPath: String) = runtime.load(modelPath)
+    override fun translate(target: String, text: String) = runtime.translate(target, text)
+    override fun resetCancellation() = runtime.resetCancellation()
+    override fun cancel() = runtime.cancel()
+    override fun close() = runtime.close()
+}
 
 /** One owner, one serialized native worker, one multilingual model/context; no provider fallback. */
-class TencentTranslationEngine(
+class TencentTranslationEngine internal constructor(
     pairs: Set<LanguagePair>,
     private val artifacts: TencentArtifactPreparation,
+    private val createInference: () -> TencentInference,
 ) : TranslationEngine {
+    constructor(pairs: Set<LanguagePair>, artifacts: TencentArtifactPreparation) :
+        this(pairs, artifacts, ::NativeInference)
+
     private val pairs = pairs.toSet().also { selected ->
         require(selected.isNotEmpty() && selected.size <= 2) { "Select one or two directed translation pairs" }
         selected.forEach { capability(it).requireSupported() }
@@ -21,34 +43,35 @@ class TencentTranslationEngine(
     private val slot = Mutex()
     private val lifecycle = Any()
     private val executor = Executors.newSingleThreadExecutor { runnable -> Thread(runnable, "tencent-inference") }
-    private val released = CompletableDeferred<Unit>()
+    private val released = CompletableDeferred<Throwable?>()
     private val mutablePreparation = MutableStateFlow(TranslationPreparationState())
     override val preparation = mutablePreparation.asStateFlow()
-    private var native: TencentNativeRuntime? = null
+    private val mutableUpdate = MutableStateFlow(TranslationArtifactUpdateState())
+    override val artifactUpdate: TranslationArtifactUpdate = object : TranslationArtifactUpdate {
+        override val state = mutableUpdate.asStateFlow()
+        override suspend fun update() = updateArtifact()
+    }
+    private var native: TencentInference? = null
     @Volatile private var closed = false
-    @Volatile private var ready = false
+    @Volatile private var activeArtifact: TencentArtifactPreparation.Installed? = null
     private var activeOperation: Job? = null
     private var releaseFailure: Throwable? = null
 
     override suspend fun modelAvailability(): ModelAvailability = operation {
         try {
-            val file = artifacts.verifiedFile {
-                mutablePreparation.value = TranslationPreparationState(TranslationPreparationPhase.VERIFYING)
-            }
-            if (ready && file != null) {
-                mutablePreparation.value = TranslationPreparationState(TranslationPreparationPhase.READY)
+            val file = verifiedFile()
+            if (file != null && activeArtifact?.artifact == file.artifact) {
+                publishPreparation(TranslationPreparationState(TranslationPreparationPhase.READY))
                 ModelAvailability.READY
             } else {
-                // Installed weights still need local initialization after an owner/process restart.
-                if (ready) discardNative()
-                ready = false
-                mutablePreparation.value = TranslationPreparationState(TranslationPreparationPhase.MISSING)
-                ModelAvailability.MISSING
+                if (activeArtifact != null) discardNative()
+                notReady()
             }
-        } catch (failure: TranslationFailure) {
-            if (ready) try { discardNative() } catch (closing: Throwable) { failure.addSuppressed(closing) }
-            ready = false
-            mutablePreparation.value = TranslationPreparationState(TranslationPreparationPhase.FAILED, lastFailure = failure)
+        } catch (cancelled: CancellationException) {
+            throw cancelled
+        } catch (error: Throwable) {
+            if (activeArtifact != null) discardAfter(error)
+            failPreparation(error)
             ModelAvailability.MISSING
         }
     }
@@ -58,40 +81,156 @@ class TencentTranslationEngine(
     override suspend fun prepareLocal(): ModelAvailability = prepare(localOnly = true)
 
     private suspend fun prepare(localOnly: Boolean): ModelAvailability = operation {
-        if (ready) return@operation ModelAvailability.READY
+        if (activeArtifact != null) return@operation ModelAvailability.READY
         try {
-            val file = if (localOnly) {
-                artifacts.verifiedFile {
-                    mutablePreparation.value = TranslationPreparationState(TranslationPreparationPhase.VERIFYING)
-                }
-            } else coroutineScope {
-                val observation = launch(start = CoroutineStart.UNDISPATCHED) {
-                    artifacts.state.collect { mutablePreparation.value = it }
-                }
-                try { artifacts.prepare() } finally { observation.cancelAndJoin() }
+            val installed = try { verifiedFile() } catch (corrupt: TranslationFailure.ArtifactCorrupt) {
+                if (localOnly) throw corrupt
+                null
             }
-            if (file == null) {
-                mutablePreparation.value = TranslationPreparationState(TranslationPreparationPhase.MISSING)
-                return@operation ModelAvailability.MISSING
+            if (installed != null) {
+                try {
+                    initialize(installed.file, ::publishPreparation)
+                    activate(installed)
+                    if (installed.current) artifacts.retirePrevious()
+                    return@operation ModelAvailability.READY
+                } catch (failure: TranslationFailure) {
+                    // The explicit recovery path may replace only an unusable previous model.
+                    if (localOnly || installed.current) throw failure
+                    checkCanInitialize()
+                }
             }
-            mutablePreparation.value = TranslationPreparationState(TranslationPreparationPhase.LOADING)
+            if (localOnly) return@operation notReady()
+            installCurrent(::publishPreparation)
+            ModelAvailability.READY
+        } catch (cancelled: CancellationException) {
+            if (activeArtifact == null) {
+                discardAfter(cancelled)
+                notReady()
+            }
+            throw cancelled
+        } catch (error: Throwable) {
+            discardAfter(error)
+            throw failPreparation(error)
+        }
+    }
+
+    private suspend fun updateArtifact(): Unit = operation {
+        val previous = activeArtifact?.takeUnless { it.current } ?: return@operation
+        try {
+            installCurrent(::publishUpdatePreparation)
+        } catch (cancelled: CancellationException) {
+            if (activeArtifact == null) {
+                discardAfter(cancelled)
+                notReady()
+            }
+            publishUpdatePreparation(null)
+            throw cancelled
+        } catch (error: Throwable) {
+            try {
+                if (activeArtifact == null) {
+                    discardNative()
+                    checkCanInitialize()
+                    // Stage ownership has already unwound. Reattest before reopening.
+                    val installed = artifacts.verifiedFile() ?: throw TranslationFailure.ModelMissing()
+                    if (!installed.current && installed.artifact != previous.artifact) throw TranslationFailure.ArtifactCorrupt()
+                    initialize(installed.file, ::publishUpdatePreparation)
+                    activate(installed)
+                    if (installed.current) artifacts.retirePrevious()
+                }
+            } catch (cancelled: CancellationException) {
+                discardAfter(cancelled)
+                notReady()
+                publishUpdatePreparation(null)
+                throw cancelled
+            } catch (recovery: Throwable) {
+                if (recovery !== error) recovery.addSuppressed(error)
+                discardAfter(recovery)
+                throw failPreparation(recovery)
+            }
+            if (activeArtifact?.current == false) {
+                publishUpdatePreparation(TranslationPreparationState(TranslationPreparationPhase.FAILED, lastFailure = mapFailure(error)))
+            }
+        }
+    }
+
+    private suspend fun installCurrent(progress: (TranslationPreparationState) -> Unit) {
+        val commit = TencentArtifactPreparation.Commit()
+        try {
+            val installed = artifacts.prepareCurrent(commit, progress) { file ->
+                discardNative()
+                initialize(file, progress)
+            }
+            activate(installed)
+        } catch (cancelled: CancellationException) {
+            // A completed move wins even when the enclosing IO dispatch did not return a value.
+            commit.installed?.let { activate(it) }
+            throw cancelled
+        } catch (error: Throwable) {
+            val installed = commit.installed ?: throw error
+            activate(installed)
+            logger.log(Level.WARNING, "Tencent artifact committed before a bookkeeping failure", error)
+            return // Retirement is retried after a later successful local load.
+        }
+        artifacts.retirePrevious()
+    }
+
+    private suspend fun initialize(file: File, progress: (TranslationPreparationState) -> Unit) {
+        checkCanInitialize()
+        progress(TranslationPreparationState(TranslationPreparationPhase.LOADING))
+        try {
             if (withTimeoutOrNull(INITIALIZATION_TIMEOUT_MILLIS) {
                     nativeOperation { load(file.absolutePath) }
                     nativeOperation { translate("English", "1") }
                     true
                 } != true) throw PreparationFailure.PreparationTimedOut()
-            ready = true
-            mutablePreparation.value = TranslationPreparationState(TranslationPreparationPhase.READY)
-            ModelAvailability.READY
-        } catch (cancelled: CancellationException) {
-            try { discardNative() } catch (closing: Throwable) { cancelled.addSuppressed(closing) }
-            mutablePreparation.value = TranslationPreparationState(TranslationPreparationPhase.MISSING)
-            throw cancelled
         } catch (error: Throwable) {
-            try { discardNative() } catch (closing: Throwable) { if (closing !== error) error.addSuppressed(closing) }
-            val failure = mapFailure(error)
-            mutablePreparation.value = TranslationPreparationState(TranslationPreparationPhase.FAILED, lastFailure = failure)
-            throw failure
+            discardAfter(error)
+            if (error is CancellationException) throw error
+            throw mapFailure(error)
+        }
+    }
+
+    private suspend fun checkCanInitialize() {
+        currentCoroutineContext().ensureActive()
+        synchronized(lifecycle) {
+            check(!closed) { "Translation engine is closed" }
+            releaseFailure?.let { throw mapFailure(it) }
+        }
+    }
+
+    private suspend fun verifiedFile() = artifacts.verifiedFile {
+        publishPreparation(TranslationPreparationState(TranslationPreparationPhase.VERIFYING))
+    }
+
+    private fun publishPreparation(value: TranslationPreparationState) = synchronized(lifecycle) {
+        if (!closed) mutablePreparation.value = value
+    }
+
+    private fun publishUpdatePreparation(value: TranslationPreparationState?) = synchronized(lifecycle) {
+        if (!closed) mutableUpdate.value = mutableUpdate.value.copy(preparation = value)
+    }
+
+    private fun activate(installed: TencentArtifactPreparation.Installed) = synchronized(lifecycle) {
+        if (!closed) {
+            activeArtifact = installed
+            mutableUpdate.value = TranslationArtifactUpdateState(installed.artifact.descriptor, offerAvailable = !installed.current)
+            mutablePreparation.value = TranslationPreparationState(TranslationPreparationPhase.READY)
+        }
+    }
+
+    private fun notReady(): ModelAvailability {
+        publishPreparation(TranslationPreparationState(TranslationPreparationPhase.MISSING))
+        return ModelAvailability.MISSING
+    }
+
+    private fun failPreparation(error: Throwable): TranslationFailure = mapFailure(error).also {
+        publishUpdatePreparation(null)
+        publishPreparation(TranslationPreparationState(TranslationPreparationPhase.FAILED, lastFailure = it))
+    }
+
+    private suspend fun discardAfter(error: Throwable) {
+        try { discardNative() } catch (closing: Throwable) {
+            if (closing !== error) error.addSuppressed(closing)
         }
     }
 
@@ -101,7 +240,7 @@ class TencentTranslationEngine(
         if (text.length > TranslationEngine.MAX_INPUT_CHARACTERS) throw TranslationFailure.InputLimit()
         require(text.isNotBlank()) { "Translation text must not be blank" }
         return operation {
-            if (!ready) throw TranslationFailure.ModelMissing()
+            if (activeArtifact == null) throw TranslationFailure.ModelMissing()
             // Native validates the original UTF-16 bound and normalizes only its inference copy.
             try {
                 nativeOperation { translate(
@@ -133,7 +272,7 @@ class TencentTranslationEngine(
     }
 
     /** Cancellation stops actual native work and joins it before the serialized slot can be reused. */
-    private suspend fun <T> nativeOperation(action: TencentNativeRuntime.() -> T): T {
+    private suspend fun <T> nativeOperation(action: TencentInference.() -> T): T {
         val completed = CompletableDeferred<Result<T>>()
         try {
             return suspendCancellableCoroutine { continuation ->
@@ -144,7 +283,7 @@ class TencentTranslationEngine(
                         continuation.resumeWith(Result.failure(failure))
                         return@synchronized
                     }
-                    val runtime = try { native ?: TencentNativeRuntime().also { native = it } } catch (error: Throwable) {
+                    val runtime = try { native ?: createInference().also { native = it } } catch (error: Throwable) {
                         completed.complete(Result.failure(error))
                         continuation.resumeWith(Result.failure(error))
                         return@synchronized
@@ -171,26 +310,29 @@ class TencentTranslationEngine(
         }
     }
 
-    private suspend fun discardNative() = withContext(NonCancellable) {
-        ready = false
-        val finished = CompletableDeferred<Unit>()
+    private suspend fun discardNative() {
+        val finished = CompletableDeferred<Throwable?>()
         synchronized(lifecycle) {
+            activeArtifact = null
+            mutableUpdate.value = TranslationArtifactUpdateState(preparation = mutableUpdate.value.preparation)
             val runtime = native
             native = null
-            if (closed || runtime == null) finished.complete(Unit) else executor.execute {
-                try { runtime.close(); finished.complete(Unit) } catch (error: Throwable) {
+            if (closed || runtime == null) finished.complete(null) else executor.execute {
+                try { runtime.close(); finished.complete(null) } catch (error: Throwable) {
                     recordReleaseFailure(error)
-                    finished.completeExceptionally(error)
+                    finished.complete(error)
                 }
             }
         }
-        finished.await()
+        val failure = withContext(NonCancellable) { finished.await() }
+        if (failure != null) throw failure
     }
 
     override fun close() = synchronized(lifecycle) {
         if (!closed) {
             closed = true
-            ready = false
+            activeArtifact = null
+            mutableUpdate.value = TranslationArtifactUpdateState()
             activeOperation?.cancel()
             try { native?.cancel() } catch (error: Throwable) { recordReleaseFailure(error) }
             val runtime = native
@@ -200,7 +342,7 @@ class TencentTranslationEngine(
                 try { runtime?.close() } catch (error: Throwable) { recordReleaseFailure(error) }
                 finally {
                     val failure = synchronized(lifecycle) { releaseFailure }
-                    if (failure == null) released.complete(Unit) else released.completeExceptionally(failure)
+                    released.complete(failure)
                     executor.shutdown()
                 }
             }
@@ -214,7 +356,9 @@ class TencentTranslationEngine(
 
     override suspend fun closeAndJoin() {
         close()
-        withContext(NonCancellable) { slot.withLock { released.await() } }
+        // Transport the actual failure as a value so coroutine stack recovery cannot copy it.
+        val failure = withContext(NonCancellable) { slot.withLock { released.await() } }
+        if (failure != null) throw failure
     }
 
     private fun recordReleaseFailure(error: Throwable) = synchronized(lifecycle) {
@@ -224,12 +368,8 @@ class TencentTranslationEngine(
 
     companion object {
         private const val INITIALIZATION_TIMEOUT_MILLIS = 2 * 60 * 1000L
-        val descriptor = TranslationProviderDescriptor(
-            id = "tencent", displayName = "Tencent Hy-MT2", provider = "Tencent",
-            sdkVersion = "Hy-MT2-1.8B Q4_K_M a0c709d9 / llama.cpp v1.0.0 b1b770d9",
-            attribution = "Hy-MT2 by Tencent",
-            termsUrl = "https://huggingface.co/tencent/Hy-MT2-1.8B-GGUF/blob/${TencentTranslationArtifact.REVISION}/LICENSE.txt",
-        )
+        private val logger = Logger.getLogger(TencentTranslationEngine::class.java.name)
+        val descriptor = TencentTranslationArtifact.CURRENT.descriptor
         fun capability(pair: LanguagePair): TranslationCapability =
             if (pair.source != pair.target && LanguageCatalog.find(pair.source) != null && LanguageCatalog.find(pair.target) != null)
                 TranslationCapability.Direct else TranslationCapability.Unsupported

@@ -56,6 +56,8 @@ fun TranslatorHome(
     var settingsOpen by rememberSaveable { mutableStateOf(false) }
     var advancedSettingsOpen by rememberSaveable { mutableStateOf(false) }
     var languageChanging by remember { mutableStateOf(false) }
+    var conversationSurfaceVersion by remember { mutableLongStateOf(0L) }
+    fun canChangeSurface() = !languageChanging && !runtime.owners.artifactUpdateReserved.value
     val configuration = LocalConfiguration.current
     val interfaceLanguage = remember(context, configuration) { InterfaceLanguage.current(context) }
     var interfaceLanguageError by remember { mutableStateOf(false) }
@@ -71,8 +73,15 @@ fun TranslatorHome(
     ) {
     TranslatorHomeLayout(
         conversation = conversation,
-        onConversationChanged = { conversation = it },
+        onConversationChanged = {
+            if (canChangeSurface() && !settingsOpen && conversation != it) {
+                conversationSurfaceVersion++
+                conversation = it
+            }
+        },
         onOpenSettings = {
+            if (!canChangeSurface()) return@TranslatorHomeLayout
+            conversationSurfaceVersion++
             interfaceLanguageError = false
             advancedSettingsOpen = false
             settingsVm.beginEditing()
@@ -80,9 +89,19 @@ fun TranslatorHome(
         },
         conversationContent = {
             ConversationRoute(
-                captureFactory, onLanguageTransitionChanged = { languageChanging = it }, onOpenText = { conversation = false },
+                captureFactory, onLanguageTransitionChanged = { languageChanging = it },
+                onOpenText = {
+                    if (canChangeSurface() && !settingsOpen) {
+                        conversationSurfaceVersion++
+                        conversation = false
+                    }
+                },
                 screenAwake = screenAwake,
+                isActiveSurface = { conversation && !settingsOpen && !languageChanging },
+                surfaceVersion = { conversationSurfaceVersion },
                 onOpenAdvancedSettings = {
+                    if (!canChangeSurface()) return@ConversationRoute
+                    conversationSurfaceVersion++
                     interfaceLanguageError = false
                     advancedSettingsOpen = true
                     settingsVm.beginEditing()
@@ -92,7 +111,7 @@ fun TranslatorHome(
         },
         textContent = { homeControls ->
             TranslationRoute(homeControls = homeControls, onLanguageTransitionChanged = { languageChanging = it },
-                screenAwake = screenAwake)
+                screenAwake = screenAwake, isArtifactUpdateAllowed = { !conversation && !settingsOpen && !languageChanging })
         },
     )
 
@@ -101,8 +120,8 @@ fun TranslatorHome(
             state = settingsState.copy(editable = settingsState.editable && !languageChanging),
             providers = runtime.registry.descriptors,
             onDraftChanged = settingsVm::updateDraft,
-            onApply = { if (!languageChanging) settingsVm.apply() },
-            onReset = { if (!languageChanging) settingsVm.reset() },
+            onApply = { if (canChangeSurface()) settingsVm.apply() },
+            onReset = { if (canChangeSurface()) settingsVm.reset() },
             onRetry = { settingsVm.retry() },
             onClose = {
                 settingsVm.cancelDraft()

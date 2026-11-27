@@ -21,6 +21,7 @@ internal class TranslationEngineLifetime(
     private var key: Pair<String, Set<LanguagePair>>? = null
     private var poison: Throwable? = null
     private val leases = mutableSetOf<Lease>()
+    private val noArtifactUpdate = TranslationArtifactUpdateState()
 
     fun lease(engineId: String, pairs: Set<LanguagePair>): TranslationEngine {
         registry.validate(engineId, pairs)
@@ -63,7 +64,11 @@ internal class TranslationEngineLifetime(
     private suspend fun discard() {
         synchronized(lock) { poison?.let { throw it } }
         val old = synchronized(lock) {
-            leases.forEach { it.observation?.cancel(); it.observation = null }
+            leases.forEach {
+                it.observation?.cancel()
+                it.observation = null
+                it.clearArtifactUpdate()
+            }
             delegate
         }
         var failure: Throwable? = null
@@ -110,11 +115,27 @@ internal class TranslationEngineLifetime(
         var observation: Job? = null
         private val state = MutableStateFlow(TranslationPreparationState(TranslationPreparationPhase.MISSING))
         override val preparation = state.asStateFlow()
+        private val updateState = if (registry.supportsArtifactUpdate(engineId)) MutableStateFlow(noArtifactUpdate) else null
+        override val artifactUpdate: TranslationArtifactUpdate? = updateState?.let { update ->
+            object : TranslationArtifactUpdate {
+                override val state = update.asStateFlow()
+                override suspend fun update() {
+                    if (!state.value.offerAvailable) return
+                    operation { engine ->
+                        val capability = checkNotNull(engine.artifactUpdate)
+                        if (capability.state.value.offerAvailable) capability.update()
+                    }
+                }
+            }
+        }
+
+        fun clearArtifactUpdate() { updateState?.value = noArtifactUpdate }
 
         fun invalidate() {
             observation?.cancel()
             observation = null
             state.value = TranslationPreparationState(TranslationPreparationPhase.MISSING)
+            clearArtifactUpdate()
             jobs.toList().forEach { it.cancel() }
         }
 
@@ -135,15 +156,20 @@ internal class TranslationEngineLifetime(
                         delegate ?: registry.create(engineId, coverage).also { delegate = it; key = selected }
                     }
                     synchronized(lock) {
+                        check(!revoked && !closed && foreground && version == generation && delegate === engine)
                         usedDelegate = engine
                         observation?.cancel()
+                        val capability = updateState?.let { checkNotNull(engine.artifactUpdate) }
                         state.value = engine.preparation.value
+                        if (capability != null) updateState?.value = capability.state.value
                         observation = scope.launch(start = CoroutineStart.UNDISPATCHED) {
-                            engine.preparation.collect { value ->
-                                synchronized(lock) {
-                                    if (!revoked && version == generation && delegate === engine) state.value = value
-                                }
+                            fun publish(action: () -> Unit) = synchronized(lock) {
+                                if (isActive && !revoked && version == generation && delegate === engine) action()
                             }
+                            if (capability != null) launch(start = CoroutineStart.UNDISPATCHED) {
+                                capability.state.collect { value -> publish { updateState?.value = value } }
+                            }
+                            engine.preparation.collect { value -> publish { state.value = value } }
                         }
                     }
                     try {
@@ -151,6 +177,15 @@ internal class TranslationEngineLifetime(
                             if (engine.preparation.value.phase == TranslationPreparationPhase.FAILED) {
                                 publishFailure(engine, version)
                                 discard()
+                            } else synchronized(lock) {
+                                if (!revoked && !closed && foreground && version == generation && delegate === engine) {
+                                    val update = engine.artifactUpdate?.state?.value
+                                    if (update != null) leases.forEach {
+                                        if (!it.revoked && it.usedDelegate === engine && it.observation != null) {
+                                            it.updateState?.value = update
+                                        }
+                                    }
+                                }
                             }
                         }
                     } catch (failure: Throwable) {
@@ -192,7 +227,10 @@ internal class TranslationEngineLifetime(
                 } else TranslationPreparationState(TranslationPreparationPhase.FAILED, lastFailure = failure)
                 // Invalidation clears observations, so only leases still observing this generation receive the fault.
                 leases.filter { !it.revoked && it.usedDelegate === engine && it.observation != null }
-                    .forEach { it.state.value = terminal }
+                    .forEach {
+                        it.state.value = terminal
+                        it.clearArtifactUpdate()
+                    }
             }
         }
 

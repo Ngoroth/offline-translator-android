@@ -190,8 +190,10 @@
     <string name="translation_encoding_error">Kaynakta veya çeviride geçersiz Unicode var. Kaynağı düzenleyin veya yeniden deneyin; kısmi çeviri saklanmadı.</string>
     <string name="translation_timeout">Çeviri hazırlığı çok uzun sürdü. Hazırlık durumunu kontrol edip yeniden deneyin.</string>
     <string name="model_prepare_hint">Modelleri hazırlayın.</string>
-    <string name="tencent_model_download_hint">1,13 GB · Wi‑Fi ile indirme</string>
-    <string name="tencent_model_explanation">Çevrimdışı kullanım için 1,13 GB çeviri modelini Wi‑Fi üzerinden hazırlayın. Birkaç GB RAM gerekebilir.</string>
+    <string name="tencent_model_download_hint">1,35 GB · Wi‑Fi ile indirme</string>
+    <string name="tencent_model_explanation">Çevrimdışı kullanım için 1,35 GB çeviri modelini Wi‑Fi üzerinden hazırlayın. Birkaç GB RAM gerekebilir.</string>
+    <string name="translation_artifact_update_title">Tencent Hy-MT3 kullanılabilir</string>
+    <string name="translation_artifact_update_action">Modeli güncelle</string>
     <string name="mozilla_model_download_hint">Seçilen dillerin modelleri · Wi-Fi ile indirme</string>
     <string name="mozilla_model_explanation">Seçilen dillerin iki yönlü modellerini Wi-Fi üzerinden hazırlayın. İngilizce içermeyen çiftler İngilizce üzerinden çevrilir. Sağlayıcı değiştirildiğinde indirilen modeller korunur, tanınan sözcükler değişmez.</string>
     <string name="settings_recognition_service">Konuşma tanıma hizmeti</string>

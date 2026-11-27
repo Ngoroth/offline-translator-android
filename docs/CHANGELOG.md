@@ -4,6 +4,11 @@ Notable capability, behavior and developer-facing compatibility changes. Entries
 
 ## Unreleased
 
+### Tencent Hy-MT3
+
+- Fresh Tencent preparation downloads only Hy-MT3-1.8B Q4_K_M over Wi-Fi. Existing usable Hy-MT2 installations remain available offline until an explicit Update model action from Text or Conversation completes; interrupted or failed pre-activation attempts retain the old file.
+- Both routes show the active model's attribution and Terms. The app bundles both model licenses, not weights. Settings, speech resources and the pinned CPU runtime are unchanged. Re-run explicit Tencent native preparation to refresh the notice input receipt.
+
 ### 0.2.0 release candidate
 
 - Set the Android version to 0.2.0 / versionCode 9 for phone verification before closed testing. This does not record a Play upload or rollout.

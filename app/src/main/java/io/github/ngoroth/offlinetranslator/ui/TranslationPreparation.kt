@@ -3,6 +3,10 @@ package io.github.ngoroth.offlinetranslator.ui
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.Button
+import androidx.compose.material3.Card
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -18,6 +22,8 @@ import io.github.ngoroth.offlinetranslator.core.*
 
 object TranslationPreparationTestTags {
     const val PROGRESS = "translation_preparation_progress"
+    const val UPDATE_CARD = "translation_artifact_update"
+    const val UPDATE_ACTION = "translation_artifact_update_action"
 }
 
 /** Shared provider-neutral preparation rendering for both routes. */
@@ -46,6 +52,30 @@ fun TranslationPreparation(state: TranslationPreparationState) {
             )
         }
         else -> Text(label)
+    }
+}
+
+@Composable
+internal fun TranslationArtifactUpdateCard(
+    state: TranslationArtifactUpdateState?,
+    enabled: Boolean,
+    onUpdate: () -> Unit,
+) {
+    if (state == null || (!state.offerAvailable && state.preparation == null)) return
+    Card(Modifier.fillMaxWidth().testTag(TranslationPreparationTestTags.UPDATE_CARD)) {
+        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Text(stringResource(R.string.translation_artifact_update_title), style = MaterialTheme.typography.titleMedium)
+            Text(stringResource(R.string.tencent_model_download_hint))
+            state.preparation?.let { TranslationPreparation(it) }
+            Button(
+                onClick = onUpdate,
+                enabled = enabled && state.offerAvailable,
+                modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).testTag(TranslationPreparationTestTags.UPDATE_ACTION),
+            ) {
+                Text(stringResource(if (state.preparation?.phase == TranslationPreparationPhase.FAILED)
+                    R.string.retry_action else R.string.translation_artifact_update_action))
+            }
+        }
     }
 }
 

@@ -11,6 +11,7 @@ import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.assertTextContains
+import androidx.compose.ui.test.getUnclippedBoundsInRoot
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onAllNodesWithTag
@@ -71,6 +72,8 @@ import io.github.ngoroth.offlinetranslator.core.TranslationEngine
 import androidx.compose.ui.semantics.ProgressBarRangeInfo
 import androidx.compose.ui.semantics.getOrNull
 import androidx.compose.foundation.layout.width
+import io.github.ngoroth.offlinetranslator.core.PreparationFailure
+import io.github.ngoroth.offlinetranslator.core.TranslationArtifactUpdateState
 import io.github.ngoroth.offlinetranslator.core.TranslationPreparationPhase
 import io.github.ngoroth.offlinetranslator.core.TranslationPreparationState
 import io.github.ngoroth.offlinetranslator.core.TranslationFailure
@@ -78,6 +81,86 @@ import io.github.ngoroth.offlinetranslator.ui.TranslationPreparationTestTags
 
 class TranslationScreenTest {
     @get:Rule val compose = createComposeRule()
+
+    @Test fun tencentArtifactUpdateCardShowsProgressAndRetryWithoutReplacingTranslate() {
+        val offered = TencentTranslationEngine.descriptor
+        val oldTerms = "https://huggingface.co/tencent/Hy-MT2-1.8B-GGUF/blob/a0c709d9fac510f2c807aa3af52872340dc37a4a/LICENSE.txt"
+        val newTerms = "https://huggingface.co/tencent/Hy-MT3-1.8B-GGUF/blob/4c4370b31f13ccac4ac71133e3a0967c88cc792c/LICENSE.txt"
+        val previous = offered.copy(displayName = "Tencent Hy-MT2", attribution = "Hy-MT2 by Tencent", termsUrl = oldTerms)
+        val opened = mutableListOf<String>()
+        val update = mutableStateOf(TranslationArtifactUpdateState(previous, offerAvailable = true))
+        val updating = mutableStateOf(false)
+        var requests = 0
+        val context = InstrumentationRegistry.getInstrumentation().targetContext
+        compose.setContent {
+            MaterialTheme {
+                TranslationScreen(
+                    TranslationUiState(input = "source text", modelStatus = ModelUiStatus.READY),
+                    {}, {}, {}, {}, {}, homeControls = {}, provider = offered,
+                    onOpenUri = opened::add,
+                    artifactUpdate = update.value, artifactUpdating = updating.value,
+                    onUpdateArtifact = { requests++ },
+                )
+            }
+        }
+        val action = compose.onNodeWithTag(TranslationPreparationTestTags.UPDATE_ACTION)
+        val updateCard = compose.onNodeWithTag(TranslationPreparationTestTags.UPDATE_CARD)
+        val translate = compose.onNodeWithTag(TranslationTestTags.TRANSLATE)
+        val card = hasAnyAncestor(hasTestTag(TranslationPreparationTestTags.UPDATE_CARD))
+        fun assertActionFillsCard() {
+            val cardBounds = updateCard.getUnclippedBoundsInRoot()
+            val actionBounds = action.getUnclippedBoundsInRoot()
+            assertEquals("Left card inset (dp)", 16f, (actionBounds.left - cardBounds.left).value, 0.5f)
+            assertEquals("Right card inset (dp)", 16f, (cardBounds.right - actionBounds.right).value, 0.5f)
+        }
+        action.performScrollTo().assertTextEquals(context.getString(R.string.translation_artifact_update_action))
+            .assertHeightIsAtLeast(48.dp).assertIsEnabled()
+        assertActionFillsCard()
+        clickVisible(action)
+        compose.onNode(hasText(context.getString(R.string.tencent_model_download_hint)) and card).assertExists()
+        translate.assertIsEnabled()
+        compose.onNodeWithTag(TranslationTestTags.PREPARE).assertDoesNotExist()
+        compose.runOnIdle {
+            assertEquals(1, requests)
+            updating.value = true
+            update.value = update.value.copy(preparation = TranslationPreparationState(
+                TranslationPreparationPhase.DOWNLOADING, 30L, 100L,
+            ))
+        }
+        compose.onNode(hasTestTag(TranslationPreparationTestTags.PROGRESS) and card)
+            .performScrollTo().assertIsDisplayed()
+        action.assertIsNotEnabled()
+        translate.assertIsNotEnabled()
+        compose.runOnIdle {
+            updating.value = false
+            update.value = update.value.copy(preparation = TranslationPreparationState(
+                TranslationPreparationPhase.FAILED, lastFailure = PreparationFailure.WifiRequired(),
+            ))
+        }
+        compose.onNode(hasText(context.getString(R.string.error_wifi_required)) and card).performScrollTo().assertIsDisplayed()
+        translate.assertIsEnabled()
+        fun openActiveTerms() {
+            clickVisible(compose.onNodeWithTag(TranslatorHelpTestTags.ACTION).performScrollTo())
+            clickVisible(compose.onNodeWithTag(TranslatorHelpTestTags.TERMS_ACTION).performScrollTo())
+            clickVisible(compose.onNodeWithText(context.getString(R.string.provider_terms)).performScrollTo())
+            clickVisible(compose.onNodeWithTag(TranslatorHelpTestTags.TERMS_BACK))
+            clickVisible(compose.onNodeWithTag(TranslatorHelpTestTags.CLOSE))
+        }
+        openActiveTerms()
+        compose.runOnIdle { assertEquals(listOf(oldTerms), opened) }
+        action.performScrollTo().assertTextEquals(context.getString(R.string.retry_action)).assertIsEnabled()
+        assertActionFillsCard()
+        clickVisible(action)
+        compose.runOnIdle {
+            assertEquals(2, requests)
+            update.value = TranslationArtifactUpdateState(offered)
+        }
+        compose.onNodeWithTag(TranslationPreparationTestTags.UPDATE_CARD).assertDoesNotExist()
+        compose.onNodeWithText(previous.attribution).assertDoesNotExist()
+        compose.onNodeWithText(offered.attribution).assertIsDisplayed()
+        openActiveTerms()
+        compose.runOnIdle { assertEquals(listOf(oldTerms, newTerms), opened) }
+    }
 
     @Test fun russianChooserKeepsAllLanguagesReachableAndDismissalNoOpAndAtomicSwap() {
         val pair = LanguagePair(LanguageCatalog.FRENCH, LanguageCatalog.SPANISH)

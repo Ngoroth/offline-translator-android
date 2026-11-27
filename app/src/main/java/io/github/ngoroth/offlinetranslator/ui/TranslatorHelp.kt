@@ -41,9 +41,11 @@ fun TranslatorHelp(
     conversation: Boolean,
     provider: TranslationProviderDescriptor?,
     onOpenUri: ((String) -> Unit)? = null,
+    activeProvider: TranslationProviderDescriptor? = provider,
 ) {
     var helpOpen by rememberSaveable { mutableStateOf(false) }
-    var termsOpen by rememberSaveable(provider?.id) { mutableStateOf(false) }
+    val termsIdentity = if (activeProvider?.id == "tencent") activeProvider.termsUrl else activeProvider?.id
+    var termsOpen by rememberSaveable(termsIdentity) { mutableStateOf(false) }
     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
         TextButton(
             onClick = { termsOpen = false; helpOpen = true },
@@ -51,7 +53,7 @@ fun TranslatorHelp(
         ) { Text(stringResource(R.string.help_action)) }
     }
     if (!helpOpen) return
-    val showingTerms = termsOpen && provider != null
+    val showingTerms = termsOpen && activeProvider != null
     val dismiss = { if (showingTerms) termsOpen = false else helpOpen = false }
     val context = LocalContext.current
     val configuration = LocalConfiguration.current
@@ -64,7 +66,7 @@ fun TranslatorHelp(
         title = { Text(stringResource(if (showingTerms) R.string.help_terms_title else R.string.help_title)) },
         text = {
             if (showingTerms) {
-                TranslationTerms(provider, openUri)
+                TranslationTerms(activeProvider, openUri)
             } else {
                 Column(
                     Modifier.heightIn(max = 400.dp).verticalScroll(rememberScrollState()),
@@ -77,7 +79,7 @@ fun TranslatorHelp(
                         else -> R.string.help_preparation
                     }))
                     Text(stringResource(R.string.provider_privacy))
-                    if (provider != null && (provider.attribution.isNotBlank() || provider.termsUrl.isNotBlank())) {
+                    if (activeProvider != null && (activeProvider.attribution.isNotBlank() || activeProvider.termsUrl.isNotBlank())) {
                         TextButton(
                             onClick = { termsOpen = true },
                             modifier = Modifier.heightIn(min = 48.dp).testTag(TranslatorHelpTestTags.TERMS_ACTION),

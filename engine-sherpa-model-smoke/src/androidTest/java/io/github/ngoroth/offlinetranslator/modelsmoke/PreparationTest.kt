@@ -30,11 +30,15 @@ class PreparationTest {
             val ru=engine.translate(EvaluationSession.russianToEnglish,"Доброе утро")
             val en=engine.translate(EvaluationSession.englishToRussian,"Good evening")
             assertTrue(ru.isNotBlank());assertTrue(en.isNotBlank())
-            val artifact = File(EvaluationSession.context.noBackupFilesDir, "tencent-translation/Hy-MT2-1.8B-Q4_K_M.gguf")
-            assertEquals("Prepared Tencent artifact size must match its pin", 1_133_080_448L, artifact.length())
+            val directory = File(EvaluationSession.context.noBackupFilesDir, "tencent-translation")
+            val artifact = File(directory, "Hy-MT3-1.8B-Q4_K_M.gguf")
+            assertFalse("Fresh preparation must not install the previous Tencent artifact",
+                File(directory, "Hy-MT2-1.8B-Q4_K_M.gguf").exists())
+            assertFalse("Preparation must leave no stage", File(directory, "model.part").exists())
+            assertEquals("Prepared Tencent artifact size must match its pin", 1_348_432_160L, artifact.length())
             val sha256 = Integrity.sha256(artifact)
             assertEquals("Prepared Tencent artifact digest must match its pin",
-                "dc5f44fcf1fa496ee7ad725982c0c8c553a4de00259b53af84c4b89fb0c06699", sha256)
+                "bae6e591103654ff43ef0de7d1492f6e6df1f955505f6bb2cc52e86fc399a942", sha256)
             EvaluationSession.writeEvidence("preparation",org.json.JSONObject().put("sdk",TencentTranslationEngine.descriptor.sdkVersion)
                 .put("readiness","READY").put("validatedWifi",true).put("providerWeightsSha256",sha256)
                 .put("greetings",org.json.JSONArray().put(org.json.JSONObject().put("input","Доброе утро").put("output",ru))

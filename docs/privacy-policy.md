@@ -6,7 +6,7 @@ Last updated: 10 November 2026
 
 Offline Translator (`io.github.ngoroth.offlinetranslator`) is developed by Daniil Sterkhov (Ngoroth). For privacy questions, contact [daniil.dm.sterkhov@gmail.com](mailto:daniil.dm.sterkhov@gmail.com).
 
-This policy describes the release of Offline Translator that uses Tencent Hy-MT2 for local translation and does not include Google ML Kit. It does not describe earlier development builds containing ML Kit.
+This policy describes Offline Translator with local Tencent Hy-MT3 or Mozilla translation. An existing Hy-MT2 installation can still run locally until the user explicitly updates it. This policy does not describe earlier builds containing Google ML Kit.
 
 ## Voice and text processing
 
@@ -27,6 +27,8 @@ Android speech services are installed and managed separately from this app. Thei
 ## Internet access and model downloads
 
 Internet access is used to download the models needed for offline operation. Once the required models and voices are installed, local recognition and translation can work without an internet connection.
+
+Tencent model downloads require an explicit Prepare or Update model action on validated Wi-Fi. Launch and local translation do not initiate a model download. Updating the translation model does not access the microphone or download voice or recognition resources.
 
 Model files are downloaded over HTTPS from Hugging Face, GitHub and their file-delivery providers. These services receive the network information needed to handle a download, including your IP address, the requested file and standard connection information. The app does not include conversation text or microphone audio in model-download requests.
 

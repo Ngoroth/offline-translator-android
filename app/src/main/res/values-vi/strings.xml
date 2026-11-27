@@ -190,8 +190,10 @@
     <string name="translation_encoding_error">Unicode không hợp lệ trong nguồn hoặc bản dịch. Sửa nguồn hoặc thử lại; không giữ bản dịch chưa hoàn tất.</string>
     <string name="translation_timeout">Chuẩn bị dịch mất quá lâu. Kiểm tra trạng thái chuẩn bị và thử lại.</string>
     <string name="model_prepare_hint">Chuẩn bị mô hình.</string>
-    <string name="tencent_model_download_hint">1,13 GB · tải qua Wi‑Fi</string>
-    <string name="tencent_model_explanation">Chuẩn bị mô hình dịch 1,13 GB qua Wi‑Fi để dùng ngoại tuyến. Có thể cần vài GB RAM.</string>
+    <string name="tencent_model_download_hint">1,35 GB · tải qua Wi‑Fi</string>
+    <string name="tencent_model_explanation">Chuẩn bị mô hình dịch 1,35 GB qua Wi‑Fi để dùng ngoại tuyến. Có thể cần vài GB RAM.</string>
+    <string name="translation_artifact_update_title">Đã có Tencent Hy-MT3</string>
+    <string name="translation_artifact_update_action">Cập nhật mô hình</string>
     <string name="mozilla_model_download_hint">Mô hình cho ngôn ngữ đã chọn · tải qua Wi-Fi</string>
     <string name="mozilla_model_explanation">Chuẩn bị mô hình cho cả hai chiều của ngôn ngữ đã chọn qua Wi-Fi. Các cặp không có tiếng Anh được dịch qua tiếng Anh. Đổi nhà cung cấp vẫn giữ mô hình đã tải và không thay đổi lời đã nhận dạng.</string>
     <string name="settings_recognition_service">Dịch vụ nhận dạng giọng nói</string>

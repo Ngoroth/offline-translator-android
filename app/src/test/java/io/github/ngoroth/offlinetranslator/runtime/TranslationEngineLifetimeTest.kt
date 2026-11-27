@@ -11,8 +11,18 @@ import org.junit.Test
 
 class TranslationEngineLifetimeTest {
     private val pair = LanguagePair(LanguageCatalog.RUSSIAN, LanguageCatalog.ENGLISH)
+    private val previous = TencentTranslationEngine.descriptor.copy(displayName = "Tencent Hy-MT2", attribution = "Hy-MT2 by Tencent")
 
-    private class Provider : TranslationEngine {
+    private class Provider(
+        update: (suspend (MutableStateFlow<TranslationArtifactUpdateState>) -> Unit)? = null,
+    ) : TranslationEngine {
+        val updateState = MutableStateFlow(TranslationArtifactUpdateState())
+        override val artifactUpdate = update?.let { perform ->
+            object : TranslationArtifactUpdate {
+                override val state = updateState
+                override suspend fun update() = perform(state)
+            }
+        }
         override val preparation = MutableStateFlow(TranslationPreparationState(TranslationPreparationPhase.MISSING))
         var warms = 0
         var closes = 0
@@ -195,12 +205,87 @@ class TranslationEngineLifetimeTest {
         lifetime.closeAndJoin()
     }
 
+    @Test fun recoverableArtifactUpdateKeepsTheDelegateAndBothObservedLeasesFollowTheCutover() = runTest {
+        val offline = PreparationFailure.WifiRequired()
+        var wifi = false
+        val provider = Provider { state ->
+            state.value = if (!wifi) TranslationArtifactUpdateState(previous, true,
+                TranslationPreparationState(TranslationPreparationPhase.FAILED, lastFailure = offline))
+            else TranslationArtifactUpdateState(TencentTranslationEngine.descriptor)
+        }.apply { updateState.value = TranslationArtifactUpdateState(previous, true) }
+        val lifetime = TranslationEngineLifetime(backgroundScope, updateRegistry { provider })
+        val text = lifetime.lease("tencent", setOf(pair))
+        val conversation = lifetime.lease("tencent", setOf(pair, pair.reverse()))
+        val textUpdate = requireNotNull(text.artifactUpdate)
+        val conversationUpdate = requireNotNull(conversation.artifactUpdate)
+        assertNull(textUpdate.state.value.activeProvider)
+        text.prepareLocal()
+        conversation.prepareLocal()
+        textUpdate.update()
+        assertSame(offline, conversationUpdate.state.value.preparation?.lastFailure)
+        assertEquals(previous, textUpdate.state.value.activeProvider)
+        assertEquals("offline", text.translate(pair, "offline"))
+        assertEquals(0, provider.closes)
+        wifi = true
+        conversationUpdate.update()
+        assertEquals(TencentTranslationEngine.descriptor, textUpdate.state.value.activeProvider)
+        assertFalse(textUpdate.state.value.offerAvailable)
+        assertNull(conversationUpdate.state.value.preparation)
+        assertEquals(1, provider.warms)
+        text.closeAndJoin()
+        conversation.closeAndJoin()
+        lifetime.closeAndJoin()
+    }
+
+    @Test fun replacementCancelsReservedUpdateAndWaitsForActualDrainWithoutPublishingToRevokedLease() = runTest {
+        val entered = CompletableDeferred<Unit>()
+        val finish = CompletableDeferred<Unit>()
+        val provider = Provider { state ->
+            entered.complete(Unit)
+            withContext(NonCancellable) {
+                finish.await()
+                state.value = TranslationArtifactUpdateState(TencentTranslationEngine.descriptor)
+            }
+        }.apply { updateState.value = TranslationArtifactUpdateState(previous, true) }
+        val lifetime = TranslationEngineLifetime(backgroundScope, updateRegistry { provider })
+        val controller = RuntimeOwnerController(backgroundScope)
+        val first = controller.replace { TextRuntimeOwner(TextRuntimeConfig(pair, "tencent"), lifetime.lease("tencent", setOf(pair))) }
+        first.translation.prepareLocal()
+        val capability = requireNotNull(first.translation.artifactUpdate)
+        val update = requireNotNull(controller.tryUpdateArtifact(first, this, { true }) { capability.update() })
+        entered.await()
+        val replacement = async {
+            lifetime.leaveForeground()
+            controller.replace { TextRuntimeOwner(TextRuntimeConfig(pair, "mozilla"), lifetime.lease("mozilla", setOf(pair))) }
+        }
+        try {
+            testScheduler.runCurrent()
+            assertTrue(controller.artifactUpdateReserved.value)
+            assertTrue(update.isCancelled)
+            assertFalse(replacement.isCompleted)
+            assertFalse(update.isCompleted)
+            assertNull(capability.state.value.activeProvider)
+        } finally { finish.complete(Unit) }
+        val next = replacement.await()
+        assertNull(next.translation.artifactUpdate)
+        assertEquals(TranslationArtifactUpdateState(), capability.state.value)
+        assertFalse(controller.artifactUpdateReserved.value)
+        controller.closeAndJoin()
+        lifetime.closeAndJoin()
+    }
+
+    private fun updateRegistry(create: (Set<LanguagePair>) -> TranslationEngine) = TranslationEngineRegistry(listOf(
+        TranslationEngineRegistry.Registration(TencentTranslationEngine.descriptor, TencentTranslationEngine::capability,
+            supportsArtifactUpdate = true, create = create),
+        TranslationEngineRegistry.Registration(MozillaTranslationEngine.descriptor, MozillaTranslationEngine::capability) { Provider() },
+    ))
+
     @Test fun providerPairChangesInvalidateImmediatelyButSwapRetains() = runTest {
         val engines = mutableListOf<Provider>()
         val create: (Set<LanguagePair>) -> TranslationEngine = { Provider().also(engines::add) }
         val registry = TranslationEngineRegistry(listOf(
-            TranslationEngineRegistry.Registration(MozillaTranslationEngine.descriptor, { MozillaTranslationEngine.capability(it) }, create),
-            TranslationEngineRegistry.Registration(TencentTranslationEngine.descriptor, { TencentTranslationEngine.capability(it) }, create),
+            TranslationEngineRegistry.Registration(MozillaTranslationEngine.descriptor, MozillaTranslationEngine::capability, create = create),
+            TranslationEngineRegistry.Registration(TencentTranslationEngine.descriptor, TencentTranslationEngine::capability, create = create),
         ))
         val lifetime = TranslationEngineLifetime(backgroundScope, registry)
         val first = lifetime.lease("mozilla", setOf(pair))

@@ -8,11 +8,14 @@ import io.github.ngoroth.offlinetranslator.core.LanguagePair
 import io.github.ngoroth.offlinetranslator.core.ModelAvailability
 import io.github.ngoroth.offlinetranslator.core.PreparationFailure
 import io.github.ngoroth.offlinetranslator.core.TranslationEngine
+import io.github.ngoroth.offlinetranslator.core.TranslationArtifactUpdate
+import io.github.ngoroth.offlinetranslator.core.TranslationArtifactUpdateState
 import io.github.ngoroth.offlinetranslator.core.TranslationPreparationState
 import io.github.ngoroth.offlinetranslator.core.TranslationPreparationPhase
 import io.github.ngoroth.offlinetranslator.core.TextRuntimeConfig
 import io.github.ngoroth.offlinetranslator.runtime.RuntimeOwnerController
 import io.github.ngoroth.offlinetranslator.runtime.TextRuntimeOwner
+import io.github.ngoroth.offlinetranslator.tencent.TencentTranslationEngine
 import io.github.ngoroth.offlinetranslator.ui.ScreenAwake
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.SupervisorJob
@@ -22,6 +25,7 @@ import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.async
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runCurrent
@@ -37,6 +41,107 @@ import org.junit.Test
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class TranslationViewModelTest {
+    @Test fun eligiblePrepareAndRetryDoNotQueueDuringCancelledUpdateDrain() = runTest {
+        val dispatcher = StandardTestDispatcher(testScheduler)
+        Dispatchers.setMain(dispatcher)
+        val invalidate = CompletableDeferred<Unit>()
+        val drain = CompletableDeferred<Unit>()
+        val capability = object : TranslationArtifactUpdate {
+            override val state = MutableStateFlow(TranslationArtifactUpdateState(
+                TencentTranslationEngine.descriptor, offerAvailable = true,
+            ))
+            override suspend fun update() {
+                try {
+                    invalidate.await()
+                    throw kotlinx.coroutines.CancellationException("Translation invalidated")
+                } finally { kotlinx.coroutines.withContext(kotlinx.coroutines.NonCancellable) { drain.await() } }
+            }
+        }
+        val engine = FakeEngine(ModelAvailability.READY, artifactUpdate = capability)
+        val fixture = createFixture(engine, dispatcher)
+        try {
+            runCurrent()
+            fixture.model.updateArtifact()
+            runCurrent()
+            engine.preparation.value = TranslationPreparationState(TranslationPreparationPhase.MISSING)
+            invalidate.complete(Unit)
+            runCurrent()
+            assertTrue(fixture.controller.artifactUpdateReserved.value)
+            assertTrue(fixture.model.state.value.canPrepare)
+            fixture.model.prepare()
+            fixture.model.retry()
+            runCurrent()
+            assertTrue(fixture.model.state.value.canPrepare)
+            assertFalse(fixture.model.state.value.operationInProgress)
+            assertEquals(0, engine.prepareCalls)
+            drain.complete(Unit)
+            runCurrent()
+            assertFalse(fixture.controller.artifactUpdateReserved.value)
+            assertEquals(0, engine.prepareCalls)
+            fixture.model.prepare()
+            runCurrent()
+            assertEquals(1, engine.prepareCalls)
+        } finally {
+            drain.complete(Unit)
+            fixture.model.disposeAndJoin()
+            fixture.observationJob.cancelAndJoin()
+            Dispatchers.resetMain()
+        }
+    }
+
+    @Test fun translationAndArtifactUpdateRejectEachOtherBeforeEitherCoroutineRuns() = runTest {
+        val dispatcher = StandardTestDispatcher(testScheduler)
+        Dispatchers.setMain(dispatcher)
+        val completeUpdate = CompletableDeferred<Unit>()
+        var updates = 0
+        val capability = object : TranslationArtifactUpdate {
+            override val state = MutableStateFlow(TranslationArtifactUpdateState(
+                TencentTranslationEngine.descriptor.copy(displayName = "Tencent Hy-MT2"), offerAvailable = true,
+            ))
+            override suspend fun update() {
+                updates++
+                completeUpdate.await()
+                state.value = TranslationArtifactUpdateState(TencentTranslationEngine.descriptor)
+            }
+        }
+        val engine = FakeEngine(ModelAvailability.READY, suspendTranslation = true, artifactUpdate = capability)
+        val fixture = createFixture(engine, dispatcher, initialInput = "source text")
+        try {
+            runCurrent()
+            fixture.model.translate()
+            fixture.model.updateArtifact()
+            runCurrent()
+            assertEquals(0, updates)
+            assertEquals(1, engine.translateCalls)
+            engine.completeSuspendedTranslation("before update")
+            runCurrent()
+
+            fixture.model.updateArtifact()
+            assertTrue(fixture.controller.artifactUpdateReserved.value)
+            fixture.model.translate()
+            fixture.model.prepare()
+            fixture.model.retry()
+            fixture.model.updateArtifact()
+            runCurrent()
+            assertEquals(1, updates)
+            assertEquals(1, engine.translateCalls)
+            assertEquals(0, engine.prepareCalls)
+            completeUpdate.complete(Unit)
+            runCurrent()
+            assertFalse(fixture.controller.artifactUpdateReserved.value)
+            assertEquals("before update", fixture.model.state.value.result)
+            assertEquals(TencentTranslationEngine.descriptor, fixture.model.artifactUpdate?.value?.activeProvider)
+        } finally {
+            completeUpdate.complete(Unit)
+            if (engine.translateCalls > 0 && fixture.model.state.value.isTranslating) {
+                runCatching { engine.completeSuspendedTranslation("cleanup") }
+            }
+            fixture.model.disposeAndJoin()
+            fixture.observationJob.cancelAndJoin()
+            Dispatchers.resetMain()
+        }
+    }
+
     @Test fun screenDemandCoversRealLocalPreparationAndCancellationRevokesBeforeNativeReturn() = runTest {
         val dispatcher = StandardTestDispatcher(testScheduler)
         Dispatchers.setMain(dispatcher)
@@ -951,6 +1056,7 @@ private class FakeEngine(
     private val prepareFailures: ArrayDeque<Throwable> = ArrayDeque(),
     var translationFailures: Int = 0,
     private val suspendTranslation: Boolean = false,
+    override val artifactUpdate: TranslationArtifactUpdate? = null,
 ) : TranslationEngine {
     override val preparation = kotlinx.coroutines.flow.MutableStateFlow(TranslationPreparationState(
         if (availability == ModelAvailability.READY) TranslationPreparationPhase.READY else TranslationPreparationPhase.MISSING,

@@ -20,7 +20,7 @@ Recorded on an emulator with networking disabled and languages prepared. Test au
 
 Choose two languages, prepare their resources, and start a conversation. Either person can speak a turn; the app recognizes and translates it. The speaker button beside Start/Stop enables or disables reading translations aloud. With speech output enabled, listening resumes after playback; with it disabled, synthesis and playback are skipped. **Text** uses the same language pair without the microphone.
 
-- **Translation setup:** choose Mozilla or Tencent Hy-MT2 on first setup, before opening Text or Conversation. The saved choice is reused on later launches and can be changed in Settings. Existing completed selections are preserved; a failed save keeps entry blocked with explicit retry.
+- **Translation setup:** choose Mozilla or Tencent Hy-MT3 on first setup, before opening Text or Conversation. The saved choice is reused on later launches and can be changed in Settings. Existing completed selections are preserved; a failed save keeps entry blocked with explicit retry.
 - **Speech alternatives:** Whisper is the recognition default; Android on-device recognition and System/Piper output remain in Advanced settings. Piper retains its curated Russian/English coverage.
 - **Conversation controls:** the pinned lower panel shows actual microphone availability, independently of recognition/translation progress. Speech output is on by default and its choice survives reopening. Mute interrupts current speech without discarding translated text or stopping the conversation; enabling affects subsequent results, not old translations. Unavailable voices leave output off without switching providers or downloading implicitly. For supported Piper languages with missing voice data, Stop and explicitly prepare the voices; preparation keeps output off until you enable it again.
 - **17 languages:** a shared language pair across Conversation and Text, with a localized interface.
@@ -144,7 +144,9 @@ Recognition and speech output are separate choices. **System offline speech**, w
 
 ### Tencent model preparation and boundaries
 
-Tencent Hy-MT2 remains available in Settings; Reset selects it. Use **Prepare** over Wi-Fi to download the **1.13 GB** model. On entry, both Text and Conversation initialize verified installed models locally when needed; they never download or repair them implicitly. Conversation also requires the selected speech resources. Foreground mode/direction switches retain a compatible prepared translator; backgrounding, memory pressure or a provider/pair change releases it after native work drains. No model is bundled in the APK.
+Settings offers Tencent Hy-MT3, and Reset selects the Tencent provider. On fresh setups, **Prepare** downloads only Hy-MT3 (**1.35 GB**, over Wi-Fi). If you already have a working Hy-MT2 installation, it stays usable offline until you choose **Update model** in Text or Conversation and Hy-MT3 is verified and running. Updating needs about **1.37 GB** of additional free space; it does not download speech resources or start the microphone.
+
+Both routes initialize verified installed models locally when needed. Launch, provider selection and translation never download or repair weights implicitly. Conversation still requires the selected speech resources. Foreground mode/direction switches retain a compatible prepared translator; backgrounding, memory pressure or a provider/pair change releases it after native work drains. No model is bundled in the APK.
 
 Conversation targets **8 GiB or more RAM**. See the [pinned model identity](engine-tencent/THIRD_PARTY.md) and [preparation guide](docs/testing/verify-translator.md#tencent-specific-preparation-and-native-checks).
 

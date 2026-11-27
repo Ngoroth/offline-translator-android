@@ -197,8 +197,10 @@
     <string name="translation_runtime_error">De lokale vertaalengine kon niet worden geladen. Bereid opnieuw voor; start de app opnieuw als het probleem blijft bestaan.</string>
     <string name="translation_timeout">De voorbereiding van de vertaling duurde te lang. Controleer de voorbereidingsstatus en probeer het opnieuw.</string>
     <string name="model_prepare_hint">Bereid de modellen voor.</string>
-    <string name="tencent_model_download_hint">1,13 GB · downloaden via wifi</string>
-    <string name="tencent_model_explanation">Bereid het vertaalmodel van 1,13 GB via wifi voor om het offline te gebruiken. Er kan meerdere GB RAM nodig zijn.</string>
+    <string name="tencent_model_download_hint">1,35 GB · downloaden via wifi</string>
+    <string name="tencent_model_explanation">Bereid het vertaalmodel van 1,35 GB via wifi voor om het offline te gebruiken. Er kan meerdere GB RAM nodig zijn.</string>
+    <string name="translation_artifact_update_title">Tencent Hy-MT3 is beschikbaar</string>
+    <string name="translation_artifact_update_action">Model bijwerken</string>
     <string name="mozilla_model_download_hint">Modellen voor gekozen talen · downloaden via wifi</string>
     <string name="mozilla_model_explanation">Bereid de modellen voor beide richtingen van de gekozen talen via wifi voor. Paren zonder Engels worden via Engels vertaald. Bij een andere aanbieder blijven gedownloade modellen bewaard en herkende woorden ongewijzigd.</string>
 </resources>

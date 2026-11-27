@@ -17,6 +17,7 @@ class TranslationEngineRegistry internal constructor(registrations: List<Registr
     internal class Registration(
         val descriptor: TranslationProviderDescriptor,
         val capability: (LanguagePair) -> TranslationCapability,
+        val supportsArtifactUpdate: Boolean = false,
         val create: (Set<LanguagePair>) -> TranslationEngine,
     )
 
@@ -28,14 +29,14 @@ class TranslationEngineRegistry internal constructor(registrations: List<Registr
 
     internal constructor(factory: (Set<LanguagePair>) -> TranslationEngine) : this(
         listOf(
-            Registration(TencentTranslationEngine.descriptor, { TencentTranslationEngine.capability(it) }, factory),
-            Registration(MozillaTranslationEngine.descriptor, { MozillaTranslationEngine.capability(it) }, factory),
+            Registration(TencentTranslationEngine.descriptor, TencentTranslationEngine::capability, create = factory),
+            Registration(MozillaTranslationEngine.descriptor, MozillaTranslationEngine::capability, create = factory),
         ),
     )
 
     constructor(artifacts: TencentArtifactPreparation, preparation: MozillaTranslationPreparation) : this(
         listOf(
-            Registration(TencentTranslationEngine.descriptor, { TencentTranslationEngine.capability(it) }) { pairs ->
+            Registration(TencentTranslationEngine.descriptor, TencentTranslationEngine::capability, supportsArtifactUpdate = true) { pairs ->
                 TencentTranslationEngine(pairs, artifacts)
             },
             Registration(MozillaTranslationEngine.descriptor, { MozillaTranslationEngine.capability(it) }) { pairs ->
@@ -50,6 +51,8 @@ class TranslationEngineRegistry internal constructor(registrations: List<Registr
         ?: throw InvalidConfigurationException(ConfigurationProblem.UNKNOWN_ENGINE)
 
     fun descriptor(id: String): TranslationProviderDescriptor = registration(id).descriptor
+
+    internal fun supportsArtifactUpdate(id: String): Boolean = registration(id).supportsArtifactUpdate
 
     fun capability(engineId: String, pair: LanguagePair): TranslationCapability =
         registration(engineId).capability(pair)

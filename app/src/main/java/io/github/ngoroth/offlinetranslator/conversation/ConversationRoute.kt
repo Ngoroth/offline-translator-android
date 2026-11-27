@@ -27,6 +27,8 @@ fun ConversationRoute(
     onOpenText: () -> Unit = {},
     onOpenAdvancedSettings: () -> Unit = {},
     screenAwake: ScreenAwake? = null,
+    isActiveSurface: () -> Boolean = { true },
+    surfaceVersion: () -> Long = { 0L },
 ) {
     val context = LocalContext.current
     val runtime = remember(context.applicationContext) { AppRuntime.get(context.applicationContext) }
@@ -41,8 +43,13 @@ fun ConversationRoute(
     val teardownFailed by runtime.owners.teardownFailed.collectAsStateWithLifecycle()
     val lifecycleOwner = LocalLifecycleOwner.current
     val ownershipVersion by runtime.owners.ownershipVersion.collectAsStateWithLifecycle()
+    val artifactUpdating by runtime.owners.artifactUpdateReserved.collectAsStateWithLifecycle()
+    val ownerBusy by runtime.owners.busy.collectAsStateWithLifecycle()
     val scope = rememberCoroutineScope()
     val transitionCallback by rememberUpdatedState(onLanguageTransitionChanged)
+    val activeSurface by rememberUpdatedState(isActiveSurface)
+    val currentSurfaceVersion by rememberUpdatedState(surfaceVersion)
+    fun captureSurface() = ConversationSurfaceRequest({ activeSurface() }, { currentSurfaceVersion() })
     var viewModel by remember { mutableStateOf<ConversationViewModel?>(null) }
     var changing by remember { mutableStateOf(false) }
     var guardedCreation by remember { mutableStateOf(false) }
@@ -53,6 +60,7 @@ fun ConversationRoute(
     var installRequest by remember { mutableStateOf<Any?>(null) }
     var installJob by remember { mutableStateOf<Job?>(null) }
     var pendingStart by remember { mutableStateOf<ConversationViewModel?>(null) }
+    var pendingStartSurface by remember { mutableStateOf<ConversationSurfaceRequest?>(null) }
     var transitionJob by remember { mutableStateOf<Job?>(null) }
     var mounted by remember { mutableStateOf(true) }
     var speechOutputSaving by remember { mutableStateOf(false) }
@@ -121,14 +129,24 @@ fun ConversationRoute(
             transitionCallback(false)
         }
     }
+    fun isFresh(vm: ConversationViewModel): Boolean {
+        val latest = runtime.settings.state.value
+        return activeSurface() && mounted && foreground && lifecycleOwner.lifecycle.currentState.isAtLeast(Lifecycle.State.STARTED) &&
+            !changing && !runtime.owners.teardownFailed.value && viewModel === vm && vm.hasCurrentOwner &&
+            !latest.loading && !latest.loadError && latest.settings?.let { runtime.matches(it, vm.config) } == true
+    }
+
     val permissionLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
         val requested = pendingStart
+        val requestSurface = pendingStartSurface
+        pendingStartSurface = null
         pendingStart = null
-        val latest = runtime.settings.state.value.settings
-        if (requested != null && requested === viewModel && latest != null && runtime.matches(latest, requested.config) &&
-            requested.hasCurrentOwner && !changing && !runtime.owners.teardownFailed.value && mounted &&
-            lifecycleOwner.lifecycle.currentState.isAtLeast(Lifecycle.State.STARTED)) {
-            if (granted) requested.start() else requested.permissionDenied()
+        if (requested != null && requestSurface != null) {
+            requestSurface.completePermission(
+                requested,
+                granted = granted && context.checkSelfPermission(Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED,
+                routeIsFresh = { isFresh(requested) && installRequest == null },
+            )
         }
     }
     val currentVm = viewModel
@@ -139,7 +157,6 @@ fun ConversationRoute(
                 Lifecycle.Event.ON_START -> { foreground = true; currentVm?.enterForeground() }
                 Lifecycle.Event.ON_STOP -> {
                     foreground = false
-                    pendingStart = null
                     installRequest = null
                     installJob?.cancel()
                     transitionJob?.cancel()
@@ -151,7 +168,6 @@ fun ConversationRoute(
         lifecycleOwner.lifecycle.addObserver(observer)
         onDispose {
             lifecycleOwner.lifecycle.removeObserver(observer)
-            pendingStart = null
             installRequest = null
             installJob?.cancel()
             currentVm?.leaveForeground()
@@ -161,7 +177,8 @@ fun ConversationRoute(
         val latest = runtime.settings.state.value.settings ?: return@select
         val vm = viewModel
         val preparing = vm?.preparation?.value in setOf(ConversationPreparation.CHECKING, ConversationPreparation.INSTALLING, ConversationPreparation.TRANSLATION)
-        if (!loaded || !foreground || changing || teardownFailed || preparing || latest.languagePair != settings.languagePair ||
+        if (!mounted || !loaded || !foreground || changing || teardownFailed || preparing ||
+            runtime.owners.artifactUpdateReserved.value || latest.languagePair != settings.languagePair ||
             selected == latest.languagePair || selected.source == selected.target ||
             LanguageCatalog.find(selected.source) == null || LanguageCatalog.find(selected.target) == null ||
             (vm != null && (!vm.hasCurrentOwner || !runtime.matches(latest, vm.config)))) return@select
@@ -172,7 +189,6 @@ fun ConversationRoute(
         recognitionInstallError = false
         installRequest = null
         installJob?.cancel()
-        pendingStart = null
         transitionCallback(true)
         transitionJob = scope.launch(start = CoroutineStart.UNDISPATCHED) {
             try {
@@ -192,6 +208,9 @@ fun ConversationRoute(
         }
     }
     val shown = currentVm?.takeIf { runtime.matches(settings, it.config) && it.hasCurrentOwner }
+    val artifactUpdate = if (descriptor?.let { runtime.registry.supportsArtifactUpdate(it.id) } == true) {
+        shown?.takeIf { foreground }?.artifactUpdate?.collectAsStateWithLifecycle()?.value ?: TranslationArtifactUpdateState()
+    } else null
     val state = shown?.state?.collectAsStateWithLifecycle()?.value ?: ConversationState()
     val statuses = shown?.modelStatuses?.collectAsStateWithLifecycle()?.value ?: emptyList()
     val downloadPackages = shown?.downloadPackages?.collectAsStateWithLifecycle()?.value ?: emptyList()
@@ -222,7 +241,7 @@ fun ConversationRoute(
         speechOutputProblem = speechOutputProblem,
         speechOutputSaveError = outputSaveError,
         onToggleSpeechOutput = toggle@{
-            if (!mounted || !foreground || changing || teardownFailed || !loaded) return@toggle
+            if (!mounted || !foreground || changing || teardownFailed || !loaded || runtime.owners.artifactUpdateReserved.value) return@toggle
             if (shown != null) {
                 shown.toggleSpeechOutput()
             } else if (settings.speechOutputEnabled && !speechOutputSaving) {
@@ -244,14 +263,19 @@ fun ConversationRoute(
                 }
             }
         },
-        onPrepare = { if (installRequest == null && !changing && !teardownFailed) shown?.prepareLanguages() },
+        onPrepare = {
+            if (shown != null && isFresh(shown) && installRequest == null && pendingStart == null &&
+                !runtime.owners.artifactUpdateReserved.value) shown.prepareLanguages()
+        },
         onSessionAction = {
-            if (shown?.state?.value?.sessionActive == true) { pendingStart = null; shown.stop() }
-            else if (shown != null && installRequest == null && !changing && !teardownFailed && foreground) {
-                val latest = runtime.settings.state.value.settings
-                if (latest != null && runtime.matches(latest, shown.config) && shown.hasCurrentOwner) {
-                    if (context.checkSelfPermission(Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED) shown.start()
-                    else if (pendingStart == null) { pendingStart = shown; permissionLauncher.launch(Manifest.permission.RECORD_AUDIO) }
+            if (shown?.state?.value?.sessionActive == true) shown.stop()
+            else if (shown != null && isFresh(shown) && shown.canStart && installRequest == null && pendingStart == null) {
+                if (context.checkSelfPermission(Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED) {
+                    shown.start()
+                } else if (shown.beginStartPermissionRequest()) {
+                    pendingStart = shown
+                    pendingStartSurface = captureSurface()
+                    permissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
                 }
             }
         },
@@ -260,7 +284,9 @@ fun ConversationRoute(
         languageSelectionEnabled = loaded && foreground && !changing && !teardownFailed,
         languageChanging = changing,
         languageChangeError = if (teardownFailed) ConversationLanguageChangeError.TEARDOWN else languageError,
-        onPairSelected = selectPair, onOpenText = onOpenText,
+        onPairSelected = selectPair, onOpenText = {
+            if (mounted && foreground && !changing && !runtime.owners.artifactUpdateReserved.value) onOpenText()
+        },
         systemRecognition = settings.speechRecognitionBackend == SpeechRecognitionBackend.SYSTEM_OFFLINE,
         recognitionReadiness = recognitionReadiness,
         speechRecognitionService = settings.speechRecognitionService,
@@ -277,34 +303,36 @@ fun ConversationRoute(
         canInstallRecognitionData = shown != null && settings.speechRecognitionBackend == SpeechRecognitionBackend.SYSTEM_OFFLINE &&
             settings.speechRecognitionService != null &&
             recognitionReadiness in setOf(SpeechRecognitionReadiness.MISSING_LOCAL_MODEL, SpeechRecognitionReadiness.SCHEDULED) &&
-            installRequest == null && foreground && !changing && !teardownFailed &&
+            installRequest == null && pendingStart == null && foreground && !changing && !teardownFailed &&
             preparation in setOf(ConversationPreparation.IDLE, ConversationPreparation.ERROR) && !state.sessionActive,
         recognitionInstallError = recognitionInstallError,
         onInstallRecognitionData = install@{
             val requested = shown ?: return@install
             val initialSettings = runtime.settings.state.value.settings ?: return@install
             val initialOwnership = runtime.owners.ownershipVersion.value
+            val requestSurface = captureSurface()
             fun fresh(): Boolean {
                 val latest = runtime.settings.state.value
                 if (initialSettings.speechRecognitionBackend != SpeechRecognitionBackend.SYSTEM_OFFLINE) return false
-                return mounted && foreground && lifecycleOwner.lifecycle.currentState.isAtLeast(Lifecycle.State.STARTED) &&
+                return requestSurface.isCurrent() && mounted && foreground && lifecycleOwner.lifecycle.currentState.isAtLeast(Lifecycle.State.STARTED) &&
                     viewModel === requested && requested.hasCurrentOwner && !changing &&
+                    !runtime.owners.artifactUpdateReserved.value &&
                     !runtime.owners.teardownFailed.value && !latest.loading && !latest.loadError &&
                     latest.settings == initialSettings && runtime.matches(initialSettings, requested.config) &&
                     runtime.owners.ownershipVersion.value == initialOwnership
             }
-            if (installRequest != null || runtime.owners.busy.value || !fresh() || requested.state.value.sessionActive ||
+            if (installRequest != null || pendingStart != null || runtime.owners.busy.value || !fresh() || requested.state.value.sessionActive ||
                 requested.preparation.value !in setOf(ConversationPreparation.IDLE, ConversationPreparation.ERROR)) return@install
             val token = Any()
             installRequest = token
             recognitionInstallError = false
-            pendingStart = null
             installJob = scope.launch {
                 try {
-                    val request = requested.recognitionDataInstallRequest { installRequest === token && fresh() }
-                    coroutineContext.ensureActive()
-                    // owners.use has returned: external consent cannot retain the runtime owner gate.
-                    if (installRequest === token && fresh()) recognitionInstallError = !AndroidRecognitionDataInstaller(context).install(request)
+                    requestSurface.launchSpeechInstall(
+                        routeIsFresh = { installRequest === token && fresh() },
+                        attest = requested::recognitionDataInstallRequest,
+                        launch = { recognitionInstallError = !AndroidRecognitionDataInstaller(context).install(it) },
+                    )
                 } catch (cancelled: CancellationException) {
                     throw cancelled
                 } catch (_: Exception) {
@@ -316,34 +344,35 @@ fun ConversationRoute(
         },
         outputReadiness = outputReadiness, installError = installError,
         canInstallVoiceData = shown != null && outputReadiness == SpeechOutputReadiness.MISSING_LOCAL_VOICE &&
-            installRequest == null && foreground && !changing &&
+            installRequest == null && pendingStart == null && foreground && !changing &&
             !teardownFailed && (preparation == ConversationPreparation.IDLE || preparation == ConversationPreparation.ERROR) && !state.sessionActive,
         onInstallVoiceData = install@{
             val requested = shown ?: return@install
             val initialSettings = runtime.settings.state.value.settings ?: return@install
             val initialOwnership = runtime.owners.ownershipVersion.value
+            val requestSurface = captureSurface()
             fun fresh(): Boolean {
                 val latest = runtime.settings.state.value
-                return mounted && foreground && lifecycleOwner.lifecycle.currentState.isAtLeast(Lifecycle.State.STARTED) &&
+                return requestSurface.isCurrent() && mounted && foreground && lifecycleOwner.lifecycle.currentState.isAtLeast(Lifecycle.State.STARTED) &&
                     viewModel === requested && requested.hasCurrentOwner && !changing &&
+                    !runtime.owners.artifactUpdateReserved.value &&
                     !runtime.owners.teardownFailed.value && !latest.loading && !latest.loadError &&
                     latest.settings == initialSettings && runtime.matches(initialSettings, requested.config) &&
                     runtime.owners.ownershipVersion.value == initialOwnership
             }
-            if (installRequest != null || runtime.owners.busy.value || !fresh() ||
+            if (installRequest != null || pendingStart != null || runtime.owners.busy.value || !fresh() ||
                 requested.outputReadiness.value != SpeechOutputReadiness.MISSING_LOCAL_VOICE || requested.state.value.sessionActive ||
                 (requested.preparation.value != ConversationPreparation.IDLE && requested.preparation.value != ConversationPreparation.ERROR)) return@install
             val token = Any()
             installRequest = token
             installError = false
-            pendingStart = null
             installJob = scope.launch {
                 try {
-                    val engine = requested.voiceDataEnginePackage { installRequest === token && fresh() }
-                    coroutineContext.ensureActive()
-                    if (installRequest === token && fresh()) {
-                        installError = !installSystemVoiceData(context, engine)
-                    }
+                    requestSurface.launchSpeechInstall(
+                        routeIsFresh = { installRequest === token && fresh() },
+                        attest = requested::voiceDataEnginePackage,
+                        launch = { installError = !installSystemVoiceData(context, it) },
+                    )
                 } catch (cancelled: CancellationException) {
                     throw cancelled
                 } catch (_: Exception) {
@@ -356,11 +385,45 @@ fun ConversationRoute(
         onRecheck = {
             val latest = runtime.settings.state.value.settings
             if (installRequest == null && shown != null && latest != null && shown.hasCurrentOwner && runtime.matches(latest, shown.config) &&
-                foreground && !changing && !teardownFailed) {
+                foreground && !changing && !teardownFailed && !runtime.owners.artifactUpdateReserved.value) {
                 installError = false
                 recognitionInstallError = false
                 shown.recheckReadiness()
             }
         },
+        artifactUpdate = artifactUpdate,
+        artifactUpdating = artifactUpdating,
+        artifactUpdateEnabled = !ownerBusy && installRequest == null && pendingStart == null && foreground && activeSurface(),
+        onUpdateArtifact = {
+            if (shown != null) shown.updateArtifact {
+                isFresh(shown) && installRequest == null && pendingStart == null
+            }
+        },
     )
+}
+
+/** A deferred speech action cannot become current again after another Home surface took over. */
+internal class ConversationSurfaceRequest(
+    private val isActive: () -> Boolean,
+    private val version: () -> Long,
+) {
+    private val requested = version()
+    fun isCurrent(): Boolean = isActive() && version() == requested
+
+    fun completePermission(model: ConversationViewModel, granted: Boolean, routeIsFresh: () -> Boolean) {
+        model.completeStartPermissionRequest(granted, isFresh = isCurrent() && routeIsFresh())
+    }
+
+    /** External consent starts only after the attestation owner gate has unwound. */
+    suspend fun <T> launchSpeechInstall(
+        routeIsFresh: () -> Boolean,
+        attest: suspend (() -> Boolean) -> T,
+        launch: (T) -> Unit,
+    ) {
+        fun fresh() = isCurrent() && routeIsFresh()
+        if (!fresh()) return
+        val request = attest(::fresh)
+        coroutineContext.ensureActive()
+        if (fresh()) launch(request)
+    }
 }

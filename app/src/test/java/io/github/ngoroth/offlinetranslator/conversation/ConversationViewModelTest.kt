@@ -17,6 +17,9 @@ import io.github.ngoroth.offlinetranslator.core.SpeechModelStatus
 import io.github.ngoroth.offlinetranslator.core.SpeechPlaybackStart
 import io.github.ngoroth.offlinetranslator.core.SpeechSegment
 import io.github.ngoroth.offlinetranslator.core.TranslationEngine
+import io.github.ngoroth.offlinetranslator.core.TranslationArtifactUpdate
+import io.github.ngoroth.offlinetranslator.core.TranslationArtifactUpdateState
+import io.github.ngoroth.offlinetranslator.core.TranslationFailure
 import io.github.ngoroth.offlinetranslator.core.ConversationTranscriptStatus
 import io.github.ngoroth.offlinetranslator.core.TranslationPreparationState
 import io.github.ngoroth.offlinetranslator.core.TranslationPreparationPhase
@@ -26,6 +29,7 @@ import io.github.ngoroth.offlinetranslator.core.SpeechRecognitionBackend
 import io.github.ngoroth.offlinetranslator.core.SpeechRecognitionReadiness
 import io.github.ngoroth.offlinetranslator.runtime.ConversationRuntimeOwner
 import io.github.ngoroth.offlinetranslator.runtime.RuntimeOwnerController
+import io.github.ngoroth.offlinetranslator.tencent.TencentTranslationEngine
 import io.github.ngoroth.offlinetranslator.ui.ScreenAwake
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
@@ -51,6 +55,118 @@ import org.junit.Test
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class ConversationViewModelTest {
+    @Test fun delayedConversationActionsCannotReplayAfterLeavingTheHomeSurface() = runTest {
+        withModel(supportsArtifactUpdate = true) { fixture ->
+            var settingsOpen = false
+            var conversation = true
+            var version = 0L
+            fun request() = ConversationSurfaceRequest({ conversation && !settingsOpen }, { version })
+            for (switchMode in listOf(false, true)) {
+                val grant = request()
+                assertTrue(fixture.model.beginStartPermissionRequest())
+                val consent = request()
+                val attested = CompletableDeferred<Unit>()
+                var launches = 0
+                val install = async {
+                    consent.launchSpeechInstall({ true }, { attested.await() }) { launches++ }
+                }
+                runCurrent()
+                version++
+                if (switchMode) conversation = false else settingsOpen = true
+                grant.completePermission(fixture.model, granted = true, routeIsFresh = { true })
+                assertFalse(consent.isCurrent())
+                conversation = true
+                settingsOpen = false
+                attested.complete(Unit)
+                install.await()
+                assertEquals(0, launches)
+                assertEquals(0, fixture.capture.starts)
+            }
+            val live = request()
+            var launched = false
+            live.launchSpeechInstall({ true }, { Unit }) { launched = true }
+            assertTrue(launched)
+            assertTrue(fixture.model.beginStartPermissionRequest())
+            live.completePermission(fixture.model, granted = true, routeIsFresh = { true })
+            runCurrent()
+            assertEquals(1, fixture.capture.starts)
+        }
+    }
+
+    @Test fun coldConversationCanUpdateUsablePreviousModelWithoutSpeechResourcesOrCapture() = runTest {
+        withModel(initiallyReady = false, supportsArtifactUpdate = true, configure = {
+            it.translation.localInstalled = true
+            it.recognition.readinessState.value = SpeechRecognitionReadiness.MISSING_LOCAL_MODEL
+            it.output.readiness = SpeechOutputReadiness.MISSING_LOCAL_VOICE
+        }) { fixture ->
+            val model = fixture.model
+            assertEquals(1, fixture.translation.localPreparations)
+            assertEquals("Tencent Hy-MT2", model.artifactUpdate?.value?.activeProvider?.displayName)
+            assertTrue(model.canUpdateArtifact)
+            assertFalse(model.ready.value)
+            val speechChecks = fixture.recognition.checks
+            model.updateArtifact()
+            runCurrent()
+            assertEquals(TencentTranslationEngine.descriptor, model.artifactUpdate?.value?.activeProvider)
+            assertFalse(model.canUpdateArtifact)
+            assertFalse(model.canStart)
+            assertEquals(0, fixture.capture.starts)
+            assertEquals(0, fixture.models.installs)
+            assertEquals(0, fixture.recognition.installs)
+            assertEquals(speechChecks, fixture.recognition.checks)
+            assertEquals(0, fixture.translation.preparations)
+        }
+    }
+
+    @Test fun coldConversationWithUnusablePreviousModelDoesNotOfferAnUpdate() = runTest {
+        val failure = TranslationFailure.RuntimeLoad()
+        withModel(initiallyReady = false, supportsArtifactUpdate = true, configure = {
+            it.translation.localInstalled = true
+            it.translation.localFailure = failure
+            it.recognition.readinessState.value = SpeechRecognitionReadiness.MISSING_LOCAL_MODEL
+        }) { fixture ->
+            assertEquals(1, fixture.translation.localPreparations)
+            assertEquals(TranslationArtifactUpdateState(), fixture.model.artifactUpdate?.value)
+            assertEquals(failure, fixture.model.preparationFailure.value)
+            assertFalse(fixture.model.canStart)
+            fixture.model.updateArtifact()
+            runCurrent()
+            assertEquals(0, fixture.translation.updates)
+            assertEquals(0, fixture.models.installs)
+        }
+    }
+
+    @Test fun pendingPermissionAndReservedUpdateRejectEachOtherAndStaleGrantCannotStartCapture() = runTest {
+        withModel(supportsArtifactUpdate = true) { fixture ->
+            val model = fixture.model
+            assertTrue(model.beginStartPermissionRequest())
+            model.updateArtifact()
+            runCurrent()
+            assertEquals(0, fixture.translation.updates)
+            model.completeStartPermissionRequest(granted = true, isFresh = false)
+            runCurrent()
+            assertEquals(0, fixture.capture.starts)
+
+            fixture.translation.updateGate = CompletableDeferred()
+            model.updateArtifact()
+            assertTrue(fixture.controller.artifactUpdateReserved.value)
+            assertFalse(model.beginStartPermissionRequest())
+            model.start()
+            model.prepareLanguages()
+            model.completeStartPermissionRequest(granted = true, isFresh = true)
+            runCurrent()
+            assertEquals(1, fixture.translation.updates)
+            assertEquals(0, fixture.capture.starts)
+            assertEquals(0, fixture.models.installs)
+            fixture.translation.updateGate?.complete(Unit)
+            runCurrent()
+            assertEquals(0, fixture.capture.starts)
+            model.start()
+            runCurrent()
+            assertEquals(1, fixture.capture.starts)
+        }
+    }
+
     @Test fun screenDemandCoversWaitingAndReleasesOnStopAndBackgroundWithoutResumingSession() = runTest {
         withModel { fixture ->
             assertFalse(fixture.screen.keepScreenOn)
@@ -1420,12 +1536,13 @@ class ConversationViewModelTest {
         speechOutputBackend: SpeechOutputBackend = SpeechOutputBackend.SYSTEM_OFFLINE,
         speechOutputEnabled: Boolean = true,
         expectedDisposalFailure: Throwable? = null,
+        supportsArtifactUpdate: Boolean = false,
         configure: (Fixture) -> Unit = {},
         block: suspend TestScope.(Fixture) -> Unit,
     ) {
         val dispatcher = StandardTestDispatcher(testScheduler)
         Dispatchers.setMain(dispatcher)
-        val fixture = createFixture(initiallyReady, dispatcher, speechOutputBackend, speechOutputEnabled)
+        val fixture = createFixture(initiallyReady, dispatcher, speechOutputBackend, speechOutputEnabled, supportsArtifactUpdate)
         configure(fixture)
         try {
             runCurrent()
@@ -1437,6 +1554,7 @@ class ConversationViewModelTest {
             fixture.models.readinessExitGate?.complete(Unit)
             fixture.translation.preparationExitGate?.complete(Unit)
             fixture.translation.localGate?.complete(Unit)
+            fixture.translation.updateGate?.complete(Unit)
             fixture.preference.gate?.complete(Unit)
             fixture.output.prepareGate?.complete(Unit)
             fixture.output.playbackGate?.complete(Unit)
@@ -1459,6 +1577,7 @@ class ConversationViewModelTest {
         dispatcher: CoroutineDispatcher,
         speechOutputBackend: SpeechOutputBackend,
         speechOutputEnabled: Boolean,
+        supportsArtifactUpdate: Boolean = false,
     ): Fixture {
         val observationJob = SupervisorJob()
         val scope = CoroutineScope(dispatcher + observationJob)
@@ -1466,7 +1585,7 @@ class ConversationViewModelTest {
         val models = FakeModels(initiallyReady)
         val capture = FakeCapture()
         val recognition = FakeRecognition()
-        val translation = FakeTranslation(initiallyReady)
+        val translation = FakeTranslation(initiallyReady, supportsArtifactUpdate)
         val output = FakeOutput()
         val config = ConversationSessionConfig(
             languages = listOf(LanguageCatalog.RUSSIAN, LanguageCatalog.ENGLISH),
@@ -1619,19 +1738,37 @@ class ConversationViewModelTest {
         }
     }
 
-    private class FakeTranslation(private var ready: Boolean) : TranslationEngine {
+    private class FakeTranslation(private var ready: Boolean, supportsArtifactUpdate: Boolean = false) : TranslationEngine {
+        private val updateState = MutableStateFlow(TranslationArtifactUpdateState())
+        var updateGate: CompletableDeferred<Unit>? = null
+        var updates = 0
+        override val artifactUpdate: TranslationArtifactUpdate? = if (supportsArtifactUpdate) {
+            object : TranslationArtifactUpdate {
+                override val state = updateState
+                override suspend fun update() {
+                    updates++
+                    updateGate?.await()
+                    state.value = TranslationArtifactUpdateState(TencentTranslationEngine.descriptor)
+                }
+            }
+        } else null
         var localInstalled = false
         var localPreparations = 0
         var localGate: CompletableDeferred<Unit>? = null
         var localFailure: io.github.ngoroth.offlinetranslator.core.TranslationFailure? = null
         override suspend fun prepareLocal(): ModelAvailability {
             localPreparations++
-            if (!localInstalled) return modelAvailability()
-            // Model a native call that finishes after cancellation and can return or throw late.
-            withContext(NonCancellable) { localGate?.await() }
-            localFailure?.let { throw it }
-            ready = true
-            return ModelAvailability.READY
+            if (localInstalled) {
+                // Model a native call that finishes after cancellation and can return or throw late.
+                withContext(NonCancellable) { localGate?.await() }
+                localFailure?.let { throw it }
+                ready = true
+            }
+            if (ready && artifactUpdate != null) {
+                val previous = TencentTranslationEngine.descriptor.copy(displayName = "Tencent Hy-MT2")
+                updateState.value = TranslationArtifactUpdateState(previous, offerAvailable = true)
+            }
+            return modelAvailability()
         }
         override val preparation = kotlinx.coroutines.flow.MutableStateFlow(TranslationPreparationState(
             if (ready) TranslationPreparationPhase.READY else TranslationPreparationPhase.MISSING,

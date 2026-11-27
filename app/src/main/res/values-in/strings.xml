@@ -190,8 +190,10 @@
     <string name="translation_encoding_error">Unicode tidak valid dalam sumber atau terjemahan. Edit sumber atau coba lagi; terjemahan parsial tidak disimpan.</string>
     <string name="translation_timeout">Persiapan terjemahan terlalu lama. Periksa status persiapan dan coba lagi.</string>
     <string name="model_prepare_hint">Siapkan model.</string>
-    <string name="tencent_model_download_hint">1,13 GB · unduh lewat Wi‑Fi</string>
-    <string name="tencent_model_explanation">Siapkan model terjemahan 1,13 GB melalui Wi‑Fi untuk penggunaan offline. RAM beberapa GB mungkin diperlukan.</string>
+    <string name="tencent_model_download_hint">1,35 GB · unduh lewat Wi‑Fi</string>
+    <string name="tencent_model_explanation">Siapkan model terjemahan 1,35 GB melalui Wi‑Fi untuk penggunaan offline. RAM beberapa GB mungkin diperlukan.</string>
+    <string name="translation_artifact_update_title">Tencent Hy-MT3 tersedia</string>
+    <string name="translation_artifact_update_action">Perbarui model</string>
     <string name="mozilla_model_download_hint">Model bahasa pilihan · unduh lewat Wi-Fi</string>
     <string name="mozilla_model_explanation">Siapkan model untuk kedua arah bahasa pilihan melalui Wi-Fi. Pasangan tanpa bahasa Inggris diterjemahkan melalui bahasa Inggris. Mengganti penyedia mempertahankan model yang diunduh dan tidak mengubah kata yang dikenali.</string>
     <string name="settings_recognition_service">Layanan pengenalan ucapan</string>

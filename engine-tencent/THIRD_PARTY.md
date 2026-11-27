@@ -11,12 +11,20 @@ ARM64 feature is absent, the ARMv8-A runtime is loaded instead.
 The AAR contains no model weights. Its `assets/tencent-native/` directory includes
 the upstream MIT license and additional upstream license inputs.
 
-The separately downloaded model is Tencent Hy-MT2-1.8B Q4_K_M, repository revision
-`a0c709d9fac510f2c807aa3af52872340dc37a4a`, 1,133,080,448 bytes,
-SHA-256 `dc5f44fcf1fa496ee7ad725982c0c8c553a4de00259b53af84c4b89fb0c06699`.
-Its license is Apache-2.0, with the exact distribution license at
+Explicit Prepare or Update downloads Tencent Hy-MT3-1.8B Q4_K_M, repository revision
+`4c4370b31f13ccac4ac71133e3a0967c88cc792c`, 1,348,432,160 bytes,
+SHA-256 `bae6e591103654ff43ef0de7d1492f6e6df1f955505f6bb2cc52e86fc399a942`.
+The exact Apache-2.0 license is at
+<https://huggingface.co/tencent/Hy-MT3-1.8B-GGUF/blob/4c4370b31f13ccac4ac71133e3a0967c88cc792c/LICENSE.txt>.
+
+Previously installed Tencent Hy-MT2-1.8B Q4_K_M remains usable until Hy-MT3
+passes verification and initialization. This verify-only model uses repository
+revision `a0c709d9fac510f2c807aa3af52872340dc37a4a`, 1,133,080,448 bytes,
+SHA-256 `dc5f44fcf1fa496ee7ad725982c0c8c553a4de00259b53af84c4b89fb0c06699`,
+and its own Apache-2.0 license at
 <https://huggingface.co/tencent/Hy-MT2-1.8B-GGUF/blob/a0c709d9fac510f2c807aa3af52872340dc37a4a/LICENSE.txt>.
-The application owns model preparation and its model-license presentation.
+The application packages both exact model licenses and presents the loaded
+model's attribution and Terms. Neither model is included in the JNI AAR or APK.
 
 The provider bridge uses deterministic strict UTF-8-prefix-constrained greedy
 selection rather than unconstrained greedy. It preserves eligible greedy winners

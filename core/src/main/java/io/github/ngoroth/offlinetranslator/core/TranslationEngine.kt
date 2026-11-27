@@ -14,6 +14,8 @@ interface TranslationEngine : AutoCloseable {
 
     val preparation: StateFlow<TranslationPreparationState>
 
+    val artifactUpdate: TranslationArtifactUpdate? get() = null
+
     suspend fun modelAvailability(): ModelAvailability
 
     /** Initializes only verified installed resources; never downloads, repairs or installs resources.
@@ -34,3 +36,16 @@ interface TranslationEngine : AutoCloseable {
     /** Completes only after all actual provider operations and owned resources have finished. */
     suspend fun closeAndJoin() { close() }
 }
+
+interface TranslationArtifactUpdate {
+    val state: StateFlow<TranslationArtifactUpdateState>
+
+    /** Attempts the offered update. Recoverable failures are reported in [state]. */
+    suspend fun update()
+}
+
+data class TranslationArtifactUpdateState(
+    val activeProvider: TranslationProviderDescriptor? = null,
+    val offerAvailable: Boolean = false,
+    val preparation: TranslationPreparationState? = null,
+)

@@ -116,6 +116,26 @@ class TranslatorHelpTest {
         compose.onNodeWithTag(TranslatorHelpTestTags.DIALOG).assertDoesNotExist()
         compose.onNodeWithTag(TranslatorHelpTestTags.ACTION).assertIsDisplayed()
     }
+
+    @Test fun tencentPreparationHelpRemainsWhenActiveTermsAreUnknownOrInvalidated() {
+        val offered = TencentTranslationEngine.descriptor
+        val active = mutableStateOf<TranslationProviderDescriptor?>(null)
+        val context = InstrumentationRegistry.getInstrumentation().targetContext
+        compose.setContent { MaterialTheme {
+            TranslatorHelp(conversation = false, provider = offered, activeProvider = active.value)
+        } }
+        compose.onNodeWithTag(TranslatorHelpTestTags.ACTION).performClick()
+        val guidance = compose.onNodeWithText(context.getString(R.string.tencent_model_explanation))
+        guidance.performScrollTo().assertIsDisplayed()
+        compose.onNodeWithTag(TranslatorHelpTestTags.TERMS_ACTION).assertDoesNotExist()
+        compose.runOnIdle { active.value = offered }
+        compose.onNodeWithTag(TranslatorHelpTestTags.TERMS_ACTION).performScrollTo().performClick()
+        compose.onNodeWithTag(TranslatorHelpTestTags.TERMS_DIALOG).assertIsDisplayed()
+        compose.runOnIdle { active.value = null }
+        compose.onNodeWithTag(TranslatorHelpTestTags.TERMS_DIALOG).assertDoesNotExist()
+        compose.onNodeWithTag(TranslatorHelpTestTags.TERMS_ACTION).assertDoesNotExist()
+        guidance.performScrollTo().assertIsDisplayed()
+    }
     @Test fun mozillaHelpAndTermsUseOnlyItsOwnModelExplanationAttributionAndDestination() {
         val other = MozillaTranslationEngine.descriptor
         val provider = mutableStateOf(other)

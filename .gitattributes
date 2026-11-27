@@ -3,3 +3,6 @@
 *.bat text eol=crlf
 *.jar binary
 *.png binary
+
+/LICENSES/Tencent-Hy-MT2-Apache-2.0.txt -text
+/LICENSES/Tencent-Hy-MT3-Apache-2.0.txt -text

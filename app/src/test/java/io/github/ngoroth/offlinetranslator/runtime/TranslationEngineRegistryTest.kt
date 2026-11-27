@@ -61,7 +61,7 @@ class TranslationEngineRegistryTest {
         val registry = TranslationEngineRegistry(listOf(TranslationEngineRegistry.Registration(
             descriptor,
             { if (it == unknown) TranslationCapability.Unknown else TranslationCapability.Pivot(LanguageCatalog.ENGLISH) },
-            factory::create,
+            create = factory::create,
         )))
         assertEquals(descriptor, registry.descriptor(descriptor.id))
         assertEquals(TranslationCapability.Unknown, registry.capability(descriptor.id, unknown))

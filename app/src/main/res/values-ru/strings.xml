@@ -190,8 +190,10 @@
     <string name="translation_encoding_error">Некорректный Unicode в исходном тексте или переводе. Измените текст или повторите; частичный перевод не сохранён.</string>
     <string name="translation_timeout">Подготовка перевода заняла слишком много времени. Проверьте её состояние и повторите.</string>
     <string name="model_prepare_hint">Подготовьте модели.</string>
-    <string name="tencent_model_download_hint">1,13 ГБ · загрузка по Wi‑Fi</string>
-    <string name="tencent_model_explanation">Подготовьте модель перевода 1,13 ГБ по Wi-Fi для работы без интернета. Может потребоваться несколько ГБ оперативной памяти.</string>
+    <string name="tencent_model_download_hint">1,35 ГБ · загрузка по Wi-Fi</string>
+    <string name="tencent_model_explanation">Подготовьте модель перевода 1,35 ГБ по Wi-Fi для работы без интернета. Может потребоваться несколько ГБ оперативной памяти.</string>
+    <string name="translation_artifact_update_title">Доступна Tencent Hy-MT3</string>
+    <string name="translation_artifact_update_action">Обновить модель</string>
     <string name="mozilla_model_download_hint">Модели выбранных языков · загрузка по Wi-Fi</string>
     <string name="mozilla_model_explanation">Подготовьте модели для обоих направлений выбранных языков по Wi-Fi. Пары без английского переводятся через английский. При смене переводчика загруженные модели сохраняются, а распознанные слова не меняются.</string>
     <string name="settings_recognition_service">Служба распознавания речи</string>

@@ -190,8 +190,10 @@
     <string name="translation_encoding_error">Unicode no válido en el original o la traducción. Edita el original o reintenta; no se guardó ninguna traducción parcial.</string>
     <string name="translation_timeout">La preparación tardó demasiado. Comprueba su estado y reintenta.</string>
     <string name="model_prepare_hint">Prepara los modelos.</string>
-    <string name="tencent_model_download_hint">1,13 GB · descarga por Wi‑Fi</string>
-    <string name="tencent_model_explanation">Prepara el modelo de traducción de 1,13 GB por Wi‑Fi para usarlo sin conexión. Puede necesitar varios GB de RAM.</string>
+    <string name="tencent_model_download_hint">1,35 GB · descarga por Wi‑Fi</string>
+    <string name="tencent_model_explanation">Prepara el modelo de traducción de 1,35 GB por Wi‑Fi para usarlo sin conexión. Puede necesitar varios GB de RAM.</string>
+    <string name="translation_artifact_update_title">Tencent Hy-MT3 está disponible</string>
+    <string name="translation_artifact_update_action">Actualizar modelo</string>
     <string name="mozilla_model_download_hint">Modelos de los idiomas elegidos · descarga por Wi-Fi</string>
     <string name="mozilla_model_explanation">Prepara por Wi-Fi los modelos de ambos sentidos de los idiomas elegidos. Los pares sin inglés se traducen a través del inglés. Cambiar de proveedor conserva los modelos descargados y no modifica las palabras reconocidas.</string>
     <string name="settings_recognition_service">Servicio de reconocimiento de voz</string>

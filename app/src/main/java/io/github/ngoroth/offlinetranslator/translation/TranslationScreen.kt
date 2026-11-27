@@ -34,6 +34,7 @@ import androidx.compose.ui.unit.dp
 import io.github.ngoroth.offlinetranslator.R
 import io.github.ngoroth.offlinetranslator.core.ConfigurationProblem
 import io.github.ngoroth.offlinetranslator.core.TranslationEngine
+import io.github.ngoroth.offlinetranslator.core.TranslationArtifactUpdateState
 import io.github.ngoroth.offlinetranslator.core.TranslationPreparationPhase
 import io.github.ngoroth.offlinetranslator.core.TranslationProviderDescriptor
 import io.github.ngoroth.offlinetranslator.ui.languageName
@@ -43,6 +44,7 @@ import io.github.ngoroth.offlinetranslator.ui.configurationProblemMessage
 import io.github.ngoroth.offlinetranslator.ui.ProviderAttribution
 import io.github.ngoroth.offlinetranslator.ui.TranslatorHelp
 import io.github.ngoroth.offlinetranslator.ui.PreparationProgress
+import io.github.ngoroth.offlinetranslator.ui.TranslationArtifactUpdateCard
 object TranslationTestTags {
     const val INPUT = "translation_input"
     const val OUTPUT = "translation_output"
@@ -73,9 +75,14 @@ fun TranslationScreen(
     languageChanging: Boolean = false,
     languageChangeError: TranslationLanguageChangeError? = null,
     ownerAvailable: Boolean = true,
+    artifactUpdate: TranslationArtifactUpdateState? = null,
+    artifactUpdating: Boolean = false,
+    artifactUpdateEnabled: Boolean = true,
+    onUpdateArtifact: () -> Unit = {},
 ) {
+    val activeProvider = if (artifactUpdate == null) provider else artifactUpdate.activeProvider
     Scaffold(contentWindowInsets = WindowInsets.safeDrawing) { padding ->
-        val blocked = !ownerAvailable || languageChanging || languageChangeError == TranslationLanguageChangeError.OPEN ||
+        val blocked = !ownerAvailable || artifactUpdating || languageChanging || languageChangeError == TranslationLanguageChangeError.OPEN ||
             languageChangeError == TranslationLanguageChangeError.TEARDOWN
         val confirmedMissing = ownerAvailable && state.modelStatus == ModelUiStatus.MISSING &&
             !state.operationInProgress && state.error == null && state.failure == null &&
@@ -94,14 +101,14 @@ fun TranslationScreen(
                     verticalArrangement = Arrangement.spacedBy(16.dp),
                 ) {
                 LanguagePairControls(
-                    pair = state.direction, enabled = languageSelectionEnabled && !languageChanging &&
+                    pair = state.direction, enabled = languageSelectionEnabled && !languageChanging && !artifactUpdating &&
                         !state.operationInProgress && languageChangeError != TranslationLanguageChangeError.TEARDOWN &&
                         languageChangeError != TranslationLanguageChangeError.OPEN,
                     firstLabel = stringResource(R.string.language_source), secondLabel = stringResource(R.string.language_target),
                     firstTag = TranslationTestTags.LANGUAGE_FIRST, secondTag = TranslationTestTags.LANGUAGE_SECOND,
                     swapTag = TranslationTestTags.SWAP, onPairSelected = onPairSelected,
                 )
-                TranslatorHelp(conversation = false, provider = provider, onOpenUri = onOpenUri)
+                TranslatorHelp(conversation = false, provider = provider, onOpenUri = onOpenUri, activeProvider = activeProvider)
                 if (languageChanging) Text(stringResource(R.string.conversation_languages_changing))
                 languageChangeError?.let {
                     Text(stringResource(when (it) {
@@ -115,7 +122,7 @@ fun TranslationScreen(
                 OutlinedTextField(
                     value = state.input,
                     onValueChange = onInputChanged,
-                    enabled = !state.operationInProgress && !languageChanging,
+                    enabled = !state.operationInProgress && !languageChanging && !artifactUpdating,
                     label = { Text(stringResource(R.string.input_hint)) },
                     isError = state.inputTooLong,
                     supportingText = if (state.inputTooLong) {
@@ -130,6 +137,9 @@ fun TranslationScreen(
                 ResultPanel(state)
                 configurationProblem?.let { Text(configurationProblemMessage(it), color = MaterialTheme.colorScheme.error) }
                 StatusPanel(state, confirmedMissing)
+                TranslationArtifactUpdateCard(artifactUpdate,
+                    artifactUpdateEnabled && !blocked && !state.operationInProgress && configurationProblem == null,
+                    onUpdateArtifact)
                 }
             }
             Surface(tonalElevation = 3.dp) {
@@ -146,7 +156,7 @@ fun TranslationScreen(
                             modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).testTag(TranslationTestTags.RETRY),
                         ) { Text(stringResource(R.string.retry_action)) }
                     }
-                    ProviderAttribution(provider)
+                    ProviderAttribution(activeProvider)
                     TranslationActions(state, onPrepare, onTranslate, configurationProblem, blocked, confirmedMissing)
                 }
             }

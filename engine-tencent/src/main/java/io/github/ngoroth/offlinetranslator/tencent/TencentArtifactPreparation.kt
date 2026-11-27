@@ -5,8 +5,6 @@ import android.net.ConnectivityManager
 import android.net.NetworkCapabilities
 import io.github.ngoroth.offlinetranslator.core.*
 import kotlinx.coroutines.*
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import java.io.File
@@ -20,15 +18,19 @@ import java.nio.file.StandardCopyOption.ATOMIC_MOVE
 import java.nio.file.StandardCopyOption.REPLACE_EXISTING
 import java.nio.file.attribute.BasicFileAttributes
 import java.security.MessageDigest
+import java.util.logging.Level
+import java.util.logging.Logger
 import kotlin.coroutines.CoroutineContext
 
 /** Process-shared installation/attestation only. Mutable native inference is owned by each engine. */
 class TencentArtifactPreparation internal constructor(
     private val noBackupDirectory: File,
-    private val artifact: TencentTranslationArtifact = TencentTranslationArtifact.PINNED,
+    private val artifact: TencentTranslationArtifact = TencentTranslationArtifact.CURRENT,
     private val wifiAvailable: () -> Boolean,
     private val openConnection: (URL) -> HttpURLConnection,
     private val availableBytes: () -> Long = { noBackupDirectory.usableSpace },
+    private val retired: TencentTranslationArtifact = TencentTranslationArtifact.RETIRED,
+    private val afterPublish: () -> Unit = {},
 ) {
     constructor(context: Context) : this(
         context.applicationContext.noBackupFilesDir,
@@ -46,145 +48,177 @@ class TencentArtifactPreparation internal constructor(
     )
 
     private lateinit var directory: File
-    private val slot = Mutex()
-    private val mutableState = MutableStateFlow(TranslationPreparationState())
-    internal val state = mutableState.asStateFlow()
-    private lateinit var installed: File
+    private var verifiedArtifact: TencentTranslationArtifact? = null
     private var verifiedIdentity: BasicFileAttributes? = null
 
-    internal suspend fun verifiedFile(verifying: () -> Unit = {}): File? = slot.withLock {
+    internal data class Installed(val file: File, val artifact: TencentTranslationArtifact, val current: Boolean)
+
+    /** Remains readable if dispatch back from the atomic move is cancelled. */
+    internal class Commit {
+        @Volatile var installed: Installed? = null
+            private set
+
+        internal fun recordPublication(value: Installed) { installed = value }
+    }
+
+    internal suspend fun verifiedFile(verifying: () -> Unit = {}): Installed? = storage {
+        // A committed current name is authoritative even when its contents are corrupt.
+        verify(artifact, current = true, verifying) ?: verify(retired, current = false, verifying)
+    }
+
+    private suspend fun verify(
+        pin: TencentTranslationArtifact,
+        current: Boolean,
+        verifying: () -> Unit,
+    ): Installed? {
+        val file = File(directory, pin.fileName)
+        if (!Files.exists(file.toPath(), NOFOLLOW_LINKS)) return null
+        safeFile(file)
+        val identity = attributes(file)
+        if (verifiedArtifact != pin || !sameIdentity(identity, verifiedIdentity)) {
+            verifying()
+            if (identity.size() != pin.bytes || hash(file, currentCoroutineContext()) != pin.sha256) {
+                verifiedIdentity = null
+                throw TranslationFailure.ArtifactCorrupt()
+            }
+            verifiedArtifact = pin
+            verifiedIdentity = identity
+        }
+        return Installed(file, pin, current)
+    }
+
+    /**
+     * Holds the file slot through activation. [initialize] must not reenter this store.
+     * The engine holds its own operation slot across this call and any subsequent recovery.
+     */
+    internal suspend fun prepareCurrent(
+        commit: Commit,
+        progress: (TranslationPreparationState) -> Unit,
+        initialize: suspend (File) -> Unit,
+    ): Installed = storage {
+        progress(TranslationPreparationState(TranslationPreparationPhase.CHECKING))
+        val existing = try {
+            verify(artifact, current = true) { progress(TranslationPreparationState(TranslationPreparationPhase.VERIFYING)) }
+        } catch (_: TranslationFailure.ArtifactCorrupt) {
+            // Explicit preparation may repair corruption; local readiness never falls back.
+            null
+        }
+        if (existing != null) {
+            initialize(existing.file)
+            return@storage existing
+        }
+        requireWifi()
+        val staging = File(directory, "model.part")
+        val installed = File(directory, artifact.fileName)
+        safeFile(staging)
+        Files.deleteIfExists(staging.toPath())
+        if (availableBytes() < artifact.bytes + STORAGE_OVERHEAD_BYTES) throw TranslationFailure.Storage()
+        var failure: Throwable? = null
+        try {
+            val deadline = System.nanoTime() + DOWNLOAD_DEADLINE_MILLIS * 1_000_000
+            if (withTimeoutOrNull(DOWNLOAD_DEADLINE_MILLIS) {
+                    download(staging, deadline, progress)
+                    true
+                } != true) throw PreparationFailure.PreparationTimedOut()
+            val identity = attributes(staging)
+            val published = Installed(installed, artifact, current = true)
+            initialize(staging)
+            currentCoroutineContext().ensureActive()
+            Files.move(staging.toPath(), installed.toPath(), ATOMIC_MOVE, REPLACE_EXISTING)
+            commit.recordPublication(published)
+            verifiedArtifact = artifact
+            verifiedIdentity = identity
+            afterPublish()
+            published
+        } catch (error: Throwable) {
+            failure = error
+            throw error
+        } finally {
+            if (commit.installed == null) {
+                try { Files.deleteIfExists(staging.toPath()) } catch (cleanup: Exception) {
+                    val original = failure
+                    if (original == null) throw cleanup
+                    if (original !== cleanup) original.addSuppressed(cleanup)
+                }
+            }
+        }
+    }
+
+    internal suspend fun retirePrevious(): Unit = withContext(NonCancellable) {
+        try {
+            storage<Unit> {
+                val file = File(directory, retired.fileName)
+                safeFile(file)
+                Files.deleteIfExists(file.toPath())
+                if (verifiedArtifact == retired) verifiedIdentity = null
+            }
+        } catch (failure: TranslationFailure.Storage) {
+            // Keep the committed installation. Retry retirement after the next successful load.
+            logger.log(Level.WARNING, "Could not retire the previous Tencent artifact", failure)
+        }
+    }
+
+    private suspend fun <T> storage(action: suspend () -> T): T = slot.withLock {
         try {
             withContext(Dispatchers.IO) {
                 safeDirectory()
-                if (!Files.exists(installed.toPath(), NOFOLLOW_LINKS)) return@withContext null
-                safeFile(installed)
-                val identity = attributes()
-                if (!sameIdentity(identity, verifiedIdentity)) {
-                    mutableState.value = TranslationPreparationState(TranslationPreparationPhase.VERIFYING)
-                    verifying()
-                    if (identity.size() != artifact.bytes || hash(installed, currentCoroutineContext()) != artifact.sha256) {
-                        verifiedIdentity = null
-                        throw TranslationFailure.ArtifactCorrupt()
-                    }
-                    verifiedIdentity = identity
-                }
-                installed
+                action()
             }
-        } catch (error: IOException) {
-            fail(TranslationFailure.Storage(error))
-        } catch (error: SecurityException) {
-            fail(TranslationFailure.Storage(error))
-        } catch (failure: TranslationFailure) {
-            fail(failure)
-        }
-    }
-
-    internal suspend fun prepare(): File = slot.withLock {
-        try {
-            val deadline = System.nanoTime() + DOWNLOAD_DEADLINE_MILLIS * 1_000_000
-            withTimeoutOrNull(DOWNLOAD_DEADLINE_MILLIS) {
-                withContext(Dispatchers.IO) {
-                    safeDirectory()
-                    mutableState.value = TranslationPreparationState(TranslationPreparationPhase.CHECKING)
-                    if (Files.exists(installed.toPath(), NOFOLLOW_LINKS)) {
-                        safeFile(installed)
-                        val identity = attributes()
-                        if (sameIdentity(identity, verifiedIdentity)) return@withContext installed
-                        mutableState.value = TranslationPreparationState(TranslationPreparationPhase.VERIFYING)
-                        if (identity.size() == artifact.bytes && hash(installed, currentCoroutineContext()) == artifact.sha256) {
-                            verifiedIdentity = identity
-                            return@withContext installed
-                        }
-                        verifiedIdentity = null
-                        // Explicit Prepare may repair corruption; readiness never adopts corrupt bytes.
-                    }
-                    requireWifi()
-                    val staging = File(directory, "model.part")
-                    safeFile(staging)
-                    // A crash-left stage is never adopted and must not consume the next install's free-space budget.
-                    Files.deleteIfExists(staging.toPath())
-                    if (availableBytes() < artifact.bytes + STORAGE_OVERHEAD_BYTES) throw TranslationFailure.Storage()
-                    val context = currentCoroutineContext()
-                    var transferFailure: Throwable? = null
-                    try {
-                        val digest = MessageDigest.getInstance("SHA-256")
-                        val connection = connect(deadline, context)
-                        try {
-                            if (connection.responseCode != 200) throw IOException("Unexpected artifact response")
-                            val length = connection.getHeaderField("Content-Length")?.toLongOrNull()
-                            if (length != null && length != artifact.bytes) throw TranslationFailure.ArtifactCorrupt()
-                            var received = 0L
-                            var publishedBytes = 0L
-                            var publishedAt = System.nanoTime()
-                            publishDownload(received)
-                            connection.inputStream.use { input ->
-                                FileOutputStream(staging).use { output ->
-                                    val buffer = ByteArray(64 * 1024)
-                                    while (true) {
-                                        checkActive(context, deadline)
-                                        requireWifi()
-                                        connection.readTimeout = remainingTimeout(deadline)
-                                        val count = input.read(buffer)
-                                        if (count < 0) break
-                                        if (count == 0) continue
-                                        if (received > artifact.bytes - count) throw TranslationFailure.ArtifactCorrupt()
-                                        output.write(buffer, 0, count)
-                                        digest.update(buffer, 0, count)
-                                        received += count
-                                        val now = System.nanoTime()
-                                        if (received - publishedBytes >= 4 * 1024 * 1024 || now - publishedAt >= 250_000_000L) {
-                                            publishDownload(received)
-                                            publishedBytes = received
-                                            publishedAt = now
-                                        }
-                                    }
-                                    output.fd.sync()
-                                }
-                            }
-                            publishDownload(received)
-                            mutableState.value = TranslationPreparationState(TranslationPreparationPhase.VERIFYING, received, artifact.bytes)
-                            if (received != artifact.bytes || hex(digest.digest()) != artifact.sha256) throw TranslationFailure.ArtifactCorrupt()
-                            checkActive(context, deadline)
-                            Files.move(staging.toPath(), installed.toPath(), ATOMIC_MOVE, REPLACE_EXISTING)
-                            verifiedIdentity = attributes()
-                            installed
-                        } finally { connection.disconnect() }
-                    } catch (error: Throwable) {
-                        transferFailure = error
-                        throw error
-                    } finally {
-                        try { Files.deleteIfExists(staging.toPath()) } catch (cleanup: Throwable) {
-                            val original = transferFailure
-                            if (original == null) throw cleanup else original.addSuppressed(cleanup)
-                        }
-                    }
-                }
-            } ?: throw PreparationFailure.PreparationTimedOut()
-        } catch (cancelled: CancellationException) {
-            mutableState.value = TranslationPreparationState(TranslationPreparationPhase.MISSING)
-            throw cancelled
-        } catch (failure: TranslationFailure) {
-            fail(failure)
         } catch (error: java.net.SocketTimeoutException) {
-            fail(PreparationFailure.PreparationTimedOut(error))
+            throw PreparationFailure.PreparationTimedOut(error)
         } catch (error: IOException) {
-            fail(TranslationFailure.Storage(error))
+            throw TranslationFailure.Storage(error)
         } catch (error: SecurityException) {
-            fail(TranslationFailure.Storage(error))
+            throw TranslationFailure.Storage(error)
         }
     }
 
-    private fun fail(failure: TranslationFailure): Nothing {
-        mutableState.value = TranslationPreparationState(TranslationPreparationPhase.FAILED, lastFailure = failure)
-        throw failure
-    }
-
-    private fun publishDownload(bytes: Long) {
-        mutableState.value = TranslationPreparationState(TranslationPreparationPhase.DOWNLOADING, bytes, artifact.bytes)
+    private suspend fun download(staging: File, deadline: Long, progress: (TranslationPreparationState) -> Unit) {
+        val context = currentCoroutineContext()
+        val digest = MessageDigest.getInstance("SHA-256")
+        val connection = connect(deadline, context)
+        try {
+            if (connection.responseCode != 200) throw IOException("Unexpected artifact response")
+            val length = connection.getHeaderField("Content-Length")?.toLongOrNull()
+            if (length != null && length != artifact.bytes) throw TranslationFailure.ArtifactCorrupt()
+            var received = 0L
+            var publishedBytes = 0L
+            var publishedAt = System.nanoTime()
+            fun publishDownload() = progress(TranslationPreparationState(TranslationPreparationPhase.DOWNLOADING, received, artifact.bytes))
+            publishDownload()
+            connection.inputStream.use { input ->
+                FileOutputStream(staging).use { output ->
+                    val buffer = ByteArray(64 * 1024)
+                    while (true) {
+                        checkActive(context, deadline)
+                        requireWifi()
+                        connection.readTimeout = remainingTimeout(deadline)
+                        val count = input.read(buffer)
+                        if (count < 0) break
+                        if (count == 0) continue
+                        if (received > artifact.bytes - count) throw TranslationFailure.ArtifactCorrupt()
+                        output.write(buffer, 0, count)
+                        digest.update(buffer, 0, count)
+                        received += count
+                        val now = System.nanoTime()
+                        if (received - publishedBytes >= 4 * 1024 * 1024 || now - publishedAt >= 250_000_000L) {
+                            publishDownload()
+                            publishedBytes = received
+                            publishedAt = now
+                        }
+                    }
+                    output.fd.sync()
+                }
+            }
+            publishDownload()
+            progress(TranslationPreparationState(TranslationPreparationPhase.VERIFYING, received, artifact.bytes))
+            if (received != artifact.bytes || hex(digest.digest()) != artifact.sha256) throw TranslationFailure.ArtifactCorrupt()
+            checkActive(context, deadline)
+        } finally { connection.disconnect() }
     }
 
     private fun connect(deadline: Long, context: CoroutineContext): HttpURLConnection {
-        var url = URL(artifact.url)
+        var url = URL(requireNotNull(artifact.url))
         repeat(6) { hop ->
             checkActive(context, deadline)
             requireWifi()
@@ -217,7 +251,6 @@ class TencentArtifactPreparation internal constructor(
     private fun safeDirectory() {
         if (!::directory.isInitialized) {
             val resolvedDirectory = File(noBackupDirectory.toPath().toRealPath().toFile(), "tencent-translation")
-            installed = File(resolvedDirectory, "Hy-MT2-1.8B-Q4_K_M.gguf")
             directory = resolvedDirectory
         }
         if (!directory.exists() && !directory.mkdirs()) throw IOException("Cannot create translation storage")
@@ -231,7 +264,8 @@ class TencentArtifactPreparation internal constructor(
                 file.canonicalFile != file.absoluteFile)) throw IOException("Unsafe translation artifact")
     }
 
-    private fun attributes(): BasicFileAttributes = Files.readAttributes(installed.toPath(), BasicFileAttributes::class.java, NOFOLLOW_LINKS)
+    private fun attributes(file: File): BasicFileAttributes =
+        Files.readAttributes(file.toPath(), BasicFileAttributes::class.java, NOFOLLOW_LINKS)
 
     private fun sameIdentity(first: BasicFileAttributes, second: BasicFileAttributes?): Boolean = second != null &&
         first.fileKey() == second.fileKey() && first.size() == second.size() && first.lastModifiedTime() == second.lastModifiedTime() &&
@@ -252,6 +286,8 @@ class TencentArtifactPreparation internal constructor(
     }
 
     companion object {
+        private val slot = Mutex()
+        private val logger = Logger.getLogger(TencentArtifactPreparation::class.java.name)
         private const val DOWNLOAD_DEADLINE_MILLIS = 30 * 60 * 1000L
         private const val STORAGE_OVERHEAD_BYTES = 16 * 1024 * 1024L
         private fun hex(bytes: ByteArray) = bytes.joinToString("") { "%02x".format(it.toInt() and 255) }

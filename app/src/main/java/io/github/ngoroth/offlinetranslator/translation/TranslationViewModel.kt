@@ -23,6 +23,34 @@ class TranslationViewModel(
 ) : ViewModel() {
     val config = owner.config
     val hasCurrentOwner: Boolean get() = owners.isCurrent(owner)
+    private val updateCapability = owner.translation.artifactUpdate
+    internal val artifactUpdate = updateCapability?.state
+    private var artifactUpdateJob: Job? = null
+    internal val canUpdateArtifact: Boolean get() =
+        !disposed && foreground && hasCurrentOwner && !mutableState.value.operationInProgress &&
+            operation?.isCompleted != false && artifactUpdate?.value?.offerAvailable == true
+
+    internal fun updateArtifact(isFresh: () -> Boolean = { true }) {
+        val capability = updateCapability ?: return
+        artifactUpdateJob = owners.tryUpdateArtifact(owner, viewModelScope, {
+            canUpdateArtifact && isFresh()
+        }) {
+            val demand = awakeOwner?.acquire()
+            try {
+                owner.operation { capability.update() }
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (failure: Exception) {
+                if (!disposed && foreground && hasCurrentOwner) {
+                    lastFailedAction = FailedAction.PREPARE
+                    mutableState.update {
+                        it.copy(modelStatus = ModelUiStatus.MISSING, preparation = owner.translation.preparation.value,
+                            failure = failure as? TranslationFailure, error = failure.toUiError())
+                    }
+                }
+            } finally { demand?.close() }
+        } ?: artifactUpdateJob
+    }
     private val mutableState = MutableStateFlow(
         TranslationUiState(
             direction = owner.config.pair,
@@ -83,7 +111,8 @@ class TranslationViewModel(
     }
 
     fun updateInput(value: String) {
-        if (disposed || !foreground || !hasCurrentOwner || mutableState.value.operationInProgress) return
+        if (disposed || !foreground || !hasCurrentOwner || owners.artifactUpdateReserved.value ||
+            mutableState.value.operationInProgress) return
         mutableState.update {
             if (value.length > TranslationEngine.MAX_INPUT_CHARACTERS) {
                 it.copy(inputTooLong = true, error = null, failure = null)
@@ -97,7 +126,7 @@ class TranslationViewModel(
 
 
     fun prepare() {
-        if (disposed || !foreground || !hasCurrentOwner || !mutableState.value.canPrepare) return
+        if (disposed || !foreground || !hasCurrentOwner || owners.artifactUpdateReserved.value || !mutableState.value.canPrepare) return
         val request = ++generation
         localPreparation = false
         mutableState.update { it.copy(modelStatus = ModelUiStatus.DOWNLOADING, isPreparing = true, error = null, failure = null) }
@@ -121,7 +150,7 @@ class TranslationViewModel(
 
     fun translate() {
         val snapshot = mutableState.value
-        if (disposed || !foreground || !hasCurrentOwner || !snapshot.canTranslate) return
+        if (disposed || !foreground || !hasCurrentOwner || owners.artifactUpdateReserved.value || !snapshot.canTranslate) return
         val request = ++generation
         mutableState.update { it.copy(isTranslating = true, result = "", error = null, failure = null) }
         operation = viewModelScope.launch {
@@ -147,7 +176,7 @@ class TranslationViewModel(
     }
 
     fun retry() {
-        if (disposed || !foreground || !hasCurrentOwner || mutableState.value.operationInProgress) return
+        if (disposed || !foreground || !hasCurrentOwner || owners.artifactUpdateReserved.value || mutableState.value.operationInProgress) return
         when (lastFailedAction) {
             FailedAction.PREPARE -> prepare()
             FailedAction.TRANSLATE -> translate()
@@ -167,6 +196,7 @@ class TranslationViewModel(
         awakeOwner?.clear()
         generation++
         operation?.cancel()
+        artifactUpdateJob?.cancel()
         mutableState.update { it.copy(isTranslating = false, isPreparing = false, modelStatus = ModelUiStatus.CHECKING) }
     }
 
@@ -182,11 +212,13 @@ class TranslationViewModel(
         awakeOwner?.close()
         generation++
         operation?.cancel()
+        artifactUpdateJob?.cancel()
         preparationObservation?.cancel()
         ownershipObservation.cancel()
         val cleanupScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
         val result = cleanupScope.async(start = CoroutineStart.LAZY) {
             operation?.join()
+            artifactUpdateJob?.join()
             runCatching { owners.release(owner) }
         }
         cleanupJob = result
@@ -209,6 +241,7 @@ class TranslationViewModel(
         }
         operation = viewModelScope.launch {
             try {
+                artifactUpdateJob?.join()
                 val availability = useEngine { it.prepareLocal() } ?: return@launch
                 val failure = owner.translation.preparation.value.lastFailure
                 updateIfCurrent(request) {

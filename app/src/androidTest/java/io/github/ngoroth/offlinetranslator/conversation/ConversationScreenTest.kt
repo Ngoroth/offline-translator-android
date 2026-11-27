@@ -27,6 +27,8 @@ import androidx.compose.ui.test.assertIsOff
 import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assertTextContains
+import androidx.compose.ui.test.assertTextEquals
+import androidx.compose.ui.test.getUnclippedBoundsInRoot
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.junit4.v2.createComposeRule
@@ -69,6 +71,8 @@ import io.github.ngoroth.offlinetranslator.core.SpeechModelRole
 import io.github.ngoroth.offlinetranslator.core.SpeechModelInstallState
 import io.github.ngoroth.offlinetranslator.core.SpeechModelStatus
 import io.github.ngoroth.offlinetranslator.core.ConfigurationProblem
+import io.github.ngoroth.offlinetranslator.core.PreparationFailure
+import io.github.ngoroth.offlinetranslator.core.TranslationArtifactUpdateState
 import io.github.ngoroth.offlinetranslator.core.TranslationPreparationPhase
 import io.github.ngoroth.offlinetranslator.core.TranslationPreparationState
 import io.github.ngoroth.offlinetranslator.core.TranslationFailure
@@ -87,6 +91,107 @@ import io.github.ngoroth.offlinetranslator.ui.TranslationPreparationTestTags
 
 class ConversationScreenTest {
     @get:Rule val compose = createComposeRule()
+
+    @Test fun tencentArtifactUpdateIsSeparateFromStartAndUsesActiveModelTerms() {
+        val offered = TencentTranslationEngine.descriptor
+        val oldTerms = "https://huggingface.co/tencent/Hy-MT2-1.8B-GGUF/blob/a0c709d9fac510f2c807aa3af52872340dc37a4a/LICENSE.txt"
+        val previous = offered.copy(displayName = "Tencent Hy-MT2", attribution = "Hy-MT2 by Tencent", termsUrl = oldTerms)
+        val update = mutableStateOf(TranslationArtifactUpdateState(previous, offerAvailable = true))
+        val state = mutableStateOf(ConversationState())
+        val speechReady = mutableStateOf(false)
+        val updating = mutableStateOf(false)
+        val opened = mutableListOf<String>()
+        var updateRequests = 0
+        var startRequests = 0
+        var stopRequests = 0
+        val context = InstrumentationRegistry.getInstrumentation().targetContext
+        compose.setContent {
+            CompositionLocalProvider(LocalUriHandler provides object : UriHandler {
+                override fun openUri(uri: String) { opened += uri }
+            }) {
+                MaterialTheme {
+                    ConversationScreen(
+                        state.value, emptyList(), emptyList(), ConversationPreparation.IDLE,
+                        speechReady.value, false, {}, {
+                            val active = state.value.sessionActive
+                            if (active) stopRequests++ else startRequests++
+                            state.value = state.value.copy(sessionActive = !active)
+                        }, provider = offered,
+                        artifactUpdate = update.value, artifactUpdating = updating.value,
+                        onUpdateArtifact = { updateRequests++ },
+                    )
+                }
+            }
+        }
+        val sessionAction = compose.onNodeWithTag(ConversationTestTags.SESSION_ACTION)
+        val action = compose.onNodeWithTag(TranslationPreparationTestTags.UPDATE_ACTION)
+        val updateCard = compose.onNodeWithTag(TranslationPreparationTestTags.UPDATE_CARD)
+        fun assertActionFillsCard() {
+            val cardBounds = updateCard.getUnclippedBoundsInRoot()
+            val actionBounds = action.getUnclippedBoundsInRoot()
+            assertEquals("Left card inset (dp)", 16f, (actionBounds.left - cardBounds.left).value, 0.5f)
+            assertEquals("Right card inset (dp)", 16f, (cardBounds.right - actionBounds.right).value, 0.5f)
+        }
+        sessionAction.assertIsNotEnabled()
+        action.performScrollTo().assertTextEquals(context.getString(R.string.translation_artifact_update_action))
+            .assertHeightIsAtLeast(48.dp).assertIsEnabled()
+        assertActionFillsCard()
+        action.performClick()
+        compose.runOnIdle {
+            assertEquals(1, updateRequests)
+            assertEquals(0, startRequests)
+            speechReady.value = true
+            updating.value = true
+        }
+        sessionAction.assertIsNotEnabled()
+        action.assertIsNotEnabled()
+        compose.runOnIdle {
+            updating.value = false
+            update.value = update.value.copy(preparation = TranslationPreparationState(
+                TranslationPreparationPhase.FAILED, lastFailure = PreparationFailure.WifiRequired(),
+            ))
+        }
+        action.performScrollTo().assertTextEquals(context.getString(R.string.retry_action)).assertIsEnabled()
+        assertActionFillsCard()
+        sessionAction.assertContentDescriptionEquals(context.getString(R.string.conversation_start))
+            .assertIsDisplayed().assertIsEnabled().performClick()
+        compose.onNodeWithTag(TranslationPreparationTestTags.UPDATE_CARD, useUnmergedTree = true).assertDoesNotExist()
+        sessionAction.assertContentDescriptionEquals(context.getString(R.string.conversation_stop))
+            .assertIsDisplayed().assertIsEnabled()
+        compose.runOnIdle {
+            assertEquals(1, startRequests)
+            assertEquals(0, stopRequests)
+        }
+        sessionAction.performClick()
+        sessionAction.assertContentDescriptionEquals(context.getString(R.string.conversation_start)).assertIsEnabled()
+        action.performScrollTo().assertTextEquals(context.getString(R.string.retry_action)).assertIsEnabled()
+        assertActionFillsCard()
+        action.performClick()
+        compose.runOnIdle {
+            assertEquals(2, updateRequests)
+            assertEquals(1, startRequests)
+            assertEquals(1, stopRequests)
+            updating.value = true
+            update.value = update.value.copy(preparation = null)
+        }
+        compose.onNodeWithText(previous.attribution).assertIsDisplayed()
+        compose.onNodeWithTag(TranslatorHelpTestTags.ACTION).performScrollTo().performClick()
+        compose.onNodeWithTag(TranslatorHelpTestTags.TERMS_ACTION).performScrollTo().performClick()
+        compose.onNodeWithText(context.getString(R.string.provider_terms)).performScrollTo().performClick()
+        compose.runOnIdle {
+            assertEquals(listOf(oldTerms), opened)
+            speechReady.value = false
+            updating.value = false
+            update.value = TranslationArtifactUpdateState(offered)
+        }
+        compose.onNodeWithTag(TranslatorHelpTestTags.TERMS_ACTION).performScrollTo().performClick()
+        compose.onNodeWithText(context.getString(R.string.provider_terms)).performScrollTo().performClick()
+        compose.runOnIdle { assertEquals(listOf(oldTerms, offered.termsUrl), opened) }
+        compose.onNodeWithTag(TranslatorHelpTestTags.TERMS_BACK).performClick()
+        compose.onNodeWithTag(TranslatorHelpTestTags.CLOSE).performClick()
+        compose.onNodeWithTag(TranslationPreparationTestTags.UPDATE_CARD).assertDoesNotExist()
+        sessionAction.assertIsNotEnabled()
+    }
 
 
     @Test fun microphoneUsesFreshCaptureNotProcessingPhaseAndNeverActsAsAButton() {

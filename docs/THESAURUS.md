@@ -59,6 +59,7 @@ skill: ubiquitous-language
 - **System voice** `TtsVoice` kind:value
 - **Translate** `Translate` kind:command
 - **Translation artifact** `TranslationArtifact` kind:entity
+- **Translation artifact update** `TranslationArtifactUpdate` kind:process
 - **Translation capability** `TranslationCapability` kind:value
 - **Translation engine** `TranslationEngine` kind:service
 - **Translation failure** `TranslationFailure` kind:state
@@ -243,6 +244,10 @@ skill: ubiquitous-language
 ### Translation artifact
 - **Definition**: A pinned, integrity-verified local file containing translation weights, shared across selected language pairs without sharing mutable inference state.
 - **NOT**: A Speech resource package or a loaded Translation engine.
+
+### Translation artifact update
+- **Definition**: Explicit one-way replacement of an installed translation artifact that is usable, only after its successor is verified and initialized.
+- **NOT**: Translation preparation for an unavailable model, or an automatic download.
 
 ### Translation capability
 - **Definition**: The engine's classification of the selected pair's translation path: direct, pivot, unsupported or unknown.

@@ -27,6 +27,7 @@ import java.util.concurrent.atomic.AtomicInteger
 class TencentArtifactPreparationTest {
     @get:Rule val temporary = TemporaryFolder()
     private val bytes = ByteArray(128 * 1024) { (it * 31).toByte() }
+    private val currentFileName = TencentTranslationArtifact.CURRENT.fileName
     private val pin get() = TencentTranslationArtifact("https://huggingface.co/pinned.gguf", bytes.size.toLong(), hash(bytes))
 
     @Test fun unavailableTrustedRootReportsTypedFailureAndRecoversWithoutBreakingMetadata() = runBlocking {
@@ -39,15 +40,14 @@ class TencentArtifactPreparationTest {
             assertEquals(ModelAvailability.MISSING, engine.modelAvailability())
             assertEquals(TranslationPreparationPhase.FAILED, engine.preparation.value.phase)
             assertTrue(engine.preparation.value.lastFailure is TranslationFailure.Storage)
-            assertTrue(runCatching { selected.prepare() }.exceptionOrNull() is TranslationFailure.Storage)
-            assertEquals(TranslationPreparationPhase.FAILED, selected.state.value.phase)
+            assertTrue(runCatching { selected.publishCurrent() }.exceptionOrNull() is TranslationFailure.Storage)
             assertEquals(0, connections.get())
             assertTrue(root.mkdir())
             assertEquals(ModelAvailability.MISSING, engine.modelAvailability())
             assertEquals(TranslationPreparationPhase.MISSING, engine.preparation.value.phase)
-            val installed = selected.prepare()
+            val installed = selected.publishCurrent()
             assertArrayEquals(bytes, installed.readBytes())
-            assertEquals(installed, selected.verifiedFile())
+            assertEquals(installed, selected.verifiedFile()?.file)
             assertEquals(1, connections.get())
         } finally { engine.closeAndJoin() }
     }
@@ -59,17 +59,17 @@ class TencentArtifactPreparationTest {
         val connections = AtomicInteger()
         val first = store(alias) { connections.incrementAndGet(); Response(it, bytes) }
         assertNull(first.verifiedFile())
-        val installed = first.prepare()
-        assertEquals(File(root, "tencent-translation/Hy-MT2-1.8B-Q4_K_M.gguf"), installed)
+        val installed = first.publishCurrent()
+        assertEquals(File(root, "tencent-translation/$currentFileName"), installed)
         assertArrayEquals(bytes, installed.readBytes())
         val restarted = TencentArtifactPreparation(alias, pin, { false }, { error("Cold reuse must remain offline") })
-        assertEquals(installed, restarted.verifiedFile())
-        assertEquals(installed, restarted.prepare())
+        assertEquals(installed, restarted.verifiedFile()?.file)
+        assertEquals(installed, restarted.publishCurrent())
         assertEquals(1, connections.get())
     }
 
     @Test fun providerOwnedDirectoryModelAndStagingLinksRemainRejected() = runBlocking {
-        for (relativePath in listOf("tencent-translation", "tencent-translation/Hy-MT2-1.8B-Q4_K_M.gguf",
+        for (relativePath in listOf("tencent-translation", "tencent-translation/$currentFileName",
             "tencent-translation/model.part")) {
             val root = temporary.newFolder()
             val outside = if (relativePath == "tencent-translation") temporary.newFolder()
@@ -81,7 +81,7 @@ class TencentArtifactPreparationTest {
             if (!relativePath.endsWith("model.part")) {
                 assertTrue(runCatching { selected.verifiedFile() }.exceptionOrNull() is TranslationFailure.Storage)
             }
-            assertTrue(runCatching { selected.prepare() }.exceptionOrNull() is TranslationFailure.Storage)
+            assertTrue(runCatching { selected.publishCurrent() }.exceptionOrNull() is TranslationFailure.Storage)
             if (outside.isFile) assertArrayEquals(bytes, outside.readBytes())
         }
     }
@@ -92,7 +92,7 @@ class TencentArtifactPreparationTest {
         val store = TencentArtifactPreparation(root, pin, { true }, { Response(it, bytes) },
             { if (staging.exists()) 0L else pin.bytes + 16 * 1024 * 1024L })
         assertNull(store.verifiedFile())
-        val installed = store.prepare()
+        val installed = store.publishCurrent()
         assertArrayEquals(bytes, installed.readBytes())
         assertFalse(staging.exists())
     }
@@ -101,12 +101,12 @@ class TencentArtifactPreparationTest {
         val root = temporary.newFolder()
         val connections = AtomicInteger()
         val first = store(root) { connections.incrementAndGet(); Response(it, bytes) }
-        val file = first.prepare()
+        val file = first.publishCurrent()
         assertArrayEquals(bytes, file.readBytes())
         assertFalse(File(root, "tencent-translation/model.part").exists())
         val restarted = TencentArtifactPreparation(root, pin, { false }, { error("Offline attestation must not connect") })
-        assertEquals(file, restarted.verifiedFile())
-        assertEquals(file, restarted.prepare())
+        assertEquals(file, restarted.verifiedFile()?.file)
+        assertEquals(file, restarted.publishCurrent())
         assertEquals(1, connections.get())
     }
 
@@ -115,25 +115,24 @@ class TencentArtifactPreparationTest {
         for (body in listOf(wrong, bytes.copyOf(bytes.size - 1), bytes + byteArrayOf(1))) {
             val root = temporary.newFolder()
             val store = store(root) { Response(it, body, declaredLength = null) }
-            assertTrue(runCatching { store.prepare() }.exceptionOrNull() is TranslationFailure.ArtifactCorrupt)
-            assertFalse(File(root, "tencent-translation/Hy-MT2-1.8B-Q4_K_M.gguf").exists())
+            assertTrue(runCatching { store.publishCurrent() }.exceptionOrNull() is TranslationFailure.ArtifactCorrupt)
+            assertFalse(File(root, "tencent-translation/$currentFileName").exists())
             assertFalse(File(root, "tencent-translation/model.part").exists())
-            assertEquals(TranslationPreparationPhase.FAILED, store.state.value.phase)
             assertNull(store.verifiedFile())
         }
     }
 
     @Test fun localVerificationCachesOnlyUnchangedIdentityAndRechecksReplacementWithoutNetwork() = runBlocking {
         val root = temporary.newFolder()
-        val installed = File(root, "tencent-translation/Hy-MT2-1.8B-Q4_K_M.gguf").apply {
+        val installed = File(root, "tencent-translation/$currentFileName").apply {
             parentFile.mkdirs(); writeBytes(bytes)
         }
         val selected = TencentArtifactPreparation(root, pin,
             { error("Local verification must not query Wi-Fi") },
             { error("Local verification must not connect") })
         var verifications = 0
-        assertEquals(installed, selected.verifiedFile { verifications++ })
-        assertEquals(installed, selected.verifiedFile { verifications++ })
+        assertEquals(installed, selected.verifiedFile { verifications++ }?.file)
+        assertEquals(installed, selected.verifiedFile { verifications++ }?.file)
         assertEquals(1, verifications)
 
         val timestamp = Files.getLastModifiedTime(installed.toPath())
@@ -157,12 +156,12 @@ class TencentArtifactPreparationTest {
     @Test fun corruptInstalledBytesRemainNonReadyUntilExplicitRepair() = runBlocking {
         val root = temporary.newFolder()
         val store = store(root) { Response(it, bytes) }
-        val installed = store.prepare()
+        val installed = store.publishCurrent()
         val replacement = File(root, "changed.gguf").apply { writeBytes(bytes.copyOf().also { it[0] = 9 }) }
         Files.move(replacement.toPath(), installed.toPath(), ATOMIC_MOVE, REPLACE_EXISTING)
         assertTrue(runCatching { store.verifiedFile() }.exceptionOrNull() is TranslationFailure.ArtifactCorrupt)
         assertEquals(9, installed.readBytes()[0].toInt())
-        assertEquals(installed, store.prepare())
+        assertEquals(installed, store.publishCurrent())
         assertArrayEquals(bytes, installed.readBytes())
     }
 
@@ -180,25 +179,41 @@ class TencentArtifactPreparationTest {
             }
         }
         val store = store(root) { Response(it, bytes, stream = stream) }
-        val request = launch(Dispatchers.Default) { store.prepare() }
+        val request = launch(Dispatchers.Default) { store.publishCurrent() }
         assertTrue(entered.await(5, TimeUnit.SECONDS))
         request.cancel()
         release.countDown()
         request.join()
         assertFalse(File(root, "tencent-translation/model.part").exists())
         assertNull(store.verifiedFile())
-        assertEquals(TranslationPreparationPhase.MISSING, store.state.value.phase)
     }
 
-    @Test fun concurrentPreparationSharesOneInstallerAndPublication() = runBlocking {
+    @Test fun competingInstallCannotMutateOrPublishWhileVerifiedStageIsBeingProbed() = runBlocking {
         val root = temporary.newFolder()
         val requests = AtomicInteger()
-        val store = store(root) { requests.incrementAndGet(); Response(it, bytes) }
-        val first = async(Dispatchers.Default) { store.prepare() }
-        val second = async(Dispatchers.Default) { store.prepare() }
-        assertEquals(first.await(), second.await())
+        val probeEntered = CompletableDeferred<String>()
+        val releaseProbe = CompletableDeferred<Unit>()
+        val connect: (URL) -> HttpURLConnection = { requests.incrementAndGet(); Response(it, bytes) }
+        val first = async {
+            store(root, connect).publishCurrent { stage ->
+                probeEntered.complete(hash(stage.readBytes()))
+                releaseProbe.await()
+            }
+        }
+        val probed = withTimeout(5_000) { probeEntered.await() }
+        val second = async(start = CoroutineStart.UNDISPATCHED) { store(root, connect).publishCurrent() }
+        try {
+            val directory = File(root, "tencent-translation")
+            assertFalse(File(directory, currentFileName).exists())
+            assertEquals(probed, hash(File(directory, "model.part").readBytes()))
+            assertFalse(second.isCompleted)
+            assertEquals(1, requests.get())
+        } finally { releaseProbe.complete(Unit) }
+        val published = first.await()
+        assertEquals(published, second.await())
+        assertEquals(probed, hash(published.readBytes()))
+        assertEquals(hash(bytes), probed)
         assertEquals(1, requests.get())
-        assertArrayEquals(bytes, store.verifiedFile()!!.readBytes())
     }
 
     @Test fun unsafeRedirectNeverOpensTheUntrustedDestination() = runBlocking {
@@ -206,8 +221,8 @@ class TencentArtifactPreparationTest {
             "https://user:secret@us.aws.cdn.hf.co/model", "https://us.aws.cdn.hf.co:444/model")) {
             val opened = mutableListOf<URL>()
             val store = store(temporary.newFolder()) { url -> opened += url; Response(url, bytes, 302, location) }
-            assertTrue(runCatching { store.prepare() }.exceptionOrNull() is TranslationFailure.Storage)
-            assertEquals(listOf(URL(pin.url)), opened)
+            assertTrue(runCatching { store.publishCurrent() }.exceptionOrNull() is TranslationFailure.Storage)
+            assertEquals(listOf(URL(requireNotNull(pin.url))), opened)
             assertNull(store.verifiedFile())
         }
     }
@@ -215,22 +230,25 @@ class TencentArtifactPreparationTest {
     @Test fun wifiAndStorageRefusalHaveNoDownloadEffects() = runBlocking {
         val root = temporary.newFolder()
         val offline = TencentArtifactPreparation(root, pin, { false }, { error("Must not connect") })
-        assertTrue(runCatching { offline.prepare() }.exceptionOrNull() is PreparationFailure.WifiRequired)
+        assertTrue(runCatching { offline.publishCurrent() }.exceptionOrNull() is PreparationFailure.WifiRequired)
         val full = TencentArtifactPreparation(root, pin, { true }, { error("Must not connect") }, { bytes.size.toLong() })
-        assertTrue(runCatching { full.prepare() }.exceptionOrNull() is TranslationFailure.Storage)
+        assertTrue(runCatching { full.publishCurrent() }.exceptionOrNull() is TranslationFailure.Storage)
         assertNull(full.verifiedFile())
     }
 
     @Test fun rejectedResponseAndTransferFailureCleanPrivateStaging() = runBlocking {
         val root = temporary.newFolder()
         val response = store(root) { Response(it, bytes, status = 503) }
-        assertTrue(runCatching { response.prepare() }.exceptionOrNull() is TranslationFailure.Storage)
+        assertTrue(runCatching { response.publishCurrent() }.exceptionOrNull() is TranslationFailure.Storage)
         val failing = object : InputStream() { override fun read(): Int = throw java.io.IOException("Fixture interruption") }
         val interrupted = store(root) { Response(it, bytes, stream = failing) }
-        assertTrue(runCatching { interrupted.prepare() }.exceptionOrNull() is TranslationFailure.Storage)
+        assertTrue(runCatching { interrupted.publishCurrent() }.exceptionOrNull() is TranslationFailure.Storage)
         assertFalse(File(root, "tencent-translation/model.part").exists())
         assertNull(interrupted.verifiedFile())
     }
+
+    private suspend fun TencentArtifactPreparation.publishCurrent(probe: suspend (File) -> Unit = {}): File =
+        prepareCurrent(TencentArtifactPreparation.Commit(), {}, probe).file
 
     private fun store(root: File, connection: (URL) -> HttpURLConnection) = TencentArtifactPreparation(root, pin, { true }, connection)
     private fun hash(value: ByteArray) = MessageDigest.getInstance("SHA-256").digest(value).joinToString("") { "%02x".format(it.toInt() and 255) }

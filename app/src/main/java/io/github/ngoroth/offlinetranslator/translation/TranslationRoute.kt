@@ -17,6 +17,7 @@ fun TranslationRoute(
     homeControls: @Composable () -> Unit,
     onLanguageTransitionChanged: (Boolean) -> Unit = {},
     screenAwake: ScreenAwake? = null,
+    isArtifactUpdateAllowed: () -> Boolean = { true },
 ) {
     val context = LocalContext.current
     val runtime = remember(context.applicationContext) { AppRuntime.get(context.applicationContext) }
@@ -28,9 +29,12 @@ fun TranslationRoute(
     val descriptor = remember(settings.translationEngineId) { runtime.registry.descriptors.firstOrNull { it.id == settings.translationEngineId } }
     val teardownFailed by runtime.owners.teardownFailed.collectAsStateWithLifecycle()
     val ownershipVersion by runtime.owners.ownershipVersion.collectAsStateWithLifecycle()
+    val artifactUpdating by runtime.owners.artifactUpdateReserved.collectAsStateWithLifecycle()
+    val ownerBusy by runtime.owners.busy.collectAsStateWithLifecycle()
     val lifecycleOwner = LocalLifecycleOwner.current
     val scope = rememberCoroutineScope()
     val transitionCallback by rememberUpdatedState(onLanguageTransitionChanged)
+    val updateAllowed by rememberUpdatedState(isArtifactUpdateAllowed)
     var viewModel by remember { mutableStateOf<TranslationViewModel?>(null) }
     var input by remember { mutableStateOf("") }
     var inputTooLong by remember { mutableStateOf(false) }
@@ -112,7 +116,8 @@ fun TranslationRoute(
     val selectPair: (LanguagePair) -> Unit = select@{ selected ->
         val latest = runtime.settings.state.value.settings ?: return@select
         val vm = viewModel
-        if (!loaded || !foreground || changing || teardownFailed || latest.languagePair != settings.languagePair ||
+        if (!mounted || !loaded || !foreground || changing || teardownFailed || runtime.owners.artifactUpdateReserved.value ||
+            latest.languagePair != settings.languagePair ||
             selected == latest.languagePair || selected.source == selected.target ||
             LanguageCatalog.find(selected.source) == null || LanguageCatalog.find(selected.target) == null ||
             (vm != null && (!vm.hasCurrentOwner || vm.config != latest.textConfig() ||
@@ -142,6 +147,15 @@ fun TranslationRoute(
         }
     }
     val shown = currentVm?.takeIf { it.config == config && it.hasCurrentOwner }
+    fun isFresh(vm: TranslationViewModel): Boolean {
+        val latest = runtime.settings.state.value
+        return mounted && foreground && lifecycleOwner.lifecycle.currentState.isAtLeast(Lifecycle.State.STARTED) &&
+            !changing && !runtime.owners.teardownFailed.value && viewModel === vm && vm.hasCurrentOwner &&
+            !latest.loading && !latest.loadError && latest.settings?.textConfig() == vm.config
+    }
+    val artifactUpdate = if (descriptor?.let { runtime.registry.supportsArtifactUpdate(it.id) } == true) {
+        shown?.takeIf { foreground }?.artifactUpdate?.collectAsStateWithLifecycle()?.value ?: TranslationArtifactUpdateState()
+    } else null
     val state = shown?.state?.collectAsStateWithLifecycle()?.value ?: TranslationUiState(
         direction = settings.languagePair, input = input, inputTooLong = inputTooLong,
         modelStatus = ModelUiStatus.CHECKING,
@@ -164,12 +178,18 @@ fun TranslationRoute(
             }
         },
         onPairSelected = selectPair,
-        onPrepare = { if (!changing && !teardownFailed) shown?.prepare() },
-        onTranslate = { if (!changing && !teardownFailed) shown?.translate() },
-        onRetry = { if (!changing && !teardownFailed) shown?.retry() },
+        onPrepare = { if (shown != null && isFresh(shown) && !runtime.owners.artifactUpdateReserved.value) shown.prepare() },
+        onTranslate = { if (shown != null && isFresh(shown) && !runtime.owners.artifactUpdateReserved.value) shown.translate() },
+        onRetry = { if (shown != null && isFresh(shown) && !runtime.owners.artifactUpdateReserved.value) shown.retry() },
         provider = descriptor, configurationProblem = problem,
         languageSelectionEnabled = loaded && foreground && !teardownFailed,
         languageChanging = changing,
         languageChangeError = if (teardownFailed) TranslationLanguageChangeError.TEARDOWN else languageError,
+        artifactUpdate = artifactUpdate,
+        artifactUpdating = artifactUpdating,
+        artifactUpdateEnabled = !ownerBusy && foreground && updateAllowed(),
+        onUpdateArtifact = {
+            if (shown != null) shown.updateArtifact { isFresh(shown) && updateAllowed() }
+        },
     )
 }

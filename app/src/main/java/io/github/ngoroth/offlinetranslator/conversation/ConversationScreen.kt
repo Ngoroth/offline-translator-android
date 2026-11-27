@@ -68,12 +68,14 @@ import io.github.ngoroth.offlinetranslator.core.LanguagePair
 import io.github.ngoroth.offlinetranslator.core.SpeechOutputReadiness
 import io.github.ngoroth.offlinetranslator.core.SpeechRecognitionReadiness
 import io.github.ngoroth.offlinetranslator.ui.LanguagePairControls
+import io.github.ngoroth.offlinetranslator.core.TranslationArtifactUpdateState
 import io.github.ngoroth.offlinetranslator.core.TranslationProviderDescriptor
 import io.github.ngoroth.offlinetranslator.ui.languageName
 import io.github.ngoroth.offlinetranslator.ui.configurationProblemMessage
 import io.github.ngoroth.offlinetranslator.ui.ProviderAttribution
 import io.github.ngoroth.offlinetranslator.ui.TranslatorHelp
 import io.github.ngoroth.offlinetranslator.ui.PreparationProgress
+import io.github.ngoroth.offlinetranslator.ui.TranslationArtifactUpdateCard
 import io.github.ngoroth.offlinetranslator.core.SpeechModelInstallState
 import io.github.ngoroth.offlinetranslator.core.SpeechModelStatus
 
@@ -157,12 +159,18 @@ fun ConversationScreen(
     speechOutputProblem: ConfigurationProblem? = null,
     speechOutputSaveError: Boolean = false,
     onToggleSpeechOutput: () -> Unit = {},
+    artifactUpdate: TranslationArtifactUpdateState? = null,
+    artifactUpdating: Boolean = false,
+    artifactUpdateEnabled: Boolean = true,
+    onUpdateArtifact: () -> Unit = {},
 ) {
+    val activeProvider = if (artifactUpdate == null) provider else artifactUpdate.activeProvider
     val preparing = preparation == ConversationPreparation.CHECKING ||
         preparation == ConversationPreparation.INSTALLING || preparation == ConversationPreparation.TRANSLATION
     val languageBlocked = languageChangeError == ConversationLanguageChangeError.TEARDOWN ||
         languageChangeError == ConversationLanguageChangeError.OPEN
-    val canEditLanguages = languageSelectionEnabled && !languageChanging && !languageBlocked && !preparing
+    val controlsBlocked = languageBlocked || artifactUpdating
+    val canEditLanguages = languageSelectionEnabled && !languageChanging && !controlsBlocked && !preparing
     val visibleTranslationPreparation = translationPreparation?.phase ==
         io.github.ngoroth.offlinetranslator.core.TranslationPreparationPhase.FAILED ||
         (ownerAvailable && preparation == ConversationPreparation.TRANSLATION && translationPreparation?.phase in setOf(
@@ -182,7 +190,8 @@ fun ConversationScreen(
         visibleTranslationPreparation || preparationFailure != null || translationPreparation?.lastFailure != null ||
         preparation == ConversationPreparation.INSTALLING || preparingSpeechOutput ||
         (systemRecognition && recognitionReadiness != null && recognitionReadiness != SpeechRecognitionReadiness.READY)
-    val recoveryVisible = preparationRecoveryVisible || configurationProblem != null || permissionDenied ||
+    val recoveryVisible = preparationRecoveryVisible || artifactUpdate?.offerAvailable == true || artifactUpdating ||
+        configurationProblem != null || permissionDenied ||
         languageChangeError != null || (outputRecoveryVisible && installError) || state.failure != null ||
         state.translationFailure != null || state.phase == ConversationPhase.ERROR ||
         speechOutputUnavailable || speechOutputSaveError || speechOutputChanging ||
@@ -243,7 +252,7 @@ fun ConversationScreen(
                     swapTag = ConversationTestTags.LANGUAGE_SWAP, onPairSelected = onPairSelected,
                     conversationCoverage = conversationCoverage,
                 )
-                TranslatorHelp(conversation = true, provider = provider)
+                TranslatorHelp(conversation = true, provider = provider, activeProvider = activeProvider)
                 if (languageChanging) {
                     Text(stringResource(R.string.conversation_languages_changing))
                 }
@@ -267,7 +276,7 @@ fun ConversationScreen(
                         if (canInstallRecognitionData) {
                             Text(stringResource(R.string.conversation_recognition_install_hint))
                             TextButton(onInstallRecognitionData,
-                                enabled = ownerAvailable && !preparing && !languageChanging && !languageBlocked && !state.sessionActive,
+                                enabled = ownerAvailable && !preparing && !languageChanging && !controlsBlocked && !state.sessionActive,
                                 modifier = Modifier.heightIn(min = 48.dp).testTag(ConversationTestTags.INSTALL_RECOGNITION_DATA)) {
                                 Text(stringResource(R.string.conversation_install_recognition_data))
                             }
@@ -276,14 +285,14 @@ fun ConversationScreen(
                             color = MaterialTheme.colorScheme.error,
                             modifier = Modifier.testTag(ConversationTestTags.RECOGNITION_INSTALL_ERROR))
                         TextButton(onRecheck,
-                            enabled = ownerAvailable && !preparing && !languageChanging && !languageBlocked && !state.sessionActive,
+                            enabled = ownerAvailable && !preparing && !languageChanging && !controlsBlocked && !state.sessionActive,
                             modifier = Modifier.heightIn(min = 48.dp).testTag(ConversationTestTags.RECHECK_RECOGNITION)) {
                             Text(stringResource(R.string.conversation_recheck_recognition))
                         }
                         if (canChooseLocalRecognition || recognitionReadiness == SpeechRecognitionReadiness.INCOMPATIBLE_SERVICE ||
                             recognitionReadiness == SpeechRecognitionReadiness.ENGINE_UNAVAILABLE) {
                             TextButton(onOpenAdvancedSettings,
-                                enabled = !preparing && !languageChanging && !languageBlocked && !state.sessionActive,
+                                enabled = !preparing && !languageChanging && !controlsBlocked && !state.sessionActive,
                                 modifier = Modifier.heightIn(min = 48.dp).testTag(ConversationTestTags.OPEN_ADVANCED_SETTINGS)) {
                                 Text(stringResource(R.string.conversation_recognition_settings_action))
                             }
@@ -324,14 +333,15 @@ fun ConversationScreen(
                                 color = MaterialTheme.colorScheme.error,
                                 textAlign = TextAlign.Center,
                             )
-                            TextButton(onOpenText, modifier = Modifier.heightIn(min = 48.dp).testTag(ConversationTestTags.OPEN_TEXT)) {
+                            TextButton(onOpenText, enabled = !artifactUpdating,
+                                modifier = Modifier.heightIn(min = 48.dp).testTag(ConversationTestTags.OPEN_TEXT)) {
                                 Text(stringResource(R.string.conversation_open_text))
                             }
                         }
                         if (outputRecoveryVisible && speechOutputProblem != null) {
                             Text(configurationProblemMessage(speechOutputProblem), textAlign = TextAlign.Center)
                             TextButton(onOpenAdvancedSettings,
-                                enabled = !preparing && !languageChanging && !languageBlocked && !state.sessionActive,
+                                enabled = !preparing && !languageChanging && !controlsBlocked && !state.sessionActive,
                                 modifier = Modifier.heightIn(min = 48.dp).testTag(ConversationTestTags.OUTPUT_SETTINGS)) {
                                 Text(stringResource(R.string.conversation_recognition_settings_action))
                             }
@@ -348,7 +358,7 @@ fun ConversationScreen(
                             }), modifier = Modifier.testTag(ConversationTestTags.OUTPUT_READINESS), textAlign = TextAlign.Center)
                             if (systemOutput) {
                                 if (canInstallVoiceData) TextButton(onInstallVoiceData,
-                                    enabled = ownerAvailable && !preparing && !languageChanging && !languageBlocked && !state.sessionActive,
+                                    enabled = ownerAvailable && !preparing && !languageChanging && !controlsBlocked && !state.sessionActive,
                                     modifier = Modifier.heightIn(min = 48.dp).testTag(ConversationTestTags.INSTALL_VOICES)) {
                                     Text(stringResource(R.string.system_install_voices))
                                 }
@@ -430,11 +440,17 @@ fun ConversationScreen(
                                     recognitionReadiness != SpeechRecognitionReadiness.UNSUPPORTED &&
                                     recognitionReadiness != SpeechRecognitionReadiness.INCOMPATIBLE_SERVICE &&
                                     recognitionReadiness != SpeechRecognitionReadiness.ENGINE_UNAVAILABLE &&
-                                    !languageChanging && !languageBlocked,
+                                    !languageChanging && !controlsBlocked,
                                 modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).testTag(ConversationTestTags.PREPARE),
                             ) { Text(stringResource(R.string.conversation_prepare)) }
                         }
                     }
+                }
+                if (!state.sessionActive) {
+                    TranslationArtifactUpdateCard(artifactUpdate,
+                        artifactUpdateEnabled && ownerAvailable && !preparing && !speechOutputChanging &&
+                            !languageChanging && !controlsBlocked && configurationProblem == null,
+                        onUpdateArtifact)
                 }
                 if (current != null) {
                     TranscriptCard(current, primary = true)
@@ -479,7 +495,7 @@ fun ConversationScreen(
                             IconToggleButton(
                                 checked = speechOutputEnabled,
                                 onCheckedChange = { onToggleSpeechOutput() },
-                                enabled = ((!speechOutputChanging && !preparing) || speechOutputEnabled) && !languageChanging && !languageBlocked &&
+                                enabled = ((!speechOutputChanging && !preparing) || speechOutputEnabled) && !languageChanging && !controlsBlocked &&
                                     (ownerAvailable || !state.sessionActive),
                                 modifier = Modifier.size(56.dp)
                                     .border(1.dp, MaterialTheme.colorScheme.outlineVariant, CircleShape)
@@ -498,7 +514,7 @@ fun ConversationScreen(
                                 onClick = onSessionAction,
                                 enabled = state.sessionActive || (ownerAvailable && configurationProblem == null && ready && !preparing &&
                                     (!systemRecognition || recognitionReadiness == SpeechRecognitionReadiness.READY) &&
-                                    !languageChanging && !languageBlocked),
+                                    !languageChanging && !controlsBlocked),
                                 modifier = Modifier.widthIn(max = 244.dp).fillMaxWidth().heightIn(min = 56.dp)
                                     .testTag(ConversationTestTags.SESSION_ACTION).semantics {
                                         contentDescription = sessionActionDescription
@@ -516,7 +532,7 @@ fun ConversationScreen(
                         LocalTextStyle provides MaterialTheme.typography.bodySmall,
                         LocalContentColor provides MaterialTheme.colorScheme.onSurfaceVariant,
                     ) {
-                        ProviderAttribution(provider)
+                        ProviderAttribution(activeProvider)
                     }
                 }
             }

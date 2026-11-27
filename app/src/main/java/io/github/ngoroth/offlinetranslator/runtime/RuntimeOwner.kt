@@ -1,6 +1,7 @@
 package io.github.ngoroth.offlinetranslator.runtime
 
 import io.github.ngoroth.offlinetranslator.core.*
+import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.NonCancellable
@@ -37,6 +38,9 @@ class RuntimeOwnerController(private val scope: CoroutineScope) {
     @Volatile private var exclusive = false
     private var observation: Job? = null
     private val mutableBusy = MutableStateFlow(false)
+    private val mutableArtifactUpdateReserved = MutableStateFlow(false)
+    internal val artifactUpdateReserved = mutableArtifactUpdateReserved.asStateFlow()
+    @Volatile private var artifactUpdateJob: Job? = null
     val busy: StateFlow<Boolean> = mutableBusy.asStateFlow()
     private val mutableTeardownFailed = MutableStateFlow(false)
     val teardownFailed: StateFlow<Boolean> = mutableTeardownFailed.asStateFlow()
@@ -46,32 +50,78 @@ class RuntimeOwnerController(private val scope: CoroutineScope) {
 
     fun isCurrent(owner: RuntimeOwner): Boolean = current === owner && !mutableTeardownFailed.value
 
-    suspend fun <T : RuntimeOwner> replace(build: suspend () -> T): T = control.withLock {
-        teardownFailure?.let { throw it }
-        exclusive = true
-        mutableBusy.value = true
-        try {
-            closeCurrent().getOrThrow()
-            coroutineContext.ensureActive()
-            val owner = build()
-            current = owner
-            mutableOwnershipVersion.value++
-            observation = scope.launch { owner.activity.collect { mutableBusy.value = mutableTeardownFailed.value || exclusive || owner.isBusy } }
-            owner
-        } finally {
-            exclusive = false
-            mutableBusy.value = mutableTeardownFailed.value || (current?.isBusy ?: false)
+    suspend fun <T : RuntimeOwner> replace(build: suspend () -> T): T {
+        cancelArtifactUpdate()
+        return control.withLock {
+            teardownFailure?.let { throw it }
+            exclusive = true
+            mutableBusy.value = true
+            try {
+                closeCurrent().getOrThrow()
+                coroutineContext.ensureActive()
+                val owner = build()
+                current = owner
+                mutableOwnershipVersion.value++
+                observation = scope.launch { owner.activity.collect { mutableBusy.value = mutableTeardownFailed.value || exclusive || owner.isBusy } }
+                owner
+            } finally {
+                exclusive = false
+                mutableBusy.value = mutableTeardownFailed.value || (current?.isBusy ?: false)
+            }
         }
     }
 
-    suspend fun <T> use(owner: RuntimeOwner, action: suspend () -> T): T? = control.withLock {
-        if (current !== owner || mutableTeardownFailed.value) return@withLock null
-        exclusive = true
-        mutableBusy.value = true
-        try { action() } finally {
-            exclusive = false
-            mutableBusy.value = mutableTeardownFailed.value || owner.isBusy
+    suspend fun <T> use(owner: RuntimeOwner, action: suspend () -> T): T? {
+        if (artifactUpdateReserved.value) return null
+        return control.withLock {
+            if (current !== owner || mutableTeardownFailed.value) return@withLock null
+            exclusive = true
+            mutableBusy.value = true
+            try { action() } finally {
+                exclusive = false
+                mutableBusy.value = mutableTeardownFailed.value || owner.isBusy
+            }
         }
+    }
+
+    /** Reserve before the event returns; never enqueue an update behind other work. */
+    internal fun tryUpdateArtifact(
+        owner: RuntimeOwner,
+        requestScope: CoroutineScope,
+        isFresh: () -> Boolean,
+        action: suspend () -> Unit,
+    ): Job? {
+        if (!control.tryLock()) return null
+        var reserved = false
+        try {
+            if (!isCurrent(owner) || owner.isBusy || !isFresh()) return null
+            val job = requestScope.launch(start = CoroutineStart.LAZY) {
+                coroutineContext.ensureActive()
+                if (isCurrent(owner) && !owner.isBusy && isFresh()) action()
+            }
+            artifactUpdateJob = job
+            exclusive = true
+            mutableArtifactUpdateReserved.value = true
+            mutableBusy.value = true
+            reserved = true
+            // Also releases a lazy job cancelled before it could enter its body.
+            job.invokeOnCompletion {
+                artifactUpdateJob = null
+                exclusive = false
+                mutableArtifactUpdateReserved.value = false
+                mutableBusy.value = mutableTeardownFailed.value || owner.isBusy
+                control.unlock()
+            }
+            job.start()
+            return job
+        } finally {
+            if (!reserved) control.unlock()
+        }
+    }
+
+    private fun cancelArtifactUpdate(owner: RuntimeOwner? = current) {
+        val job = artifactUpdateJob
+        if (owner != null && current === owner) job?.cancel()
     }
 
     suspend fun saveIfIdle(retainOwner: suspend (RuntimeOwner) -> Boolean, commit: suspend () -> Unit): Boolean {
@@ -138,6 +188,7 @@ class RuntimeOwnerController(private val scope: CoroutineScope) {
     }
 
     suspend fun release(owner: RuntimeOwner) {
+        cancelArtifactUpdate(owner)
         val interruptionFailure = try {
             owner.interrupt()
             null
@@ -168,6 +219,7 @@ class RuntimeOwnerController(private val scope: CoroutineScope) {
     }
 
     suspend fun closeAndJoin() {
+        cancelArtifactUpdate()
         val result = withContext(NonCancellable) {
             control.withLock {
                 exclusive = true

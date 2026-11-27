@@ -190,8 +190,10 @@
     <string name="translation_encoding_error">मूल पाठ या अनुवाद में अमान्य Unicode है। मूल पाठ बदलें या फिर प्रयास करें; अधूरा अनुवाद नहीं रखा गया।</string>
     <string name="translation_timeout">अनुवाद की तैयारी में बहुत समय लगा। तैयारी की स्थिति जाँचकर फिर प्रयास करें।</string>
     <string name="model_prepare_hint">मॉडल तैयार करें।</string>
-    <string name="tencent_model_download_hint">1.13 GB · वाई-फ़ाई से डाउनलोड</string>
-    <string name="tencent_model_explanation">ऑफ़लाइन उपयोग के लिए 1.13 GB का अनुवाद मॉडल Wi‑Fi से तैयार करें। कई GB RAM की ज़रूरत पड़ सकती है।</string>
+    <string name="tencent_model_download_hint">1.35 GB · वाई-फ़ाई से डाउनलोड</string>
+    <string name="tencent_model_explanation">ऑफ़लाइन उपयोग के लिए 1.35 GB का अनुवाद मॉडल Wi‑Fi से तैयार करें। कई GB RAM की ज़रूरत पड़ सकती है।</string>
+    <string name="translation_artifact_update_title">Tencent Hy-MT3 उपलब्ध है</string>
+    <string name="translation_artifact_update_action">मॉडल अपडेट करें</string>
     <string name="mozilla_model_download_hint">चुनी गई भाषाओं के मॉडल · वाई-फ़ाई से डाउनलोड</string>
     <string name="mozilla_model_explanation">चुनी गई भाषाओं की दोनों दिशाओं के मॉडल वाई-फ़ाई से तैयार करें। अंग्रेज़ी के बिना वाली जोड़ियों का अनुवाद अंग्रेज़ी के माध्यम से होता है। प्रदाता बदलने पर डाउनलोड किए गए मॉडल बने रहते हैं और पहचाने गए शब्द नहीं बदलते।</string>
     <string name="settings_recognition_service">वाक् पहचान सेवा</string>

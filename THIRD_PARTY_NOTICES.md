@@ -38,16 +38,25 @@ as executable application content. Exact source/toolchain/ABI and license
 inventory is in [Tencent native provenance](engine-tencent/THIRD_PARTY.md); its
 notice is packaged in APK license assets and the native distribution.
 
-**Hy-MT2-1.8B-GGUF**, copyright 2026 Tencent, is separately downloaded model
-data under the exact repository Apache-2.0 grant. Pinned revision:
+**Hy-MT3-1.8B-GGUF**, copyright 2026 Tencent, is the only Tencent model
+downloaded by this version. Pinned revision: `4c4370b31f13ccac4ac71133e3a0967c88cc792c`;
+`Hy-MT3-1.8B-Q4_K_M.gguf`, 1,348,432,160 bytes, SHA-256
+`bae6e591103654ff43ef0de7d1492f6e6df1f955505f6bb2cc52e86fc399a942`.
+The exact [Apache-2.0 license](LICENSES/Tencent-Hy-MT3-Apache-2.0.txt) is packaged;
+the pinned [source license](https://huggingface.co/tencent/Hy-MT3-1.8B-GGUF/blob/4c4370b31f13ccac4ac71133e3a0967c88cc792c/LICENSE.txt)
+has SHA-256 `974b62424d5627567283a4808181293e3ea53894cea7e75341d8e9f5f1b874cc`.
+
+**Hy-MT2-1.8B-GGUF**, copyright 2026 Tencent, may still be used from an
+existing installation under its repository Apache-2.0 grant. The app verifies
+it but never downloads it; successful Hy-MT3 activation retires it. Pinned revision:
 `a0c709d9fac510f2c807aa3af52872340dc37a4a`; file:
 `Hy-MT2-1.8B-Q4_K_M.gguf`, 1,133,080,448 bytes, SHA-256
 `dc5f44fcf1fa496ee7ad725982c0c8c553a4de00259b53af84c4b89fb0c06699`.
 The [full exact license](LICENSES/Tencent-Hy-MT2-Apache-2.0.txt) is preserved
 and packaged; source [license](https://huggingface.co/tencent/Hy-MT2-1.8B-GGUF/blob/a0c709d9fac510f2c807aa3af52872340dc37a4a/LICENSE.txt)
 SHA-256 is `a1d52d448f81c584a47c583e19dfab2d3851c7c84431b07baee093c1113ed114`.
-No NOTICE file was present in the captured pinned upstream inventory. Weights
-are not bundled in Git, the JNI AAR or the APK. Tencent and Hy-MT2 names remain
+Neither pinned upstream model inventory contains a NOTICE file. Weights are
+not bundled in Git, the JNI AAR or the APK. Tencent and the model names remain
 their owners’ marks; attribution is not endorsement or quality certification.
 
 ## Mozilla local translation
